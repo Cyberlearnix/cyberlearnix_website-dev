@@ -1,0 +1,12 @@
+rootProject.name = 'cyberlearnix-backend'
+
+include 'shared-lib'
+include 'gateway-service'
+include 'user-service'
+include 'course-service'
+include 'enrollment-service'
+include 'notification-service'
+include 'shop-service'
+include 'form-service'
+include 'admin-service'
+include 'cms-service'

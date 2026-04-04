@@ -1,0 +1,75 @@
+package com.cyberlearnix.shared.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+@Entity
+@Table(name = "courses")
+public class Course {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+    private String description;
+    private String category;
+
+    @Column(name = "difficulty_level")
+    private String difficultyLevel; // BEGINNER, INTERMEDIATE, ADVANCED
+
+    private String duration; // e.g. "12h 30m"
+
+    @Column(name = "content_url")
+    private String contentUrl;
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
+
+    @Column(name = "base_price")
+    private Double basePrice;
+
+    @Column(name = "gst_percent")
+    private Integer gstPercent;
+
+    @Column(name = "final_price")
+    private Double finalPrice;
+
+    @Column(name = "is_active", columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private Boolean isActive = true;
+
+    @Column(name = "created_by")
+    private String createdBy; // Reference to user_profiles.id
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "status")
+    private String status = "APPROVED"; // Default to APPROVED for legacy, but PENDING for new ones
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @PrePersist
+    @PreUpdate
+    public void calculatePricing() {
+        if (this.basePrice != null) {
+            if (this.gstPercent == null) {
+                this.gstPercent = 18; // Default to 18%
+            }
+            double gstAmount = (this.basePrice * this.gstPercent) / 100.0;
+            this.finalPrice = Math.round((this.basePrice + gstAmount) * 100.0) / 100.0;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // Manual setter for Lombok compatibility
+    public void setActive(Boolean isActive) {
+        this.isActive = isActive;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+}

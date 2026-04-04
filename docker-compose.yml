@@ -1,0 +1,241 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cyberlearnix-db
+    environment:
+      POSTGRES_DB: cyberlearnix
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cyberlearnix-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: cyberlearnix-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: cyberlearnix-redisinsight
+    ports:
+      - "5540:5540"
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    container_name: gateway-service
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      course-service:
+        condition: service_started
+      enrollment-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      shop-service:
+        condition: service_started
+      form-service:
+        condition: service_started
+      admin-service:
+        condition: service_started
+      cms-service:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  course-service:
+    build:
+      context: .
+      dockerfile: course-service/Dockerfile
+    container_name: course-service
+    ports:
+      - "8082:8082"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  enrollment-service:
+    build:
+      context: .
+      dockerfile: enrollment-service/Dockerfile
+    container_name: enrollment-service
+    ports:
+      - "8083:8083"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: notification-service
+    ports:
+      - "8084:8084"
+    environment:
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  shop-service:
+    build:
+      context: .
+      dockerfile: shop-service/Dockerfile
+    container_name: shop-service
+    ports:
+      - "8085:8085"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  form-service:
+    build:
+      context: .
+      dockerfile: form-service/Dockerfile
+    container_name: form-service
+    ports:
+      - "8087:8087"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    container_name: admin-service
+    ports:
+      - "8090:8090"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  cms-service:
+    build:
+      context: .
+      dockerfile: cms-service/Dockerfile
+    container_name: cms-service
+    ports:
+      - "8089:8089"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+networks:
+  cyberlearnix-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

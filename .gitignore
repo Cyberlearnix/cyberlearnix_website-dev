@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+!**/src/**/build/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Logs and temporary files
+*.log
+*.pid
+*.err
+*.out
+
+# OS files
+.DS_Store
+thumbs.db
+
+# Secrets (env files if any)
+.env
