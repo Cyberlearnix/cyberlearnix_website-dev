@@ -1,7 +1,7 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.Certificate;
-import com.cyberlearnix.shared.entity.CertificateTemplate;
+import com.cyberlearnix.shared.entity.enrollment.Certificate;
+import com.cyberlearnix.shared.entity.enrollment.CertificateTemplate;
 import com.cyberlearnix.shared.repository.CertificateRepository;
 import com.cyberlearnix.shared.repository.CertificateTemplateRepository;
 import org.springframework.beans.factory.annotation.Autowired;

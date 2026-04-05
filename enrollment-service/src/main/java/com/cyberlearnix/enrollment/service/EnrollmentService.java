@@ -1,9 +1,9 @@
 package com.cyberlearnix.enrollment.service;
 
-import com.cyberlearnix.shared.entity.Enrollment;
-import com.cyberlearnix.shared.entity.EnrollmentFormConfig;
-import com.cyberlearnix.shared.entity.EnrollmentFormResponse;
-import com.cyberlearnix.shared.entity.EnrollmentSubmission;
+import com.cyberlearnix.shared.entity.enrollment.Enrollment;
+import com.cyberlearnix.shared.entity.form.EnrollmentFormConfig;
+import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
+import com.cyberlearnix.shared.entity.enrollment.EnrollmentSubmission;
 import com.cyberlearnix.shared.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,9 +28,6 @@ public class EnrollmentService {
 
     @Autowired
     private EnrollmentFormConfigRepository configRepository;
-
-    @Autowired
-    private com.cyberlearnix.shared.repository.CourseRepository courseRepository;
 
     @Autowired
     private FormValidationService validationService;
@@ -223,14 +220,9 @@ public class EnrollmentService {
     public List<Enrollment> bulkAssign(String studentId, List<Long> courseIds) {
         List<Enrollment> enrollments = new java.util.ArrayList<>();
         courseIds.forEach(courseId -> {
-            // Fetch the course object
-            com.cyberlearnix.shared.entity.Course course = courseRepository.findById(courseId)
-                    .orElseThrow(() -> new RuntimeException("Course not found: " + courseId));
-            
             Enrollment e = new Enrollment();
             e.setStudentId(studentId);
             e.setCourseId(courseId);
-            e.setCourse(course); // Set the course object
             e.setEnrolledAt(LocalDateTime.now());
             e.setProgress(0);
             enrollments.add(enrollmentRepository.save(e));

@@ -1,6 +1,6 @@
 package com.cyberlearnix.user.controller;
 
-import com.cyberlearnix.shared.entity.ChatbotResponse;
+import com.cyberlearnix.shared.entity.user.ChatbotResponse;
 import com.cyberlearnix.shared.repository.ChatbotResponseRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

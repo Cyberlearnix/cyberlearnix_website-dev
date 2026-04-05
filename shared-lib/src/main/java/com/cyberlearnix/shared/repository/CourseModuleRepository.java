@@ -1,6 +1,6 @@
 package com.cyberlearnix.shared.repository;
 
-import com.cyberlearnix.shared.entity.CourseModule;
+import com.cyberlearnix.shared.entity.course.CourseModule;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;

@@ -2,8 +2,8 @@ package com.cyberlearnix.form.service;
 
 import com.cyberlearnix.form.dto.FormAnalyticsDTO;
 import com.cyberlearnix.form.dto.*;
-import com.cyberlearnix.shared.entity.GeneralForm;
-import com.cyberlearnix.shared.entity.GeneralFormResponse;
+import com.cyberlearnix.shared.entity.form.GeneralForm;
+import com.cyberlearnix.shared.entity.form.GeneralFormResponse;
 import com.cyberlearnix.shared.repository.GeneralFormRepository;
 import com.cyberlearnix.shared.repository.GeneralFormResponseRepository;
 import com.fasterxml.jackson.core.type.TypeReference;

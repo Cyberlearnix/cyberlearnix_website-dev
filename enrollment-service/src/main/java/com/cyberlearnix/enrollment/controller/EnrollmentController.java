@@ -1,6 +1,6 @@
 package com.cyberlearnix.enrollment.controller;
 
-import com.cyberlearnix.shared.entity.Enrollment;
+import com.cyberlearnix.shared.entity.enrollment.Enrollment;
 import com.cyberlearnix.shared.repository.EnrollmentRepository;
 import com.cyberlearnix.enrollment.service.EnrollmentService;
 import com.cyberlearnix.enrollment.dto.*;
@@ -75,20 +75,15 @@ public class EnrollmentController {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    @Autowired
-    private com.cyberlearnix.shared.repository.CourseRepository courseRepository;
-
     @PostMapping
     public ResponseEntity<?> createEnrollment(@RequestBody EnrollmentRequest request) {
-        return courseRepository.findById(request.getCourseId()).map(course -> {
-            Enrollment enrollment = new Enrollment();
-            enrollment.setStudentId(request.getStudentId());
-            enrollment.setCourse(course);
-            enrollment.setEnrolledAt(LocalDateTime.now());
-            
-            Enrollment saved = enrollmentRepository.save(enrollment);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", true, "enrollment", saved));
-        }).orElse(ResponseEntity.badRequest().body(Map.of("error", "Course not found")));
+        Enrollment enrollment = new Enrollment();
+        enrollment.setStudentId(request.getStudentId());
+        enrollment.setCourseId(request.getCourseId());
+        enrollment.setEnrolledAt(LocalDateTime.now());
+
+        Enrollment saved = enrollmentRepository.save(enrollment);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", true, "enrollment", saved));
     }
 
     @PutMapping("/{id}")

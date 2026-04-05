@@ -1,6 +1,6 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.ContentReview;
+import com.cyberlearnix.shared.entity.course.ContentReview;
 import com.cyberlearnix.shared.repository.ContentReviewRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -1,6 +1,6 @@
 package com.cyberlearnix.shared.repository;
 
-import com.cyberlearnix.shared.entity.ChatbotResponse;
+import com.cyberlearnix.shared.entity.user.ChatbotResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;

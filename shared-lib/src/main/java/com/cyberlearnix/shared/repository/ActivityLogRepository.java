@@ -1,6 +1,6 @@
 package com.cyberlearnix.shared.repository;
 
-import com.cyberlearnix.shared.entity.ActivityLog;
+import com.cyberlearnix.shared.entity.user.ActivityLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;

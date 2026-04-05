@@ -1,7 +1,7 @@
 package com.cyberlearnix.admin.controller;
 
 import com.cyberlearnix.admin.client.AuthServiceClient;
-import com.cyberlearnix.shared.entity.User;
+import com.cyberlearnix.shared.entity.user.User;
 import com.cyberlearnix.shared.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

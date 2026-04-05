@@ -1,6 +1,6 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.entity.EnrollmentFormResponse;
+import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
 import com.cyberlearnix.shared.repository.EnrollmentFormResponseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

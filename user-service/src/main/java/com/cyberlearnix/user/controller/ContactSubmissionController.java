@@ -1,6 +1,6 @@
 package com.cyberlearnix.user.controller;
 
-import com.cyberlearnix.shared.entity.ContactSubmission;
+import com.cyberlearnix.shared.entity.user.ContactSubmission;
 import com.cyberlearnix.shared.repository.ContactSubmissionRepository;
 import com.cyberlearnix.user.service.EmailNotificationService;
 import org.springframework.security.access.prepost.PreAuthorize;

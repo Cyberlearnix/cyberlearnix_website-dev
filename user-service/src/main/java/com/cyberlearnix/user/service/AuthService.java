@@ -1,14 +1,14 @@
 package com.cyberlearnix.user.service;
 
-import com.cyberlearnix.shared.entity.PasswordResetToken;
-import com.cyberlearnix.shared.entity.RefreshToken;
-import com.cyberlearnix.shared.entity.User;
-import com.cyberlearnix.shared.entity.UserProfile;
+import com.cyberlearnix.shared.entity.user.PasswordResetToken;
+import com.cyberlearnix.shared.entity.user.RefreshToken;
+import com.cyberlearnix.shared.entity.user.User;
+import com.cyberlearnix.shared.entity.user.UserProfile;
 import com.cyberlearnix.shared.repository.PasswordResetTokenRepository;
 import com.cyberlearnix.shared.repository.RefreshTokenRepository;
 import com.cyberlearnix.shared.repository.UserProfileRepository;
 import com.cyberlearnix.shared.repository.UserRepository;
-import com.cyberlearnix.shared.entity.BlacklistedToken;
+import com.cyberlearnix.shared.entity.user.BlacklistedToken;
 import com.cyberlearnix.shared.repository.BlacklistedTokenRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;

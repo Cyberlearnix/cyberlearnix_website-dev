@@ -12,7 +12,7 @@ spring:
       max-file-size: 512MB
       max-request-size: 512MB
   datasource:
-    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5433}/${DB_NAME:cyberlearnix}?currentSchema=public
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5433}/${DB_NAME:cyberlearnix_gateway}?currentSchema=public
     username: ${DB_USER:postgres}
     password: ${DB_PASS:postgres}
     driver-class-name: org.postgresql.Driver

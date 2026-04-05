@@ -1,6 +1,6 @@
 package com.cyberlearnix.shared.repository;
 
-import com.cyberlearnix.shared.entity.PromoBanner;
+import com.cyberlearnix.shared.entity.course.PromoBanner;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

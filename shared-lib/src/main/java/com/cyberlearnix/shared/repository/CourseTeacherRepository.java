@@ -1,6 +1,6 @@
 package com.cyberlearnix.shared.repository;
 
-import com.cyberlearnix.shared.entity.CourseTeacher;
+import com.cyberlearnix.shared.entity.course.CourseTeacher;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;

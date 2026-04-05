@@ -1,6 +1,6 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.Banner;
+import com.cyberlearnix.shared.entity.course.Banner;
 import com.cyberlearnix.shared.repository.BannerRepository;
 import com.cyberlearnix.course.dto.BannerDTO;
 import org.springframework.beans.factory.annotation.Autowired;

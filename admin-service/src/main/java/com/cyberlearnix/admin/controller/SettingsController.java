@@ -1,6 +1,6 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.entity.SiteSetting;
+import com.cyberlearnix.shared.entity.user.SiteSetting;
 import com.cyberlearnix.shared.repository.SiteSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

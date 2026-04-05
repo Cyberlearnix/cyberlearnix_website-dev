@@ -1,7 +1,7 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.entity.Course;
-import com.cyberlearnix.shared.entity.ModuleContent;
+import com.cyberlearnix.shared.entity.course.Course;
+import com.cyberlearnix.shared.entity.course.ModuleContent;
 import com.cyberlearnix.shared.repository.CourseRepository;
 import com.cyberlearnix.shared.repository.ModuleContentRepository;
 import lombok.RequiredArgsConstructor;

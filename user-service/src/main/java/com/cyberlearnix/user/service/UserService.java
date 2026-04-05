@@ -1,8 +1,8 @@
 package com.cyberlearnix.user.service;
 
-import com.cyberlearnix.shared.entity.ContactSubmission;
-import com.cyberlearnix.shared.entity.User;
-import com.cyberlearnix.shared.entity.UserProfile;
+import com.cyberlearnix.shared.entity.user.ContactSubmission;
+import com.cyberlearnix.shared.entity.user.User;
+import com.cyberlearnix.shared.entity.user.UserProfile;
 import com.cyberlearnix.shared.repository.ContactSubmissionRepository;
 import com.cyberlearnix.shared.repository.UserProfileRepository;
 import com.cyberlearnix.shared.repository.UserRepository;

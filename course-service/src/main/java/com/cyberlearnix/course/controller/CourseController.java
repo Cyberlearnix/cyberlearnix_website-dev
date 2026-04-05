@@ -1,6 +1,27 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.*;
+import com.cyberlearnix.shared.entity.course.Course;
+import com.cyberlearnix.shared.entity.course.CourseModule;
+import com.cyberlearnix.shared.entity.course.ModuleContent;
+import com.cyberlearnix.shared.entity.course.CourseTeacher;
+import com.cyberlearnix.shared.entity.course.CourseTeacherId;
+import com.cyberlearnix.shared.entity.course.ContentPartner;
+import com.cyberlearnix.shared.entity.course.CourseSuggestion;
+import com.cyberlearnix.shared.entity.course.LabContent;
+import com.cyberlearnix.shared.entity.course.LectureContent;
+import com.cyberlearnix.shared.entity.course.QuizContent;
+import com.cyberlearnix.shared.entity.course.QuizQuestion;
+import com.cyberlearnix.shared.entity.course.QuestionOption;
+import com.cyberlearnix.shared.entity.course.AssignmentContent;
+import com.cyberlearnix.shared.entity.course.ContentReview;
+import com.cyberlearnix.shared.entity.course.ContentUpdate;
+import com.cyberlearnix.shared.entity.course.Banner;
+import com.cyberlearnix.shared.entity.course.PromoBanner;
+import com.cyberlearnix.shared.entity.user.User;
+import com.cyberlearnix.shared.entity.user.UserProfile;
+import com.cyberlearnix.shared.entity.user.TeacherPermission;
+import com.cyberlearnix.shared.entity.enrollment.Enrollment;
+import com.cyberlearnix.shared.entity.enrollment.ContentProgress;
 import com.cyberlearnix.shared.repository.*;
 import com.cyberlearnix.course.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,9 +95,10 @@ public class CourseController {
 
             if ("dual".equals(userRole)) {
                 // If dual, also see enrolled student courses
-                List<Course> enrolledCourses = enrollmentRepository.findByStudentId(userId).stream()
-                        .map(e -> e.getCourse())
+                List<Long> enrolledCourseIds = enrollmentRepository.findByStudentId(userId).stream()
+                        .map(e -> e.getCourseId())
                         .collect(Collectors.toList());
+                List<Course> enrolledCourses = courseRepository.findAllById(enrolledCourseIds);
                 courses.addAll(enrolledCourses);
             }
         }

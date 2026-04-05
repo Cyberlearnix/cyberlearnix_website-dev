@@ -1,9 +1,9 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.Course;
-import com.cyberlearnix.shared.entity.CourseModule;
-import com.cyberlearnix.shared.entity.ModuleContent;
-import com.cyberlearnix.shared.entity.Enrollment;
+import com.cyberlearnix.shared.entity.course.Course;
+import com.cyberlearnix.shared.entity.course.CourseModule;
+import com.cyberlearnix.shared.entity.course.ModuleContent;
+import com.cyberlearnix.shared.entity.enrollment.Enrollment;
 import com.cyberlearnix.shared.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.*;

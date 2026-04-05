@@ -1,6 +1,6 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.CourseTeacher;
+import com.cyberlearnix.shared.entity.course.CourseTeacher;
 import com.cyberlearnix.shared.repository.CourseRepository;
 import com.cyberlearnix.shared.repository.CourseTeacherRepository;
 import com.cyberlearnix.shared.repository.UserProfileRepository;

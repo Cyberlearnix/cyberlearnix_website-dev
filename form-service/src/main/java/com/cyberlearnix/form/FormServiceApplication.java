@@ -13,10 +13,17 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @ComponentScan(basePackages = {
     "com.cyberlearnix.form",
     "com.cyberlearnix.shared.repository",
-    "com.cyberlearnix.shared.entity",
+    "com.cyberlearnix.shared.entity.form",
     "com.cyberlearnix.shared.service"
 })
-@EntityScan(basePackages = {"com.cyberlearnix.shared.entity"})
+@EntityScan({
+        "com.cyberlearnix.shared.entity.user",
+        "com.cyberlearnix.shared.entity.course",
+        "com.cyberlearnix.shared.entity.enrollment",
+        "com.cyberlearnix.shared.entity.form",
+        "com.cyberlearnix.shared.entity.cms",
+        "com.cyberlearnix.shared.entity.shop"
+})
 @EnableJpaRepositories(basePackages = {"com.cyberlearnix.shared.repository"})
 public class
 FormServiceApplication {

@@ -1,6 +1,6 @@
 package com.cyberlearnix.shop.controller;
 
-import com.cyberlearnix.shared.entity.ShopSettings;
+import com.cyberlearnix.shared.entity.shop.ShopSettings;
 import com.cyberlearnix.shared.repository.ShopSettingsRepository;
 import com.cyberlearnix.shop.dto.ShopSettingsDTO;
 import org.springframework.beans.factory.annotation.Autowired;

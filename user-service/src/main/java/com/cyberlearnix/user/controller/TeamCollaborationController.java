@@ -1,6 +1,6 @@
 package com.cyberlearnix.user.controller;
 
-import com.cyberlearnix.shared.entity.TeamCollaboration;
+import com.cyberlearnix.shared.entity.user.TeamCollaboration;
 import com.cyberlearnix.shared.repository.TeamCollaborationRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

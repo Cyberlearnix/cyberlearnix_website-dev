@@ -1,8 +1,8 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.ContentProgress;
-import com.cyberlearnix.shared.entity.Enrollment;
-import com.cyberlearnix.shared.entity.ModuleContent;
+import com.cyberlearnix.shared.entity.enrollment.ContentProgress;
+import com.cyberlearnix.shared.entity.enrollment.Enrollment;
+import com.cyberlearnix.shared.entity.course.ModuleContent;
 import com.cyberlearnix.shared.repository.ContentProgressRepository;
 import com.cyberlearnix.shared.repository.EnrollmentRepository;
 import com.cyberlearnix.shared.repository.ModuleContentRepository;

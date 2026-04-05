@@ -1,6 +1,6 @@
 package com.cyberlearnix.admin.config;
 
-import com.cyberlearnix.shared.entity.ActivityLog;
+import com.cyberlearnix.shared.entity.user.ActivityLog;
 import com.cyberlearnix.shared.repository.ActivityLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
