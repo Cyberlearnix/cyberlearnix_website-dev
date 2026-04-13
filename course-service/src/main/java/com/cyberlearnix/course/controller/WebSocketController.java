@@ -1,17 +1,17 @@
 package com.cyberlearnix.course.controller;
 
+import com.cyberlearnix.course.client.EnrollmentServiceClient;
 import com.cyberlearnix.shared.entity.course.Course;
 import com.cyberlearnix.shared.entity.course.CourseModule;
 import com.cyberlearnix.shared.entity.course.ModuleContent;
-import com.cyberlearnix.shared.entity.enrollment.Enrollment;
 import com.cyberlearnix.shared.repository.course.*;
-import com.cyberlearnix.shared.repository.enrollment.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,7 +31,7 @@ public class WebSocketController {
     private ModuleContentRepository contentRepository;
 
     @Autowired
-    private EnrollmentRepository enrollmentRepository;
+    private EnrollmentServiceClient enrollmentServiceClient;
 
     // Handle authentication
     @MessageMapping("/app/auth")
@@ -135,30 +135,32 @@ public class WebSocketController {
         String courseId = (String) payload.get("courseId");
         Integer progress = (Integer) payload.get("progress");
 
-        // Update enrollment progress in database
-        Optional<Enrollment> enrollment = enrollmentRepository.findByStudentIdAndCourseId(studentId, Long.valueOf(courseId));
-        if (enrollment.isPresent()) {
-            Enrollment e = enrollment.get();
-            e.setProgress(progress);
+        // Update enrollment progress via enrollment-service Feign client
+        try {
+            Map<String, Object> progressUpdate = new java.util.HashMap<>();
+            progressUpdate.put("studentId", studentId);
+            progressUpdate.put("courseId", Long.valueOf(courseId));
+            progressUpdate.put("progress", progress);
             if (progress >= 100) {
-                e.setCompletedAt(LocalDateTime.now());
+                progressUpdate.put("completedAt", LocalDateTime.now().toString());
             }
-            enrollmentRepository.save(e);
-
-            Map<String, Object> notification = Map.of(
-                "type", "STUDENT_PROGRESS",
-                "studentId", studentId,
-                "courseId", courseId,
-                "progress", progress,
-                "timestamp", LocalDateTime.now()
-            );
-
-            // Notify teachers assigned to this course
-            notifyCourseTeachers(Long.valueOf(courseId), notification);
-
-            // Send to student-specific queue
-            messagingTemplate.convertAndSendToUser(studentId, "/queue/progress", notification);
+            enrollmentServiceClient.updateProgress(progressUpdate);
+        } catch (Exception ignored) {
         }
+
+        Map<String, Object> notification = Map.of(
+            "type", "STUDENT_PROGRESS",
+            "studentId", studentId,
+            "courseId", courseId,
+            "progress", progress,
+            "timestamp", LocalDateTime.now()
+        );
+
+        // Notify teachers assigned to this course
+        notifyCourseTeachers(Long.valueOf(courseId), notification);
+
+        // Send to student-specific queue
+        messagingTemplate.convertAndSendToUser(studentId, "/queue/progress", notification);
     }
 
     // Handle assignment updates
@@ -212,10 +214,19 @@ public class WebSocketController {
 
     // Helper methods
     private void notifyEnrolledStudents(Long courseId, Map<String, Object> notification) {
-        // Get all enrolled students for this course
-        enrollmentRepository.findByCourseId(courseId).forEach(enrollment -> {
-            messagingTemplate.convertAndSendToUser(enrollment.getStudentId(), "/queue/course-updates", notification);
-        });
+        // Get all enrolled students for this course via enrollment-service
+        try {
+            List<Map<String, Object>> enrollments = enrollmentServiceClient.getEnrollments(null, courseId);
+            if (enrollments != null) {
+                enrollments.forEach(e -> {
+                    String sid = (String) e.get("studentId");
+                    if (sid != null) {
+                        messagingTemplate.convertAndSendToUser(sid, "/queue/course-updates", notification);
+                    }
+                });
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private void notifyCourseTeachers(Long courseId, Map<String, Object> notification) {

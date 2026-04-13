@@ -1,6 +1,6 @@
-package com.cyberlearnix.shared.repository.enrollment;
+package com.cyberlearnix.shared.repository.course;
 
-import com.cyberlearnix.shared.entity.enrollment.Certificate;
+import com.cyberlearnix.shared.entity.course.Certificate;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;

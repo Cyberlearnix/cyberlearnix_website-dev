@@ -1,4 +1,4 @@
-package com.cyberlearnix.shared.entity.form;
+package com.cyberlearnix.shared.entity.enrollment;
 
 import jakarta.persistence.*;
 import lombok.Data;

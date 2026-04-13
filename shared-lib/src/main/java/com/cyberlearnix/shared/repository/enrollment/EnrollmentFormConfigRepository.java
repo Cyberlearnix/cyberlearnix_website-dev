@@ -1,6 +1,6 @@
-package com.cyberlearnix.shared.repository.form;
+package com.cyberlearnix.shared.repository.enrollment;
 
-import com.cyberlearnix.shared.entity.form.EnrollmentFormConfig;
+import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;

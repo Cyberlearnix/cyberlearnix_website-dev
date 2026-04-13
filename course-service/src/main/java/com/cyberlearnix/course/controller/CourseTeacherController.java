@@ -3,7 +3,7 @@ package com.cyberlearnix.course.controller;
 import com.cyberlearnix.shared.entity.course.CourseTeacher;
 import com.cyberlearnix.shared.repository.course.CourseRepository;
 import com.cyberlearnix.shared.repository.course.CourseTeacherRepository;
-import com.cyberlearnix.shared.repository.user.UserProfileRepository;
+import com.cyberlearnix.course.client.UserServiceClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +30,18 @@ public class CourseTeacherController {
     private CourseRepository courseRepository;
 
     @Autowired
-    private UserProfileRepository userProfileRepository;
+    private UserServiceClient userServiceClient;
+
+    /**
+     * GET /api/courses/teachers/exists?teacherId={id}&courseId={id}
+     * Check if a teacher is assigned to a course. Used by enrollment-service Feign client.
+     */
+    @GetMapping("/exists")
+    public ResponseEntity<Boolean> teacherExistsForCourse(
+            @RequestParam String teacherId,
+            @RequestParam Long courseId) {
+        return ResponseEntity.ok(courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, teacherId));
+    }
 
     /**
      * GET /api/courses/teachers?teacherId={id}
@@ -59,8 +70,14 @@ public class CourseTeacherController {
                         Map<String, Object> entry = new java.util.HashMap<>();
                         entry.put("courseId", ct.getCourseId());
                         entry.put("teacherId", ct.getTeacherId());
-                        userProfileRepository.findById(ct.getTeacherId()).ifPresent(
-                                u -> entry.put("teacher", Map.of("id", u.getId(), "fullName", u.getFullName())));
+                        try {
+                            Map<String, Object> profile = userServiceClient.getUserProfile(ct.getTeacherId());
+                            if (profile != null) {
+                                entry.put("teacher", Map.of(
+                                    "id", ct.getTeacherId(),
+                                    "fullName", profile.getOrDefault("fullName", "")));
+                            }
+                        } catch (Exception ignored) {}
                         return entry;
                     })
                     .collect(Collectors.toList());

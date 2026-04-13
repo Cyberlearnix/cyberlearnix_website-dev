@@ -1,7 +1,7 @@
 package com.cyberlearnix.enrollment.service;
 
 import com.cyberlearnix.shared.entity.enrollment.Enrollment;
-import com.cyberlearnix.shared.entity.form.EnrollmentFormConfig;
+import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormConfig;
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentSubmission;
 import com.cyberlearnix.shared.repository.enrollment.*;

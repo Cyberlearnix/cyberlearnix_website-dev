@@ -1,19 +1,18 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.enrollment.ContentProgress;
-import com.cyberlearnix.shared.entity.enrollment.Enrollment;
+import com.cyberlearnix.shared.entity.course.ContentProgress;
 import com.cyberlearnix.shared.entity.course.ModuleContent;
-import com.cyberlearnix.shared.repository.enrollment.ContentProgressRepository;
-import com.cyberlearnix.shared.repository.enrollment.EnrollmentRepository;
+import com.cyberlearnix.shared.repository.course.ContentProgressRepository;
 import com.cyberlearnix.shared.repository.course.ModuleContentRepository;
+import com.cyberlearnix.course.client.EnrollmentServiceClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/courses/progress")
@@ -26,7 +25,7 @@ public class ProgressController {
     private ModuleContentRepository contentRepository;
 
     @Autowired
-    private EnrollmentRepository enrollmentRepository;
+    private EnrollmentServiceClient enrollmentServiceClient;
 
     @PostMapping("/update")
     public ResponseEntity<?> updateProgress(@RequestBody Map<String, Object> payload,
@@ -62,7 +61,7 @@ public class ProgressController {
 
             progressRepository.save(progress);
 
-            // Recalculate overall course progress
+            // Recalculate overall course progress via enrollment-service
             Long courseId = content.getModule().getCourse().getId();
             recalculateCourseProgress(studentId, courseId);
 
@@ -74,11 +73,21 @@ public class ProgressController {
     public ResponseEntity<?> getCourseProgress(@PathVariable Long courseId,
             @RequestHeader("X-User-Id") String studentId) {
         List<ContentProgress> itemProgress = progressRepository.findByStudentIdAndCourseId(studentId, courseId);
-        Optional<Enrollment> enrollment = enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId);
+
+        // Get overall progress from enrollment-service
+        int overallProgress = 0;
+        try {
+            List<Map<String, Object>> enrollments = enrollmentServiceClient.getEnrollments(studentId, courseId);
+            if (!enrollments.isEmpty()) {
+                Object p = enrollments.get(0).get("progress");
+                overallProgress = p != null ? ((Number) p).intValue() : 0;
+            }
+        } catch (Exception ignored) {
+        }
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "overallProgress", enrollment.map(Enrollment::getProgress).orElse(0),
+                "overallProgress", overallProgress,
                 "items", itemProgress));
     }
 
@@ -90,12 +99,16 @@ public class ProgressController {
         long completedContents = progressRepository.countCompletedByStudentAndCourse(studentId, courseId);
         int percentage = (int) ((completedContents * 100) / totalContents);
 
-        enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId).ifPresent(enrollment -> {
-            enrollment.setProgress(percentage);
+        try {
+            Map<String, Object> progressUpdate = new HashMap<>();
+            progressUpdate.put("studentId", studentId);
+            progressUpdate.put("courseId", courseId);
+            progressUpdate.put("progress", percentage);
             if (percentage >= 100) {
-                enrollment.setCompletedAt(LocalDateTime.now());
+                progressUpdate.put("completedAt", LocalDateTime.now().toString());
             }
-            enrollmentRepository.save(enrollment);
-        });
+            enrollmentServiceClient.updateProgress(progressUpdate);
+        } catch (Exception ignored) {
+        }
     }
 }

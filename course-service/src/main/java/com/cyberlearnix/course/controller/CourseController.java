@@ -17,14 +17,9 @@ import com.cyberlearnix.shared.entity.course.ContentReview;
 import com.cyberlearnix.shared.entity.course.ContentUpdate;
 import com.cyberlearnix.shared.entity.course.Banner;
 import com.cyberlearnix.shared.entity.course.PromoBanner;
-import com.cyberlearnix.shared.entity.user.User;
-import com.cyberlearnix.shared.entity.user.UserProfile;
-import com.cyberlearnix.shared.entity.user.TeacherPermission;
-import com.cyberlearnix.shared.entity.enrollment.Enrollment;
-import com.cyberlearnix.shared.entity.enrollment.ContentProgress;
 import com.cyberlearnix.shared.repository.course.*;
-import com.cyberlearnix.shared.repository.enrollment.*;
-import com.cyberlearnix.shared.repository.user.*;
+import com.cyberlearnix.course.client.EnrollmentServiceClient;
+import com.cyberlearnix.course.client.UserServiceClient;
 import com.cyberlearnix.course.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -46,19 +41,16 @@ public class CourseController {
     private CourseRepository courseRepository;
 
     @Autowired
-    private UserProfileRepository userProfileRepository;
-
-    @Autowired
     private CourseTeacherRepository courseTeacherRepository;
 
     @Autowired
-    private TeacherPermissionRepository teacherPermissionRepository;
-
-    @Autowired
-    private EnrollmentRepository enrollmentRepository;
-
-    @Autowired
     private CourseModuleRepository moduleRepository;
+
+    @Autowired
+    private EnrollmentServiceClient enrollmentServiceClient;
+
+    @Autowired
+    private UserServiceClient userServiceClient;
 
     @GetMapping
     public ResponseEntity<?> getCourses(@RequestParam(required = false) Long id,
@@ -96,12 +88,14 @@ public class CourseController {
             courses.addAll(assignedCourses);
 
             if ("dual".equals(userRole)) {
-                // If dual, also see enrolled student courses
-                List<Long> enrolledCourseIds = enrollmentRepository.findByStudentId(userId).stream()
-                        .map(e -> e.getCourseId())
-                        .collect(Collectors.toList());
-                List<Course> enrolledCourses = courseRepository.findAllById(enrolledCourseIds);
-                courses.addAll(enrolledCourses);
+                // If dual, also see enrolled student courses (via enrollment-service)
+                try {
+                    List<Long> enrolledCourseIds = enrollmentServiceClient.getEnrollments(userId, null).stream()
+                            .map(e -> ((Number) e.get("courseId")).longValue())
+                            .collect(Collectors.toList());
+                    courses.addAll(courseRepository.findAllById(enrolledCourseIds));
+                } catch (Exception ignored) {
+                }
             }
         }
 
@@ -121,8 +115,13 @@ public class CourseController {
         }
 
         if ("teacher".equals(userRole) || "dual".equals(userRole)) {
-            Optional<TeacherPermission> p = teacherPermissionRepository.findById(userId);
-            if (p.isEmpty() || !p.get().getCanCreateCourses()) {
+            try {
+                Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                if (perm == null || !Boolean.TRUE.equals(perm.get("canCreateCourses"))) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "No permission to create courses"));
+                }
+            } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "No permission to create courses"));
             }
