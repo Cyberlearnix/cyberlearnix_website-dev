@@ -1,7 +1,7 @@
 package com.cyberlearnix.enrollment.controller;
 
 import com.cyberlearnix.shared.entity.enrollment.Enrollment;
-import com.cyberlearnix.shared.repository.EnrollmentRepository;
+import com.cyberlearnix.shared.repository.enrollment.EnrollmentRepository;
 import com.cyberlearnix.enrollment.service.EnrollmentService;
 import com.cyberlearnix.enrollment.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +36,7 @@ public class EnrollmentController {
     }
 
     @Autowired
-    private com.cyberlearnix.shared.repository.CourseTeacherRepository courseTeacherRepository;
+    private com.cyberlearnix.shared.repository.course.CourseTeacherRepository courseTeacherRepository;
 
     @GetMapping
     public ResponseEntity<?> getEnrollments(@RequestParam(required = false) String studentId,

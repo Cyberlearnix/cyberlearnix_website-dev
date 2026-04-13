@@ -2,8 +2,8 @@ package com.cyberlearnix.course.controller;
 
 import com.cyberlearnix.shared.entity.course.Course;
 import com.cyberlearnix.shared.entity.course.CourseSuggestion;
-import com.cyberlearnix.shared.repository.CourseRepository;
-import com.cyberlearnix.shared.repository.CourseSuggestionRepository;
+import com.cyberlearnix.shared.repository.course.CourseRepository;
+import com.cyberlearnix.shared.repository.course.CourseSuggestionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

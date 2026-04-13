@@ -10,8 +10,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import com.cyberlearnix.shared.repository.BlacklistedTokenRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Configuration
 @EnableWebSecurity
@@ -21,20 +19,19 @@ public class SecurityConfig {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Autowired
-    private BlacklistedTokenRepository blacklistedTokenRepository;
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // Blacklist check is handled by the gateway; admin-service only validates JWT signature
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/admin/auth/**").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().hasRole("ADMIN")
                 )
-                .addFilterBefore(new JwtTokenFilter(jwtSecret, token -> blacklistedTokenRepository.findByToken(token).isPresent()), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtTokenFilter(jwtSecret), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

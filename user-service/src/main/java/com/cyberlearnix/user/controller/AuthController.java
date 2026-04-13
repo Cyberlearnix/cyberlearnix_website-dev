@@ -1,6 +1,6 @@
 package com.cyberlearnix.user.controller;
 
-import com.cyberlearnix.shared.repository.UserRepository;
+import com.cyberlearnix.shared.repository.user.UserRepository;
 import com.cyberlearnix.user.dto.*;
 import com.cyberlearnix.user.service.AuthService;
 import com.cyberlearnix.user.service.OtpService;
@@ -121,7 +121,7 @@ public class AuthController {
                     .body(Map.of("error", "Too many OTP requests. Please wait 15 minutes before trying again."));
         }
 
-        // ✅ CHECK: Email must exist in users table BEFORE sending OTP
+        // âœ… CHECK: Email must exist in users table BEFORE sending OTP
         if (userRepository.findByEmail(email).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "No account found with this email address."));

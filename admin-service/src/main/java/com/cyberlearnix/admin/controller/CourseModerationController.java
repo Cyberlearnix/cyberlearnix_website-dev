@@ -1,14 +1,10 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.entity.course.Course;
-import com.cyberlearnix.shared.entity.course.ModuleContent;
-import com.cyberlearnix.shared.repository.CourseRepository;
-import com.cyberlearnix.shared.repository.ModuleContentRepository;
+import com.cyberlearnix.admin.client.CourseServiceClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -17,74 +13,52 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CourseModerationController {
 
-    private final CourseRepository courseRepository;
-    private final ModuleContentRepository moduleContentRepository;
+    private final CourseServiceClient courseServiceClient;
 
     @GetMapping
-    public List<Course> getAllCourses(@RequestParam(required = false) String status) {
-        if (status != null) {
-            return courseRepository.findAll().stream()
-                    .filter(c -> c.getStatus().equalsIgnoreCase(status))
-                    .toList();
-        }
-        return courseRepository.findAll();
+    public List<Map<String, Object>> getAllCourses(@RequestParam(required = false) String status,
+                                                    @RequestHeader("Authorization") String auth) {
+        return courseServiceClient.getAllCourses(status, auth);
     }
 
     @PutMapping("/{id}/approve")
-    public ResponseEntity<?> approveCourse(@PathVariable Long id) {
-        return courseRepository.findById(id)
-                .map(course -> {
-                    course.setStatus("APPROVED");
-                    course.setUpdatedAt(LocalDateTime.now());
-                    courseRepository.save(course);
-                    return ResponseEntity.ok(Map.of("message", "Course approved successfully", "status", "APPROVED"));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> approveCourse(@PathVariable Long id,
+                                            @RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(
+                courseServiceClient.updateCourseStatus(id, Map.of("status", "APPROVED"), auth)
+        );
     }
 
     @PutMapping("/{id}/reject")
-    public ResponseEntity<?> rejectCourse(@PathVariable Long id, @RequestBody Map<String, String> reasonRequest) {
-        return courseRepository.findById(id)
-                .map(course -> {
-                    course.setStatus("REJECTED");
-                    course.setUpdatedAt(LocalDateTime.now());
-                    courseRepository.save(course);
-                    // In a real app, send notification to instructor with reasonRequest.get("reason")
-                    return ResponseEntity.ok(Map.of("message", "Course rejected successfully", "status", "REJECTED"));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> rejectCourse(@PathVariable Long id,
+                                           @RequestBody Map<String, String> reasonRequest,
+                                           @RequestHeader("Authorization") String auth) {
+        Map<String, String> body = Map.of(
+                "status", "REJECTED",
+                "reason", reasonRequest.getOrDefault("reason", "")
+        );
+        return ResponseEntity.ok(courseServiceClient.updateCourseStatus(id, body, auth));
     }
 
     @GetMapping("/content/{courseId}")
-    public ResponseEntity<List<ModuleContent>> getCourseContent(@PathVariable Long courseId) {
-        // This is a bit simplified, ideally find by courseId through modules
-        List<ModuleContent> contents = moduleContentRepository.findAll().stream()
-                .filter(mc -> mc.getModule().getCourse().getId().equals(courseId))
-                .toList();
-        return ResponseEntity.ok(contents);
+    public ResponseEntity<List<Map<String, Object>>> getCourseContent(@PathVariable Long courseId,
+                                                                        @RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(courseServiceClient.getCourseContent(courseId, auth));
     }
 
     @PutMapping("/content/{id}/approve")
-    public ResponseEntity<?> approveContent(@PathVariable Long id) {
-        return moduleContentRepository.findById(id)
-                .map(content -> {
-                    content.setStatus("APPROVED");
-                    content.setUpdatedAt(LocalDateTime.now());
-                    moduleContentRepository.save(content);
-                    return ResponseEntity.ok(Map.of("message", "Content approved successfully", "status", "APPROVED"));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> approveContent(@PathVariable Long id,
+                                             @RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(
+                courseServiceClient.updateContentStatus(id, Map.of("status", "APPROVED"), auth)
+        );
     }
 
     @PutMapping("/content/{id}/reject")
-    public ResponseEntity<?> rejectContent(@PathVariable Long id) {
-        return moduleContentRepository.findById(id)
-                .map(content -> {
-                    content.setStatus("REJECTED");
-                    content.setUpdatedAt(LocalDateTime.now());
-                    moduleContentRepository.save(content);
-                    return ResponseEntity.ok(Map.of("message", "Content rejected successfully", "status", "REJECTED"));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> rejectContent(@PathVariable Long id,
+                                            @RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(
+                courseServiceClient.updateContentStatus(id, Map.of("status", "REJECTED"), auth)
+        );
     }
 }

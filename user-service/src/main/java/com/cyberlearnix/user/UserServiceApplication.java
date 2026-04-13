@@ -9,16 +9,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.TimeZone;
 
-@SpringBootApplication(scanBasePackages = "com.cyberlearnix")
-@EntityScan({
-        "com.cyberlearnix.shared.entity.user",
-        "com.cyberlearnix.shared.entity.course",
-        "com.cyberlearnix.shared.entity.enrollment",
-        "com.cyberlearnix.shared.entity.form",
-        "com.cyberlearnix.shared.entity.cms",
-        "com.cyberlearnix.shared.entity.shop"
-})
-@EnableJpaRepositories("com.cyberlearnix.shared.repository")
+@SpringBootApplication(scanBasePackages = "com.cyberlearnix.user")
+@EntityScan("com.cyberlearnix.shared.entity.user")
+@EnableJpaRepositories("com.cyberlearnix.shared.repository.user")
 @EnableScheduling
 @EnableJpaAuditing
 public class UserServiceApplication {

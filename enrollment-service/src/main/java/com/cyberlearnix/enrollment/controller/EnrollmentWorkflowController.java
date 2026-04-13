@@ -1,7 +1,7 @@
 package com.cyberlearnix.enrollment.controller;
 
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentWorkflow;
-import com.cyberlearnix.shared.repository.EnrollmentWorkflowRepository;
+import com.cyberlearnix.shared.repository.enrollment.EnrollmentWorkflowRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

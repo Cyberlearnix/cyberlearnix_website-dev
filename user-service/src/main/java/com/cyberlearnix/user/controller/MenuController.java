@@ -1,7 +1,7 @@
 package com.cyberlearnix.user.controller;
 
 import com.cyberlearnix.shared.entity.user.MenuItem;
-import com.cyberlearnix.shared.repository.MenuItemRepository;
+import com.cyberlearnix.shared.repository.user.MenuItemRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

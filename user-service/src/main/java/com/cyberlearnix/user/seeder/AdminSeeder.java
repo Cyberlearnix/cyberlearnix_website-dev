@@ -2,8 +2,8 @@ package com.cyberlearnix.user.seeder;
 
 import com.cyberlearnix.shared.entity.user.User;
 import com.cyberlearnix.shared.entity.user.UserProfile;
-import com.cyberlearnix.shared.repository.UserProfileRepository;
-import com.cyberlearnix.shared.repository.UserRepository;
+import com.cyberlearnix.shared.repository.user.UserProfileRepository;
+import com.cyberlearnix.shared.repository.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;

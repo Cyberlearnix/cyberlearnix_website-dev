@@ -1,14 +1,10 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.entity.user.User;
-import com.cyberlearnix.shared.entity.user.UserProfile;
-import com.cyberlearnix.shared.repository.UserProfileRepository;
-import com.cyberlearnix.shared.repository.UserRepository;
+import com.cyberlearnix.admin.client.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -17,57 +13,43 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserManagementController {
 
-    private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final UserServiceClient userServiceClient;
 
     @GetMapping
-    public List<User> getAllUsers(@RequestParam(required = false) String role) {
-        if (role != null) {
-            return userRepository.findAll().stream()
-                    .filter(u -> u.getRole().equalsIgnoreCase(role))
-                    .toList();
-        }
-        return userRepository.findAll();
+    public List<Map<String, Object>> getAllUsers(@RequestParam(required = false) String role,
+                                                  @RequestHeader("Authorization") String auth) {
+        return userServiceClient.getAllUsers(role, auth);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserDetails(@PathVariable String id) {
-        return userRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Map<String, Object>> getUserDetails(@PathVariable String id,
+                                                               @RequestHeader("Authorization") String auth) {
+        try {
+            return ResponseEntity.ok(userServiceClient.getUserById(id, auth));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateUserStatus(@PathVariable String id, @RequestBody Map<String, Boolean> statusRequest) {
-        Boolean isActive = statusRequest.get("isActive");
-        if (isActive == null) {
+    public ResponseEntity<?> updateUserStatus(@PathVariable String id,
+                                               @RequestBody Map<String, Boolean> statusRequest,
+                                               @RequestHeader("Authorization") String auth) {
+        if (statusRequest.get("isActive") == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "isActive field is required"));
         }
-
-        return userProfileRepository.findById(id)
-                .map(profile -> {
-                    profile.setIsActive(isActive);
-                    profile.setUpdatedAt(LocalDateTime.now());
-                    userProfileRepository.save(profile);
-                    return ResponseEntity.ok(Map.of("message", "User status updated successfully", "isActive", isActive));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(userServiceClient.updateUserStatus(id, statusRequest, auth));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable String id) {
-        if (!userRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        userRepository.deleteById(id);
-        userProfileRepository.deleteById(id);
-        return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
+    public ResponseEntity<?> deleteUser(@PathVariable String id,
+                                         @RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(userServiceClient.deleteUser(id, auth));
     }
 
     @GetMapping("/instructors")
-    public List<User> getAllInstructors() {
-        return userRepository.findAll().stream()
-                .filter(u -> u.getRole().equalsIgnoreCase("teacher") || u.getRole().equalsIgnoreCase("instructor"))
-                .toList();
+    public List<Map<String, Object>> getAllInstructors(@RequestHeader("Authorization") String auth) {
+        return userServiceClient.getAllUsers("teacher", auth);
     }
 }
+

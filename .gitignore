@@ -3,6 +3,9 @@
 build/
 !**/src/**/build/
 
+# Eclipse/VS Code compiled output
+**/bin/
+
 # IDE
 .idea/
 *.iml

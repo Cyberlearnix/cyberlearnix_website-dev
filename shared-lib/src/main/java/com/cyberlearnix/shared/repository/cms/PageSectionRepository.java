@@ -1,0 +1,11 @@
+package com.cyberlearnix.shared.repository.cms;
+
+import com.cyberlearnix.shared.entity.cms.PageSection;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public interface PageSectionRepository extends JpaRepository<PageSection, Long> {
+    List<PageSection> findByPageIdOrderByOrderIndexAsc(Long pageId);
+}

@@ -11,7 +11,7 @@ import com.cyberlearnix.shared.security.JwtTokenFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import com.cyberlearnix.shared.repository.BlacklistedTokenRepository;
+import com.cyberlearnix.shared.repository.user.BlacklistedTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 

@@ -8,16 +8,9 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.util.TimeZone;
 
-@SpringBootApplication(scanBasePackages = "com.cyberlearnix")
-@EntityScan({
-        "com.cyberlearnix.shared.entity.user",
-        "com.cyberlearnix.shared.entity.course",
-        "com.cyberlearnix.shared.entity.enrollment",
-        "com.cyberlearnix.shared.entity.form",
-        "com.cyberlearnix.shared.entity.cms",
-        "com.cyberlearnix.shared.entity.shop"
-})
-@EnableJpaRepositories("com.cyberlearnix.shared.repository")
+@SpringBootApplication(scanBasePackages = "com.cyberlearnix.enrollment")
+@EntityScan({"com.cyberlearnix.shared.entity.enrollment", "com.cyberlearnix.shared.entity.form", "com.cyberlearnix.shared.entity.course"})
+@EnableJpaRepositories({"com.cyberlearnix.shared.repository.enrollment", "com.cyberlearnix.shared.repository.form", "com.cyberlearnix.shared.repository.course"})
 @EnableFeignClients
 public class EnrollmentServiceApplication {
     static {
@@ -28,3 +21,4 @@ public class EnrollmentServiceApplication {
         SpringApplication.run(EnrollmentServiceApplication.class, args);
     }
 }
+

@@ -4,7 +4,8 @@ import com.cyberlearnix.shared.entity.course.Course;
 import com.cyberlearnix.shared.entity.course.CourseModule;
 import com.cyberlearnix.shared.entity.course.ModuleContent;
 import com.cyberlearnix.shared.entity.user.TeacherPermission;
-import com.cyberlearnix.shared.repository.*;
+import com.cyberlearnix.shared.repository.course.*;
+import com.cyberlearnix.shared.repository.user.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

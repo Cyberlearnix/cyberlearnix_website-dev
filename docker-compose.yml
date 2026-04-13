@@ -4,23 +4,13 @@ services:
     container_name: cyberlearnix-db
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: Cyb3rL3arnix#2026!DB
       POSTGRES_DB: postgres
-      POSTGRES_MULTIPLE_DATABASES: cyberlearnix_users,cyberlearnix_courses,cyberlearnix_enrollments,cyberlearnix_shop,cyberlearnix_forms,cyberlearnix_admin,cyberlearnix_cms,cyberlearnix_gateway
-    command: >
-      bash -c "
-        docker-entrypoint.sh postgres &
-        PID=$$!
-        until pg_isready -U postgres; do sleep 1; done
-        for db in $$(echo $$POSTGRES_MULTIPLE_DATABASES | tr ',' ' '); do
-          psql -U postgres -tc \"SELECT 1 FROM pg_database WHERE datname = '$$db'\" | grep -q 1 || psql -U postgres -c \"CREATE DATABASE $$db\";
-        done
-        wait $$PID
-      "
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
@@ -58,15 +48,21 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=cyberlearnix
-      - DB_USER=postgres
-      - DB_PASS=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - USER_SERVICE_URL=http://user-service:8081
+      - COURSE_SERVICE_URL=http://course-service:8082
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8084
+      - SHOP_SERVICE_URL=http://shop-service:8085
+      - FORM_SERVICE_URL=http://form-service:8087
+      - CMS_SERVICE_URL=http://cms-service:8089
+      - ADMIN_SERVICE_URL=http://admin-service:8090
     depends_on:
-      postgres:
-        condition: service_healthy
+      redis:
+        condition: service_started
       user-service:
         condition: service_started
       course-service:
@@ -97,9 +93,9 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cyberlearnix
+      - DB_NAME=cyberlearnix_users
       - DB_USER=postgres
-      - DB_PASS=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
@@ -120,9 +116,9 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cyberlearnix
+      - DB_NAME=cyberlearnix_courses
       - DB_USER=postgres
-      - DB_PASS=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
     depends_on:
       - postgres
@@ -140,10 +136,12 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cyberlearnix
+      - DB_NAME=cyberlearnix_enrollments
       - DB_USER=postgres
-      - DB_PASS=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+      - USER_SERVICE_URL=http://user-service:8081
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8084
     depends_on:
       - postgres
     restart: unless-stopped
@@ -173,9 +171,9 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cyberlearnix
+      - DB_NAME=cyberlearnix_shop
       - DB_USER=postgres
-      - DB_PASS=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
     depends_on:
       - postgres
@@ -193,10 +191,12 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cyberlearnix
+      - DB_NAME=cyberlearnix_forms
       - DB_USER=postgres
-      - DB_PASS=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+      - USER_SERVICE_URL=http://user-service:8081
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8084
     depends_on:
       - postgres
     restart: unless-stopped
@@ -213,12 +213,18 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cyberlearnix
+      - DB_NAME=cyberlearnix_admin
       - DB_USER=postgres
-      - DB_PASS=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+      - USER_SERVICE_URL=http://user-service:8081
+      - COURSE_SERVICE_URL=http://course-service:8082
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
     depends_on:
       - postgres
+      - user-service
+      - course-service
+      - enrollment-service
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -233,9 +239,9 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cyberlearnix
+      - DB_NAME=cyberlearnix_cms
       - DB_USER=postgres
-      - DB_PASS=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
     depends_on:
       - postgres

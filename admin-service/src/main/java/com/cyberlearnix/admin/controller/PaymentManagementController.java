@@ -1,12 +1,10 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
-import com.cyberlearnix.shared.repository.EnrollmentFormResponseRepository;
+import com.cyberlearnix.admin.client.EnrollmentServiceClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -15,54 +13,37 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentManagementController {
 
-    private final EnrollmentFormResponseRepository responseRepository;
+    private final EnrollmentServiceClient enrollmentServiceClient;
 
     @GetMapping
-    public List<EnrollmentFormResponse> getAllOrders(@RequestParam(required = false) String status) {
-        if (status != null) {
-            return responseRepository.findAll().stream()
-                    .filter(r -> r.getPaymentStatus().equalsIgnoreCase(status))
-                    .toList();
-        }
-        return responseRepository.findAll();
+    public List<Map<String, Object>> getAllOrders(@RequestParam(required = false) String status,
+                                                   @RequestHeader("Authorization") String auth) {
+        return enrollmentServiceClient.getAllOrders(status, auth);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EnrollmentFormResponse> getOrderDetails(@PathVariable Long id) {
-        return responseRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Map<String, Object>> getOrderDetails(@PathVariable Long id,
+                                                                @RequestHeader("Authorization") String auth) {
+        try {
+            return ResponseEntity.ok(enrollmentServiceClient.getOrderById(id, auth));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateOrderStatus(@PathVariable Long id, @RequestBody Map<String, String> statusRequest) {
-        String status = statusRequest.get("status");
-        if (status == null) {
+    public ResponseEntity<?> updateOrderStatus(@PathVariable Long id,
+                                                @RequestBody Map<String, String> statusRequest,
+                                                @RequestHeader("Authorization") String auth) {
+        if (statusRequest.get("status") == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "status field is required"));
         }
-
-        return responseRepository.findById(id)
-                .map(order -> {
-                    order.setPaymentStatus(status);
-                    if ("SUCCESS".equalsIgnoreCase(status) || "APPROVED".equalsIgnoreCase(status)) {
-                        order.setReviewedAt(LocalDateTime.now());
-                        // In a real app, this might trigger the actual enrollment creation
-                    }
-                    responseRepository.save(order);
-                    return ResponseEntity.ok(Map.of("message", "Order status updated successfully", "status", status));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(enrollmentServiceClient.updateOrderStatus(id, statusRequest, auth));
     }
 
     @PostMapping("/{id}/refund")
-    public ResponseEntity<?> processRefund(@PathVariable Long id) {
-        return responseRepository.findById(id)
-                .map(order -> {
-                    order.setPaymentStatus("REFUNDED");
-                    order.setUpdatedAt(LocalDateTime.now());
-                    responseRepository.save(order);
-                    return ResponseEntity.ok(Map.of("message", "Order marked as REFUNDED", "status", "REFUNDED"));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> processRefund(@PathVariable Long id,
+                                            @RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(enrollmentServiceClient.processRefund(id, auth));
     }
 }

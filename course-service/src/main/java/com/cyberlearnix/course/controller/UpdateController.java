@@ -1,7 +1,7 @@
 package com.cyberlearnix.course.controller;
 
 import com.cyberlearnix.shared.entity.course.ContentUpdate;
-import com.cyberlearnix.shared.repository.ContentUpdateRepository;
+import com.cyberlearnix.shared.repository.course.ContentUpdateRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

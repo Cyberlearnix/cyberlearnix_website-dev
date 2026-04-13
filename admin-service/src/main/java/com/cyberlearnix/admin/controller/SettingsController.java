@@ -1,15 +1,13 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.entity.user.SiteSetting;
-import com.cyberlearnix.shared.repository.SiteSettingRepository;
+import com.cyberlearnix.admin.entity.SiteSetting;
+import com.cyberlearnix.admin.repository.SiteSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin/settings")
@@ -21,9 +19,7 @@ public class SettingsController {
     @GetMapping
     public List<SiteSetting> getAllSettings(@RequestParam(required = false) String group) {
         if (group != null) {
-            return siteSettingRepository.findAll().stream()
-                    .filter(s -> s.getSettingGroup().equalsIgnoreCase(group))
-                    .toList();
+            return siteSettingRepository.findBySettingGroup(group);
         }
         return siteSettingRepository.findAll();
     }
@@ -45,15 +41,11 @@ public class SettingsController {
 
     private ResponseEntity<?> updateSettingsGroup(String group, Map<String, String> settings) {
         settings.forEach((key, value) -> {
-            Optional<SiteSetting> existing = siteSettingRepository.findAll().stream()
-                    .filter(s -> s.getSettingKey().equals(key))
-                    .findFirst();
-            
-            SiteSetting setting = existing.orElse(new SiteSetting());
+            SiteSetting setting = siteSettingRepository.findBySettingKey(key)
+                    .orElse(new SiteSetting());
             setting.setSettingKey(key);
             setting.setSettingValue(value);
             setting.setSettingGroup(group);
-            setting.setUpdatedAt(LocalDateTime.now());
             siteSettingRepository.save(setting);
         });
         return ResponseEntity.ok(Map.of("message", group + " settings updated successfully"));

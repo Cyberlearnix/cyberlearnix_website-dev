@@ -1,7 +1,7 @@
 package com.cyberlearnix.user.controller;
 
 import com.cyberlearnix.shared.entity.user.ActivityLog;
-import com.cyberlearnix.shared.repository.ActivityLogRepository;
+import com.cyberlearnix.shared.repository.user.ActivityLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;

@@ -1,7 +1,7 @@
 package com.cyberlearnix.cms.service;
 
 import com.cyberlearnix.shared.entity.cms.MediaFile;
-import com.cyberlearnix.shared.repository.MediaFileRepository;
+import com.cyberlearnix.shared.repository.cms.MediaFileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

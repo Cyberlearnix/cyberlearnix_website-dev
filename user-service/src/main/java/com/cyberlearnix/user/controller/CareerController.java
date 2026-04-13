@@ -1,7 +1,7 @@
 package com.cyberlearnix.user.controller;
 
 import com.cyberlearnix.shared.entity.user.JobOpening;
-import com.cyberlearnix.shared.repository.JobOpeningRepository;
+import com.cyberlearnix.shared.repository.user.JobOpeningRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
