@@ -33,4 +33,13 @@ public interface UserServiceClient {
 
     @GetMapping("/api/admin/stats/users")
     Map<String, Object> getUserStats(@RequestHeader("Authorization") String auth);
+
+    @GetMapping("/api/activity/logs")
+    Map<String, Object> getActivityLogs(
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String eventType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader("Authorization") String auth);
 }

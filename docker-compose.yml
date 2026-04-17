@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: Cyb3rL3arnix#2026!DB
       POSTGRES_DB: postgres
     ports:
-      - "5433:5432"
+      - "5999:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -60,6 +60,7 @@ services:
       - FORM_SERVICE_URL=http://form-service:8087
       - CMS_SERVICE_URL=http://cms-service:8089
       - ADMIN_SERVICE_URL=http://admin-service:8090
+      - INSTRUCTOR_SERVICE_URL=http://instructor-service:8091
     depends_on:
       redis:
         condition: service_started
@@ -78,6 +79,8 @@ services:
       admin-service:
         condition: service_started
       cms-service:
+        condition: service_started
+      instructor-service:
         condition: service_started
     restart: unless-stopped
     networks:
@@ -214,6 +217,32 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=cyberlearnix_admin
+      - DB_USER=postgres
+      - DB_PASS=Cyb3rL3arnix#2026!DB
+      - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant
+      - USER_SERVICE_URL=http://user-service:8081
+      - COURSE_SERVICE_URL=http://course-service:8082
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
+    depends_on:
+      - postgres
+      - user-service
+      - course-service
+      - enrollment-service
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  instructor-service:
+    build:
+      context: .
+      dockerfile: instructor-service/Dockerfile
+    container_name: instructor-service
+    ports:
+      - "8091:8091"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_instructor
       - DB_USER=postgres
       - DB_PASS=Cyb3rL3arnix#2026!DB
       - JWT_SECRET=cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant

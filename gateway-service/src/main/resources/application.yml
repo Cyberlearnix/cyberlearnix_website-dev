@@ -72,7 +72,7 @@ spring:
         - id: course-service
           uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
-            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**
+            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**, /api/teacher/**
         - id: course-service-suggestions
           uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
@@ -145,6 +145,12 @@ spring:
           uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
           predicates:
             - Path=/api/admin/**
+
+        # Instructor Service
+        - id: instructor-service
+          uri: ${INSTRUCTOR_SERVICE_URL:http://127.0.0.1:8091}
+          predicates:
+            - Path=/api/instructor/**
 
 server:
   port: 8080
