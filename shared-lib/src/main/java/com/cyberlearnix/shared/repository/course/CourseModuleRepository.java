@@ -26,4 +26,7 @@ public interface CourseModuleRepository extends JpaRepository<CourseModule, Long
     
     @Query("SELECT MAX(m.orderIndex) FROM CourseModule m WHERE m.course.id = :courseId")
     Integer findMaxOrderIndexByCourseId(@Param("courseId") Long courseId);
+
+    @Query("SELECT m.course.id, COUNT(m) FROM CourseModule m WHERE m.course.id IN :courseIds GROUP BY m.course.id")
+    List<Object[]> countByCourseIdIn(@Param("courseIds") List<Long> courseIds);
 }

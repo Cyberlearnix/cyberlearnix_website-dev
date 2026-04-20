@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -67,16 +69,17 @@ public class CourseController {
         }
 
         List<Course> courses = new ArrayList<>();
-        if ("student".equals(userRole)) {
+        String normalizedRole = userRole != null ? userRole.toLowerCase() : "";
+        if ("student".equals(normalizedRole)) {
             // Students can browse all courses, but might want to see their enrolled ones first
             // Standard browse: see all active/approved courses
             courses = courseRepository.findAll().stream()
                     .filter(c -> c.getActive() != null && c.getActive())
                     .collect(Collectors.toList());
-        } else if ("admin".equals(userRole)) {
+        } else if ("admin".equals(normalizedRole) || "administrator".equals(normalizedRole)) {
             // Admin sees all
             courses = courseRepository.findAll();
-        } else if ("teacher".equals(userRole) || "dual".equals(userRole)) {
+        } else if ("teacher".equals(normalizedRole) || "dual".equals(normalizedRole)) {
             // Teachers see their own courses OR assigned courses
             List<Course> teacherCourses = courseRepository.findByCreatedBy(userId);
             List<Long> assignedCourseIds = courseTeacherRepository.findByTeacherId(userId).stream()
@@ -87,7 +90,7 @@ public class CourseController {
             courses.addAll(teacherCourses);
             courses.addAll(assignedCourses);
 
-            if ("dual".equals(userRole)) {
+            if ("dual".equals(normalizedRole)) {
                 // If dual, also see enrolled student courses (via enrollment-service)
                 try {
                     List<Long> enrolledCourseIds = enrollmentServiceClient.getEnrollments(userId, null).stream()
@@ -102,7 +105,36 @@ public class CourseController {
         // Remove duplicates if any
         courses = courses.stream().distinct().collect(Collectors.toList());
 
-        return ResponseEntity.ok(Map.of("success", true, "courses", courses));
+        // Enrich with moduleCount using a single batch query
+        List<Long> courseIds = courses.stream().map(Course::getId).collect(Collectors.toList());
+        Map<Long, Long> moduleCountMap = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            moduleRepository.countByCourseIdIn(courseIds)
+                    .forEach(row -> moduleCountMap.put((Long) row[0], (Long) row[1]));
+        }
+        List<Map<String, Object>> enrichedCourses = courses.stream().map(c -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", c.getId());
+            map.put("title", c.getTitle());
+            map.put("description", c.getDescription());
+            map.put("category", c.getCategory());
+            map.put("difficultyLevel", c.getDifficultyLevel());
+            map.put("duration", c.getDuration());
+            map.put("contentUrl", c.getContentUrl());
+            map.put("thumbnailUrl", c.getThumbnailUrl());
+            map.put("basePrice", c.getBasePrice());
+            map.put("gstPercent", c.getGstPercent());
+            map.put("finalPrice", c.getFinalPrice());
+            map.put("isActive", c.getActive());
+            map.put("createdBy", c.getCreatedBy());
+            map.put("createdAt", c.getCreatedAt());
+            map.put("updatedAt", c.getUpdatedAt());
+            map.put("status", c.getStatus());
+            map.put("moduleCount", moduleCountMap.getOrDefault(c.getId(), 0L));
+            return map;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of("success", true, "courses", enrichedCourses));
     }
 
     @PostMapping

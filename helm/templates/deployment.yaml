@@ -1,0 +1,148 @@
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "cyberlearnix.labels" (dict "serviceName" $name "root" $) | nindent 4 }}
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+spec:
+  replicas: {{ $svc.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "cyberlearnix.selectorLabels" (dict "serviceName" $name "root" $) | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0    # Zero-downtime: always bring new pods up before taking old ones down
+  template:
+    metadata:
+      labels:
+        {{- include "cyberlearnix.labels" (dict "serviceName" $name "root" $) | nindent 8 }}
+      annotations:
+        # Restart pods when ConfigMap changes
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") $ | sha256sum }}
+    spec:
+      serviceAccountName: {{ $name }}
+      automountServiceAccountToken: false
+
+      # Level-1 Pod security: all containers run non-root
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Spread pods across nodes to survive a node failure
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $name }}
+
+      terminationGracePeriodSeconds: 60
+
+      containers:
+        - name: {{ $name }}
+          image: {{ include "cyberlearnix.image" (dict "serviceName" $name "root" $) }}
+          imagePullPolicy: {{ $.Values.global.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ $svc.containerPort | default 8080 }}
+              protocol: TCP
+
+          # Shared app config from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: cyberlearnix-config
+
+          # Per-service env overrides
+          env:
+            - name: SERVER_PORT
+              value: {{ $svc.containerPort | default 8080 | quote }}
+            - name: SPRING_APPLICATION_NAME
+              value: {{ $name | quote }}
+            {{- if $svc.dbRequired }}
+            - name: DB_NAME
+              value: {{ $svc.dbName | quote }}
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: db-password
+            {{- end }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: jwt-secret
+            {{- if eq $name "gateway-service" }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: redis-password
+                  optional: true
+            {{- end }}
+
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+
+          # Liveness: is the JVM alive? Restart if stuck.
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # Readiness: is the service ready for traffic?
+          # Do NOT send traffic until DB/Redis connections are established.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          # Startup: give Spring Boot time to warm up (avoids premature liveness failures)
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 18   # 15s + 18×10s = up to 3 minutes to start
+
+          # Level-2 Container security
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+          # /tmp needed for Spring Boot temp files (uploads, Tomcat work dir)
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp-dir
+          emptyDir:
+            sizeLimit: 256Mi
+
+{{- end }}

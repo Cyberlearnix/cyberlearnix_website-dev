@@ -1,0 +1,287 @@
+# =============================================================================
+# Cyberlearnix Helm Values — Default (shared across environments)
+# Override with values-staging.yaml or values-production.yaml
+# =============================================================================
+
+global:
+  registry: swachvegaregistry.azurecr.io
+  pullPolicy: IfNotPresent
+  environment: staging
+
+# ── Image tags ──────────────────────────────────────────────────────────────
+# Updated per deployment by GitHub Actions (image-override.yaml injected)
+images:
+  gateway-service: latest
+  user-service: latest
+  course-service: latest
+  enrollment-service: latest
+  notification-service: latest
+  shop-service: latest
+  form-service: latest
+  admin-service: latest
+  cms-service: latest
+  instructor-service: latest
+
+# ── Shared application config (injected as ConfigMap) ────────────────────────
+appConfig:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_HOST: ""          # OVERRIDE per environment
+  DB_PORT: "5432"
+  DB_USER: "postgres"
+  REDIS_HOST: ""       # OVERRIDE per environment
+  REDIS_PORT: "6379"
+  # Inter-service URLs — use Kubernetes DNS (service.namespace.svc.cluster.local)
+  USER_SERVICE_URL: "http://user-service:8081"
+  COURSE_SERVICE_URL: "http://course-service:8082"
+  ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8084"
+  SHOP_SERVICE_URL: "http://shop-service:8085"
+  FORM_SERVICE_URL: "http://form-service:8087"
+  CMS_SERVICE_URL: "http://cms-service:8089"
+  ADMIN_SERVICE_URL: "http://admin-service:8090"
+  INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
+  CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://staging.cyberlearnix.com"
+
+# ── Per-service configuration ─────────────────────────────────────────────────
+# Keys must match the service name in docker-compose.yml exactly
+services:
+
+  gateway-service:
+    port: 8080
+    containerPort: 8080
+    replicas: 2
+    dbRequired: false
+    ingress:
+      enabled: true
+      path: /
+      pathType: Prefix
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  user-service:
+    port: 8081
+    containerPort: 8081
+    replicas: 2
+    dbName: cyberlearnix_users
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  course-service:
+    port: 8082
+    containerPort: 8082
+    replicas: 2
+    dbName: cyberlearnix_courses
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  enrollment-service:
+    port: 8083
+    containerPort: 8083
+    replicas: 2
+    dbName: cyberlearnix_enrollments
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  notification-service:
+    port: 8084
+    containerPort: 8084
+    replicas: 1
+    dbRequired: false
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "192Mi"
+        cpu: "50m"
+      limits:
+        memory: "384Mi"
+        cpu: "250m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  shop-service:
+    port: 8085
+    containerPort: 8085
+    replicas: 1
+    dbName: cyberlearnix_shop
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  form-service:
+    port: 8087
+    containerPort: 8087
+    replicas: 1
+    dbName: cyberlearnix_forms
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  admin-service:
+    port: 8090
+    containerPort: 8090
+    replicas: 1
+    dbName: cyberlearnix_admin
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: false   # Admin traffic is low
+    pdb:
+      minAvailable: 1
+
+  cms-service:
+    port: 8089
+    containerPort: 8089
+    replicas: 1
+    dbName: cyberlearnix_cms
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: false
+    pdb:
+      minAvailable: 1
+
+  instructor-service:
+    port: 8091
+    containerPort: 8091
+    replicas: 1
+    dbName: cyberlearnix_instructor
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+# ── Ingress (gateway-service is the only external entry point) ───────────────
+ingress:
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    secretName: cyberlearnix-tls
+
+# ── NGINX Ingress hosts (override per environment) ───────────────────────────
+hosts:
+  api: api.cyberlearnix.com

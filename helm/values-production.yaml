@@ -1,0 +1,16 @@
+# Production environment overrides
+global:
+  environment: production
+
+appConfig:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_HOST: "cyberlearnix-pg-prod.postgres.database.azure.com"
+  REDIS_HOST: "cyberlearnix-redis-prod.redis.cache.windows.net"
+  CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://www.cyberlearnix.com"
+
+hosts:
+  api: api.cyberlearnix.com
+
+ingress:
+  tls:
+    secretName: cyberlearnix-prod-tls

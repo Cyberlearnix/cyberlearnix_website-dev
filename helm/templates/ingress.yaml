@@ -1,0 +1,35 @@
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.ingress }}
+{{- if $svc.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "cyberlearnix.labels" (dict "serviceName" $name "root" $) | nindent 4 }}
+  annotations:
+    {{- toYaml $.Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ $.Values.ingress.className }}
+  {{- if $.Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ $.Values.hosts.api }}
+      secretName: {{ $.Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ $.Values.hosts.api }}
+      http:
+        paths:
+          - path: {{ $svc.ingress.path | default "/" }}
+            pathType: {{ $svc.ingress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  name: http
+{{- end }}
+{{- end }}
+{{- end }}

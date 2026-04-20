@@ -165,20 +165,7 @@ public class TeamsService {
         session.put("timezone", "Asia/Kolkata");
         session.put("presenter", hostZuid);
 
-        // Recurring meeting settings
-        if (request.isRecurring()) {
-            if (request.getRepeatType() == null || request.getRepeatType().isBlank()) {
-                throw new IllegalArgumentException("repeatType is required for recurring meetings (DAILY, WEEKLY, MONTHLY)");
-            }
-            if (request.getRecurrenceEndDate() == null) {
-                throw new IllegalArgumentException("recurrenceEndDate is required for recurring meetings");
-            }
-            Map<String, Object> recurrence = new HashMap<>();
-            recurrence.put("repeatType", request.getRepeatType().toUpperCase());
-            recurrence.put("repeatEvery", request.getRepeatEvery());
-            recurrence.put("endDate", request.getRecurrenceEndDate().toString()); // yyyy-MM-dd
-            session.put("recurrence", recurrence);
-        }
+        applyRecurringFields(session, request);
 
         Map<String, Object> body = Map.of("session", session);
         log.info("Zoho create-meeting payload: {}", session);
@@ -217,12 +204,10 @@ public class TeamsService {
         entity.setGraphMeetingId(sessionKey);   // reused column stores Zoho sessionKey
         entity.setJoinUrl(joinUrl);
         entity.setPassword(password);
-        entity.setRecurring(request.isRecurring());
-        if (request.isRecurring()) {
-            entity.setRepeatType(request.getRepeatType().toUpperCase());
-            entity.setRepeatEvery(request.getRepeatEvery());
-            entity.setRecurrenceEndDate(request.getRecurrenceEndDate());
-        }
+        entity.setRecurring(false);
+        entity.setRepeatType(null);
+        entity.setRepeatEvery(null);
+        entity.setRecurrenceEndDate(null);
         entity.setCreatedBy(adminId);
         entity.setStatus("SCHEDULED");
         entity.setInviteesJson(serializeInvitees(request.getInvitees()));
@@ -272,6 +257,7 @@ public class TeamsService {
         session.put("duration", durationMinutes * 60L * 1000L); // Zoho expects milliseconds
         session.put("timezone", "Asia/Kolkata");
         session.put("presenter", hostZuid);
+        applyRecurringFields(session, request);
 
         Map<String, Object> body = Map.of("session", session);
         log.info("Zoho update-meeting payload: {}", session);
@@ -326,6 +312,10 @@ public class TeamsService {
         meeting.setDescription(request.getDescription());
         meeting.setStartDateTime(request.getStartDateTime());
         meeting.setEndDateTime(request.getEndDateTime());
+        meeting.setRecurring(false);
+        meeting.setRepeatType(null);
+        meeting.setRepeatEvery(null);
+        meeting.setRecurrenceEndDate(null);
         // Only update invitees when the field is explicitly included in the request.
         // - Omit "invitees" in JSON  → existing invitee list is preserved
         // - Send "invitees": []       → all invitees removed
@@ -342,6 +332,13 @@ public class TeamsService {
         return toResponse(meetingRepository.save(meeting));
     }
 
+    private void applyRecurringFields(Map<String, Object> session, TeamsMeetingRequest request) {
+        if (!request.isRecurring()) {
+            return;
+        }
+
+        log.warn("Recurring meeting was requested, but current Zoho integration supports one-time meetings only. Ignoring recurrence fields.");
+    }
     /**
      * Cancels a meeting in Zoho and marks it cancelled locally.
      */

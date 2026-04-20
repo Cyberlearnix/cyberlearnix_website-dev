@@ -1,0 +1,370 @@
+name: Deploy to AKS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment target'
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+      force_rebuild_all:
+        description: 'Force rebuild all services (ignore change detection)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false   # Never cancel an in-flight deploy
+
+permissions:
+  id-token: write    # Required for Azure OIDC authentication
+  contents: read
+  packages: read
+
+env:
+  ACR_REGISTRY: swachvegaregistry.azurecr.io
+  AKS_NAMESPACE_STAGING: cyberlearnix-staging
+  AKS_NAMESPACE_PROD: cyberlearnix-prod
+  HELM_RELEASE: cyberlearnix
+
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── 1. Detect which services changed ────────────────────────────────────────
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      rebuild-all: ${{ steps.decide.outputs.rebuild-all }}
+      matrix: ${{ steps.decide.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared-lib:
+              - 'shared-lib/**'
+              - 'build.gradle'
+              - 'settings.gradle'
+              - 'gradle/**'
+              - 'Dockerfile'
+            gateway-service:    ['gateway-service/**']
+            user-service:       ['user-service/**']
+            course-service:     ['course-service/**']
+            enrollment-service: ['enrollment-service/**']
+            notification-service: ['notification-service/**']
+            shop-service:       ['shop-service/**']
+            form-service:       ['form-service/**']
+            admin-service:      ['admin-service/**']
+            cms-service:        ['cms-service/**']
+            instructor-service: ['instructor-service/**']
+
+      - name: Determine build matrix
+        id: decide
+        run: |
+          ALL_SERVICES='["gateway-service","user-service","course-service","enrollment-service","notification-service","shop-service","form-service","admin-service","cms-service","instructor-service"]'
+          FORCE="${{ github.event.inputs.force_rebuild_all }}"
+          SHARED="${{ steps.filter.outputs.shared-lib }}"
+
+          if [[ "$FORCE" == "true" || "$SHARED" == "true" ]]; then
+            echo "rebuild-all=true" >> $GITHUB_OUTPUT
+            echo "matrix=$ALL_SERVICES" >> $GITHUB_OUTPUT
+            echo "ℹ️ Rebuilding all services (shared-lib changed or force flag set)"
+          else
+            # Build list of changed services only
+            CHANGED=()
+            SERVICES=(gateway-service user-service course-service enrollment-service \
+                       notification-service shop-service form-service admin-service \
+                       cms-service instructor-service)
+            declare -A FILTER_MAP=(
+              [gateway-service]="${{ steps.filter.outputs.gateway-service }}"
+              [user-service]="${{ steps.filter.outputs.user-service }}"
+              [course-service]="${{ steps.filter.outputs.course-service }}"
+              [enrollment-service]="${{ steps.filter.outputs.enrollment-service }}"
+              [notification-service]="${{ steps.filter.outputs.notification-service }}"
+              [shop-service]="${{ steps.filter.outputs.shop-service }}"
+              [form-service]="${{ steps.filter.outputs.form-service }}"
+              [admin-service]="${{ steps.filter.outputs.admin-service }}"
+              [cms-service]="${{ steps.filter.outputs.cms-service }}"
+              [instructor-service]="${{ steps.filter.outputs.instructor-service }}"
+            )
+            for svc in "${SERVICES[@]}"; do
+              if [[ "${FILTER_MAP[$svc]}" == "true" ]]; then
+                CHANGED+=("\"$svc\"")
+              fi
+            done
+            if [[ ${#CHANGED[@]} -eq 0 ]]; then
+              # No services changed — deploy with existing tags (Helm only)
+              echo "rebuild-all=false" >> $GITHUB_OUTPUT
+              echo "matrix=[]" >> $GITHUB_OUTPUT
+            else
+              MATRIX="[$(IFS=,; echo "${CHANGED[*]}")]"
+              echo "rebuild-all=false" >> $GITHUB_OUTPUT
+              echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+              echo "ℹ️ Building changed services: $MATRIX"
+            fi
+          fi
+
+  # ── 2. Build & push Docker images ───────────────────────────────────────────
+  build-push:
+    name: Build & Push — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    outputs:
+      # Each job uploads a tag artifact; collected in deploy job
+      done: ${{ steps.push.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure OIDC Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name swachvegaregistry
+
+      - name: Set image tag
+        id: tag
+        run: |
+          SHORT_SHA="${GITHUB_SHA::8}"
+          echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "full_image=${{ env.ACR_REGISTRY }}/${{ matrix.service }}:${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push — ${{ matrix.service }}
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          build-args: |
+            SERVICE_NAME=${{ matrix.service }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+          push: true
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+            ${{ env.ACR_REGISTRY }}/${{ matrix.service }}:latest
+          # Registry-based cache — reuses layers across runs
+          cache-from: type=registry,ref=${{ env.ACR_REGISTRY }}/${{ matrix.service }}:cache
+          cache-to: type=registry,ref=${{ env.ACR_REGISTRY }}/${{ matrix.service }}:cache,mode=max
+          provenance: false   # Disable provenance for ACR compatibility
+
+      - name: Save image tag for deploy
+        run: |
+          mkdir -p /tmp/image-tags
+          echo "${{ steps.tag.outputs.tag }}" > /tmp/image-tags/${{ matrix.service }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-tag-${{ matrix.service }}
+          path: /tmp/image-tags/${{ matrix.service }}
+          retention-days: 1
+
+  # ── 3. Deploy to Staging ─────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    needs: [changes, build-push]
+    # Run if build succeeded OR if no builds were needed (config-only changes)
+    if: |
+      always() &&
+      (needs.build-push.result == 'success' || needs.build-push.result == 'skipped') &&
+      (github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging')
+    environment:
+      name: staging
+      url: https://staging.cyberlearnix.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download image tags
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: image-tag-*
+          merge-multiple: true
+          path: /tmp/image-tags
+
+      - name: Azure OIDC Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ secrets.AKS_RESOURCE_GROUP }} \
+            --name ${{ secrets.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.14.0
+
+      - name: Ensure namespaces exist
+        run: kubectl apply -f k8s/namespace.yaml
+
+      - name: Sync Kubernetes secrets from GitHub Secrets
+        run: |
+          kubectl create secret generic cyberlearnix-secrets \
+            --namespace=${{ env.AKS_NAMESPACE_STAGING }} \
+            --from-literal=db-password="${{ secrets.POSTGRES_PASSWORD }}" \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+            --from-literal=redis-password="${{ secrets.REDIS_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Generate image override values
+        run: |
+          echo "images:" > /tmp/image-override.yaml
+          SERVICES=(gateway-service user-service course-service enrollment-service \
+                    notification-service shop-service form-service admin-service \
+                    cms-service instructor-service)
+          for svc in "${SERVICES[@]}"; do
+            if [[ -f "/tmp/image-tags/$svc" ]]; then
+              TAG=$(cat "/tmp/image-tags/$svc")
+              echo "  ${svc}: \"${TAG}\"" >> /tmp/image-override.yaml
+              echo "  → $svc: $TAG"
+            else
+              echo "  ${svc}: \"latest\"" >> /tmp/image-override.yaml
+              echo "  → $svc: latest (not rebuilt)"
+            fi
+          done
+          cat /tmp/image-override.yaml
+
+      - name: Helm upgrade — Staging
+        run: |
+          helm upgrade --install ${{ env.HELM_RELEASE }} ./helm \
+            --namespace ${{ env.AKS_NAMESPACE_STAGING }} \
+            --create-namespace \
+            --values ./helm/values.yaml \
+            --values ./helm/values-staging.yaml \
+            --values /tmp/image-override.yaml \
+            --set global.registry=${{ env.ACR_REGISTRY }} \
+            --set global.environment=staging \
+            --wait --timeout 12m \
+            --atomic \
+            --history-max 5
+
+      - name: Verify deployment health
+        run: |
+          echo "Checking rollout status..."
+          kubectl rollout status deployment --namespace ${{ env.AKS_NAMESPACE_STAGING }} --timeout=300s
+          echo "Pod status:"
+          kubectl get pods --namespace ${{ env.AKS_NAMESPACE_STAGING }} -o wide
+
+  # ── 4. Deploy to Production (requires manual approval) ──────────────────────
+  deploy-production:
+    name: Deploy → Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: |
+      needs.deploy-staging.result == 'success' &&
+      (github.ref == 'refs/heads/main' || github.event.inputs.environment == 'production')
+    environment:
+      name: production      # Configured with required reviewers in GitHub Settings
+      url: https://app.cyberlearnix.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download image tags
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: image-tag-*
+          merge-multiple: true
+          path: /tmp/image-tags
+
+      - name: Azure OIDC Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ secrets.AKS_RESOURCE_GROUP }} \
+            --name ${{ secrets.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.14.0
+
+      - name: Sync Kubernetes secrets
+        run: |
+          kubectl create secret generic cyberlearnix-secrets \
+            --namespace=${{ env.AKS_NAMESPACE_PROD }} \
+            --from-literal=db-password="${{ secrets.POSTGRES_PASSWORD }}" \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+            --from-literal=redis-password="${{ secrets.REDIS_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Generate image override values
+        run: |
+          echo "images:" > /tmp/image-override.yaml
+          SERVICES=(gateway-service user-service course-service enrollment-service \
+                    notification-service shop-service form-service admin-service \
+                    cms-service instructor-service)
+          for svc in "${SERVICES[@]}"; do
+            if [[ -f "/tmp/image-tags/$svc" ]]; then
+              TAG=$(cat "/tmp/image-tags/$svc")
+              echo "  ${svc}: \"${TAG}\"" >> /tmp/image-override.yaml
+            else
+              echo "  ${svc}: \"latest\"" >> /tmp/image-override.yaml
+            fi
+          done
+
+      - name: Helm upgrade — Production
+        run: |
+          helm upgrade --install ${{ env.HELM_RELEASE }} ./helm \
+            --namespace ${{ env.AKS_NAMESPACE_PROD }} \
+            --create-namespace \
+            --values ./helm/values.yaml \
+            --values ./helm/values-production.yaml \
+            --values /tmp/image-override.yaml \
+            --set global.registry=${{ env.ACR_REGISTRY }} \
+            --set global.environment=production \
+            --wait --timeout 15m \
+            --atomic \
+            --history-max 10
+
+      - name: Verify production deployment
+        run: |
+          kubectl rollout status deployment --namespace ${{ env.AKS_NAMESPACE_PROD }} --timeout=600s
+          echo ""
+          echo "✅ Production deployment complete"
+          kubectl get pods --namespace ${{ env.AKS_NAMESPACE_PROD }} -o wide
+
+      - name: Tag release in Git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG="release-$(date +'%Y%m%d-%H%M%S')-${GITHUB_SHA::8}"
+          git tag -a "$TAG" -m "Production deploy: ${{ github.sha }}"
+          git push origin "$TAG"
