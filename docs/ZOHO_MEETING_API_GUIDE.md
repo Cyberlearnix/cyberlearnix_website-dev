@@ -168,10 +168,10 @@ Schedules a new meeting in Zoho and stores it locally. Returns the live `joinUrl
 | `endDateTime` | string (ISO 8601) | **Yes** | Must be after startDateTime | When the meeting ends (up to 24 hours after startDateTime) |
 | `description` | string | No | Max 2000 chars | Agenda or meeting notes shown to participants |
 | `invitees` | array of objects | No | Each `email` must be valid | People to invite — Zoho emails each one a personalised join link |
-| `recurring` | boolean | No | Default: `false` | Set to `true` to create a recurring meeting |
-| `repeatType` | string | Required if recurring | `DAILY`, `WEEKLY`, `MONTHLY` | How often the meeting repeats |
-| `repeatEvery` | number | No | Min: 1, Default: 1 | Interval — e.g. `2` means every 2 days/weeks/months |
-| `recurrenceEndDate` | string (yyyy-MM-dd) | Required if recurring | Must be after startDateTime | Last date of the recurring series |
+| `recurring` | boolean | No | Accepted but ignored | Current backend always creates a one-time meeting |
+| `repeatType` | string | No | Accepted but ignored | UI may send it, backend drops it |
+| `repeatEvery` | number | No | Accepted but ignored | UI may send it, backend drops it |
+| `recurrenceEndDate` | string (yyyy-MM-dd) | No | Accepted but ignored | UI may send it, backend drops it |
 
 **`invitees` object fields:**
 
@@ -181,6 +181,8 @@ Schedules a new meeting in Zoho and stores it locally. Returns the live `joinUrl
 | `name` | string | No | Display name shown in the Zoho meeting |
 
 > **How invitations work:** After the meeting is created, the backend makes a **second API call** to Zoho's dedicated panelists endpoint (`POST /sessions/{key}/panelists.json`). Zoho then emails each invitee a personalised join link (panelist role) — no Zoho account needed. Emails are **not** sent when panelists are embedded in the session creation body; the separate call is required.
+
+> **Current limitation:** The backend currently supports **one-time meetings only**. If the UI sends recurrence-related fields (`recurring`, `repeatType`, `repeatEvery`, `recurrenceEndDate`), the request still succeeds, but the meeting is stored and returned as a normal one-time meeting.
 
 **With invitees:**
 ```bash
@@ -215,7 +217,7 @@ curl -X POST http://localhost:8090/api/admin/teams/meetings \
   }'
 ```
 
-**Recurring meeting (daily, every 1 day, ends 2026-04-23):**
+**Request with recurring fields present (they are ignored and a one-time meeting is still created):**
 ```bash
 curl -X POST http://localhost:8090/api/admin/teams/meetings \
   -H "Content-Type: application/json" \
@@ -260,7 +262,7 @@ curl -X POST http://localhost:8090/api/admin/teams/meetings \
 }
 ```
 
-**Recurring meeting response:**
+**Response when recurring fields were sent:**
 ```json
 {
   "id": 3,
@@ -275,10 +277,10 @@ curl -X POST http://localhost:8090/api/admin/teams/meetings \
   "createdBy": "9f4ea44b-966c-4e76-9646-bae02bfc116b",
   "createdAt": "2026-04-15T13:45:07.189",
   "invitees": [],
-  "recurring": true,
-  "repeatType": "DAILY",
-  "repeatEvery": 1,
-  "recurrenceEndDate": "2026-04-23"
+  "recurring": false,
+  "repeatType": null,
+  "repeatEvery": null,
+  "recurrenceEndDate": null
 }
 ```
 
@@ -341,6 +343,24 @@ curl -X POST http://localhost:8090/api/admin/teams/meetings \
 {
   "error": "Failed to schedule meeting",
   "message": "Zoho API error [401]: ..."
+}
+```
+
+**401 — Missing/invalid JWT:**
+```json
+{
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Authentication required. Please provide a valid JWT token in the Authorization header."
+}
+```
+
+**403 — Authenticated but not admin:**
+```json
+{
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Access denied. This endpoint requires ADMIN role."
 }
 ```
 
@@ -486,6 +506,7 @@ Reschedule or update the subject/description/invitees of an existing meeting. Up
 | `endDateTime` | string (ISO 8601) | **Yes** | New end time (up to 24 hours after startDateTime) |
 | `description` | string | No | New agenda/description |
 | `invitees` | array of objects | No | See invitee behaviour table below |
+| `recurring`, `repeatType`, `repeatEvery`, `recurrenceEndDate` | mixed | No | Accepted but ignored. Updated meeting remains one-time only. |
 
 ### Invitee Update Behaviour
 
@@ -627,6 +648,24 @@ curl -X PUT http://localhost:8090/api/admin/teams/meetings/1 \
 }
 ```
 
+**401 — Missing/invalid JWT:**
+```json
+{
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Authentication required. Please provide a valid JWT token in the Authorization header."
+}
+```
+
+**403 — Authenticated but not admin:**
+```json
+{
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Access denied. This endpoint requires ADMIN role."
+}
+```
+
 ---
 
 ## 5. Cancel Meeting
@@ -676,6 +715,24 @@ curl -X DELETE http://localhost:8090/api/admin/teams/meetings/1 \
 }
 ```
 
+**401 — Missing/invalid JWT:**
+```json
+{
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Authentication required. Please provide a valid JWT token in the Authorization header."
+}
+```
+
+**403 — Authenticated but not admin:**
+```json
+{
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Access denied. This endpoint requires ADMIN role."
+}
+```
+
 ---
 
 ## Response Object Reference
@@ -697,10 +754,36 @@ All endpoints return meetings in this shape:
 | `createdBy` | string | Admin user ID who created the meeting |
 | `createdAt` | string (ISO 8601) | When the meeting record was created |
 | `invitees` | array | List of invited participants. Empty array `[]` if no invitees. |
-| `recurring` | boolean | Whether this is a recurring meeting |
-| `repeatType` | string \| null | `DAILY`, `WEEKLY`, `MONTHLY` — null for one-time meetings |
-| `repeatEvery` | number \| null | Recurrence interval (e.g. `1` = every day) |
-| `recurrenceEndDate` | string \| null | Last date of the series (`yyyy-MM-dd`) |
+| `recurring` | boolean | Current implementation always returns `false` |
+| `repeatType` | string \| null | Current implementation returns `null` |
+| `repeatEvery` | number \| null | Current implementation returns `null` |
+| `recurrenceEndDate` | string \| null | Current implementation returns `null` |
+
+---
+
+## Security Response Reference
+
+All protected meeting endpoints can also return these shared auth responses:
+
+### 401 Unauthorized
+
+```json
+{
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Authentication required. Please provide a valid JWT token in the Authorization header."
+}
+```
+
+### 403 Forbidden
+
+```json
+{
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Access denied. This endpoint requires ADMIN role."
+}
+```
 
 **`invitees` item shape:**
 

@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpHeaders;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -31,7 +32,7 @@ public class SecurityConfig {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+        @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:5174}")
     private String allowedOrigins;
 
     @Autowired
@@ -61,7 +62,7 @@ public class SecurityConfig {
                 // Security Headers
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp -> csp
-                                .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' http://localhost:3000 http://localhost:5173")
+                                .policyDirectives(buildContentSecurityPolicy())
                         )
                         .xssProtection(xss -> xss.disable())
                         .frameOptions(frame -> frame.deny())
@@ -114,7 +115,10 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         
         // Parse allowed origins from properties
-        List<String> origins = List.of(allowedOrigins.split(","));
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
         config.setAllowedOrigins(origins);
         
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
@@ -132,4 +136,14 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+
+        private String buildContentSecurityPolicy() {
+                String connectSrc = Arrays.stream(allowedOrigins.split(","))
+                                .map(String::trim)
+                                .filter(origin -> !origin.isEmpty())
+                                .reduce("connect-src 'self'", (policy, origin) -> policy + " " + origin);
+
+                return "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; "
+                                + connectSrc;
+        }
 }

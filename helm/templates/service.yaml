@@ -1,0 +1,19 @@
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "cyberlearnix.labels" (dict "serviceName" $name "root" $) | nindent 4 }}
+spec:
+  type: ClusterIP   # Internal only — traffic enters only through gateway-service via Ingress
+  selector:
+    {{- include "cyberlearnix.selectorLabels" (dict "serviceName" $name "root" $) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $svc.port | default 8080 }}
+      targetPort: http
+      protocol: TCP
+{{- end }}
