@@ -23,8 +23,13 @@ out/
 .DS_Store
 thumbs.db
 
-# Secrets (env files if any)
+# Secrets and private keys — NEVER commit
 .env
+*.pem
+*.ppk
+*.key
+*.p12
+*.pfx
 # Squad: ignore runtime state (logs, inbox, sessions)
 .squad/orchestration-log/
 .squad/log/
