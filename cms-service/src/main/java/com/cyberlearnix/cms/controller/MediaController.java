@@ -1,7 +1,7 @@
 package com.cyberlearnix.cms.controller;
 
 import com.cyberlearnix.cms.service.MediaService;
-import com.cyberlearnix.shared.entity.MediaFile;
+import com.cyberlearnix.shared.entity.cms.MediaFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

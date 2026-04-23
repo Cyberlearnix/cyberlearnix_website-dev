@@ -1,7 +1,25 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.*;
-import com.cyberlearnix.shared.repository.*;
+import com.cyberlearnix.shared.entity.course.Course;
+import com.cyberlearnix.shared.entity.course.CourseModule;
+import com.cyberlearnix.shared.entity.course.ModuleContent;
+import com.cyberlearnix.shared.entity.course.CourseTeacher;
+import com.cyberlearnix.shared.entity.course.CourseTeacherId;
+import com.cyberlearnix.shared.entity.course.ContentPartner;
+import com.cyberlearnix.shared.entity.course.CourseSuggestion;
+import com.cyberlearnix.shared.entity.course.LabContent;
+import com.cyberlearnix.shared.entity.course.LectureContent;
+import com.cyberlearnix.shared.entity.course.QuizContent;
+import com.cyberlearnix.shared.entity.course.QuizQuestion;
+import com.cyberlearnix.shared.entity.course.QuestionOption;
+import com.cyberlearnix.shared.entity.course.AssignmentContent;
+import com.cyberlearnix.shared.entity.course.ContentReview;
+import com.cyberlearnix.shared.entity.course.ContentUpdate;
+import com.cyberlearnix.shared.entity.course.Banner;
+import com.cyberlearnix.shared.entity.course.PromoBanner;
+import com.cyberlearnix.shared.repository.course.*;
+import com.cyberlearnix.course.client.EnrollmentServiceClient;
+import com.cyberlearnix.course.client.UserServiceClient;
 import com.cyberlearnix.course.service.CourseManagementService;
 import com.cyberlearnix.course.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,9 +55,6 @@ public class CourseManagementController {
     private AssignmentContentRepository assignmentRepository;
 
     @Autowired
-    private TeacherPermissionRepository permissionRepository;
-
-    @Autowired
     private LectureContentRepository lectureRepository;
 
     @Autowired
@@ -58,10 +73,10 @@ public class CourseManagementController {
     private CourseTeacherRepository courseTeacherRepository;
 
     @Autowired
-    private EnrollmentRepository enrollmentRepository;
+    private EnrollmentServiceClient enrollmentServiceClient;
 
     @Autowired
-    private UserProfileRepository userProfileRepository;
+    private UserServiceClient userServiceClient;
 
     // Course CRUD Operations
     @PostMapping("/courses")
@@ -70,10 +85,13 @@ public class CourseManagementController {
             @RequestHeader("X-User-Role") String userRole) {
 
         if (!"admin".equalsIgnoreCase(userRole)) {
-            TeacherPermission permission = permissionRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Teacher permissions not found"));
-
-            if (!permission.getCanCreateCourses()) {
+            try {
+                Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                if (perm == null || !Boolean.TRUE.equals(perm.get("canCreateCourses"))) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "You don't have permission to create courses"));
+                }
+            } catch (Exception ex) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "You don't have permission to create courses"));
             }
@@ -128,10 +146,13 @@ public class CourseManagementController {
                             .body(Map.of("error", "You are not assigned to this course."));
                 }
 
-                TeacherPermission permission = permissionRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("Teacher permissions not found"));
-
-                if (!permission.getCanEditCourses()) {
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canEditCourses"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to edit courses"));
+                    }
+                } catch (Exception ex) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
                             .body(Map.of("error", "You don't have permission to edit courses"));
                 }
@@ -187,18 +208,23 @@ public class CourseManagementController {
                             .body(Map.of("error", "You are not assigned to this course. Please contact admin."));
                 }
 
-                TeacherPermission permission = permissionRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("Teacher permissions not found"));
-
-                if (!permission.getCanAddModules()) {
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canAddModules"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to add modules"));
+                    }
+                    Object maxMod = perm.get("maxModulesPerCourse");
+                    if (maxMod != null) {
+                        Long moduleCount = moduleRepository.countByCourseId(courseId);
+                        if (moduleCount >= ((Number) maxMod).longValue()) {
+                            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                    .body(Map.of("error", "Maximum module limit reached for this course"));
+                        }
+                    }
+                } catch (Exception ex) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
                             .body(Map.of("error", "You don't have permission to add modules"));
-                }
-
-                Long moduleCount = moduleRepository.countByCourseId(courseId);
-                if (moduleCount >= permission.getMaxModulesPerCourse()) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "Maximum module limit reached for this course"));
                 }
             }
 
@@ -232,22 +258,6 @@ public class CourseManagementController {
 
         return moduleRepository.findById(moduleId).map(module -> {
             if (!"admin".equalsIgnoreCase(userRole)) {
-                TeacherPermission permission = permissionRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("Teacher permissions not found"));
-
-                if (!permission.getCanAddContent()) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You don't have permission to add content"));
-                }
-
-                // Check exam permission
-                String type = contentDTO.getContentType();
-                if (("QUIZ".equalsIgnoreCase(type) || "EXAM".equalsIgnoreCase(type))
-                        && !permission.getCanManageExams()) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You don't have permission to manage exams/quizzes"));
-                }
-
                 // SECURITY CHECK: Is this teacher assigned to this course?
                 Long courseId = module.getCourse().getId();
                 if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
@@ -255,11 +265,31 @@ public class CourseManagementController {
                             .body(Map.of("error", "You are not assigned to this course."));
                 }
 
-                // Check content limit
-                Long contentCount = contentRepository.countByModuleId(moduleId);
-                if (contentCount >= permission.getMaxContentPerModule()) {
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canAddContent"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to add content"));
+                    }
+                    // Check exam permission
+                    String type = contentDTO.getContentType();
+                    if (("QUIZ".equalsIgnoreCase(type) || "EXAM".equalsIgnoreCase(type))
+                            && !Boolean.TRUE.equals(perm.get("canManageExams"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to manage exams/quizzes"));
+                    }
+                    // Check content limit
+                    Object maxCont = perm.get("maxContentPerModule");
+                    if (maxCont != null) {
+                        Long contentCount = contentRepository.countByModuleId(moduleId);
+                        if (contentCount >= ((Number) maxCont).longValue()) {
+                            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                    .body(Map.of("error", "Maximum content limit reached for this module"));
+                        }
+                    }
+                } catch (Exception ex) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "Maximum content limit reached for this module"));
+                            .body(Map.of("error", "You don't have permission to add content"));
                 }
             }
 
@@ -381,10 +411,13 @@ public class CourseManagementController {
                             .body(Map.of("error", "You are not assigned to this course."));
                 }
 
-                TeacherPermission permission = permissionRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("Teacher permissions not found"));
-
-                if (!permission.getCanEditModules()) {
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canEditModules"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to edit modules"));
+                    }
+                } catch (Exception ex) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
                             .body(Map.of("error", "You don't have permission to edit modules"));
                 }
@@ -418,20 +451,22 @@ public class CourseManagementController {
                             .body(Map.of("error", "You are not assigned to this course."));
                 }
 
-                TeacherPermission permission = permissionRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("Teacher permissions not found"));
-
-                if (!permission.getCanEditContent()) {
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canEditContent"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to edit content"));
+                    }
+                    // Check exam permission
+                    String type = content.getContentType();
+                    if (("QUIZ".equalsIgnoreCase(type) || "EXAM".equalsIgnoreCase(type))
+                            && !Boolean.TRUE.equals(perm.get("canManageExams"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to manage exams/quizzes"));
+                    }
+                } catch (Exception ex) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
                             .body(Map.of("error", "You don't have permission to edit content"));
-                }
-
-                // Check exam permission
-                String type = content.getContentType();
-                if (("QUIZ".equalsIgnoreCase(type) || "EXAM".equalsIgnoreCase(type))
-                        && !permission.getCanManageExams()) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You don't have permission to manage exams/quizzes"));
                 }
             }
 
@@ -513,28 +548,35 @@ public class CourseManagementController {
         if (!"admin".equalsIgnoreCase(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        TeacherPermission permissions = permissionRepository.findById(teacherId)
-                .orElse(new TeacherPermission());
-
-        return ResponseEntity.ok(Map.of("success", true, "permissions", permissions));
+        try {
+            Map<String, Object> permissions = userServiceClient.getTeacherPermission(teacherId);
+            return ResponseEntity.ok(Map.of("success", true, "permissions", permissions));
+        } catch (Exception ex) {
+            return ResponseEntity.ok(Map.of("success", true, "permissions", Map.of()));
+        }
     }
 
     // Update teacher permissions
     @PutMapping("/teacher-permissions/{teacherId}")
     public ResponseEntity<?> updateTeacherPermissions(@PathVariable String teacherId,
-            @Valid @RequestBody TeacherPermission permissions,
+            @RequestBody Map<String, Object> permissions,
             @RequestHeader("X-User-Id") String adminId,
             @RequestHeader("X-User-Role") String userRole) {
         if (!"admin".equalsIgnoreCase(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        permissions.setTeacherId(teacherId);
-        permissions.setGrantedBy(adminId);
-        permissions.setUpdatedAt(LocalDateTime.now());
+        permissions.put("teacherId", teacherId);
+        permissions.put("grantedBy", adminId);
+        permissions.put("updatedAt", LocalDateTime.now().toString());
 
-        TeacherPermission saved = permissionRepository.save(permissions);
-        return ResponseEntity.ok(Map.of("success", true, "permissions", saved));
+        try {
+            Map<String, Object> saved = userServiceClient.updateTeacherPermission(teacherId, permissions);
+            return ResponseEntity.ok(Map.of("success", true, "permissions", saved));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to update teacher permissions"));
+        }
     }
 
     // Delete module
@@ -600,21 +642,31 @@ public class CourseManagementController {
             }
         }
 
-        List<Enrollment> enrollments = enrollmentRepository.findByCourseId(id);
+        List<Map<String, Object>> enrollments;
+        try {
+            enrollments = enrollmentServiceClient.getEnrollments(null, id);
+        } catch (Exception e) {
+            enrollments = java.util.Collections.emptyList();
+        }
         
         List<Map<String, Object>> students = enrollments.stream().map(enrollment -> {
             Map<String, Object> data = new java.util.HashMap<>();
-            data.put("studentId", enrollment.getStudentId());
-            data.put("progress", enrollment.getProgress());
-            data.put("enrolledAt", enrollment.getEnrolledAt());
-            data.put("completedAt", enrollment.getCompletedAt());
-            data.put("status", enrollment.getCompletedAt() != null ? "COMPLETED" : "IN_PROGRESS");
+            data.put("studentId", enrollment.get("studentId"));
+            data.put("progress", enrollment.get("progress"));
+            data.put("enrolledAt", enrollment.get("enrolledAt"));
+            data.put("completedAt", enrollment.get("completedAt"));
+            data.put("status", enrollment.get("completedAt") != null ? "COMPLETED" : "IN_PROGRESS");
 
-            // Fetch name and email from user-profile via repository (assuming it's available)
-            userProfileRepository.findById(enrollment.getStudentId()).ifPresent(profile -> {
-                data.put("fullName", profile.getFullName());
-                data.put("email", profile.getEmail());
-            });
+            // Fetch profile from user-service via Feign
+            try {
+                String studentId2 = (String) enrollment.get("studentId");
+                Map<String, Object> profile = userServiceClient.getUserProfile(studentId2);
+                if (profile != null) {
+                    data.put("fullName", profile.get("fullName"));
+                    data.put("email", profile.get("email"));
+                }
+            } catch (Exception ignored) {
+            }
 
             return data;
         }).collect(Collectors.toList());

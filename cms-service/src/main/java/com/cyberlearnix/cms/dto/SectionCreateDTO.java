@@ -1,6 +1,6 @@
 package com.cyberlearnix.cms.dto;
 
-import com.cyberlearnix.shared.entity.SectionLayoutType;
+import com.cyberlearnix.shared.entity.cms.SectionLayoutType;
 import lombok.Data;
 
 @Data

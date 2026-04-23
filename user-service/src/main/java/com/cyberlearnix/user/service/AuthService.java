@@ -1,15 +1,15 @@
 package com.cyberlearnix.user.service;
 
-import com.cyberlearnix.shared.entity.PasswordResetToken;
-import com.cyberlearnix.shared.entity.RefreshToken;
-import com.cyberlearnix.shared.entity.User;
-import com.cyberlearnix.shared.entity.UserProfile;
-import com.cyberlearnix.shared.repository.PasswordResetTokenRepository;
-import com.cyberlearnix.shared.repository.RefreshTokenRepository;
-import com.cyberlearnix.shared.repository.UserProfileRepository;
-import com.cyberlearnix.shared.repository.UserRepository;
-import com.cyberlearnix.shared.entity.BlacklistedToken;
-import com.cyberlearnix.shared.repository.BlacklistedTokenRepository;
+import com.cyberlearnix.shared.entity.user.PasswordResetToken;
+import com.cyberlearnix.shared.entity.user.RefreshToken;
+import com.cyberlearnix.shared.entity.user.User;
+import com.cyberlearnix.shared.entity.user.UserProfile;
+import com.cyberlearnix.shared.repository.user.PasswordResetTokenRepository;
+import com.cyberlearnix.shared.repository.user.RefreshTokenRepository;
+import com.cyberlearnix.shared.repository.user.UserProfileRepository;
+import com.cyberlearnix.shared.repository.user.UserRepository;
+import com.cyberlearnix.shared.entity.user.BlacklistedToken;
+import com.cyberlearnix.shared.repository.user.BlacklistedTokenRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -101,18 +104,31 @@ public class AuthService {
         }
 
         // Reset failed attempts on success
+        LocalDateTime previousLastLogin = user.getLastLogin(); // capture before overwrite
         user.setFailedAttempts(0);
-        user.setLastLogin(LocalDateTime.now());
+        user.setLastLogin(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
         userRepository.save(user);
 
         String accessToken = generateToken(user);
         String refreshToken = createRefreshToken(user.getId());
 
+        // Format lastLoginAt with IST offset so frontend interprets timezone correctly
+        ZoneId ist = ZoneId.of("Asia/Kolkata");
+        String lastLoginAtStr = previousLastLogin != null
+                ? previousLastLogin.atZone(ist).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                : null;
+
+        Map<String, Object> userMap = new java.util.HashMap<>();
+        userMap.put("id", user.getId());
+        userMap.put("email", user.getEmail());
+        userMap.put("role", user.getRole());
+        userMap.put("isFirstLogin", Boolean.TRUE.equals(user.getIsFirstLogin()));
+        userMap.put("lastLoginAt", lastLoginAtStr);
+
         return Map.of(
                 "token", accessToken,
                 "refreshToken", refreshToken,
-                "user", Map.of("id", user.getId(), "email", user.getEmail(), "role", user.getRole(), "isFirstLogin",
-                        Boolean.TRUE.equals(user.getIsFirstLogin())));
+                "user", userMap);
     }
 
     @Transactional

@@ -1,11 +1,11 @@
 package com.cyberlearnix.user.service;
 
-import com.cyberlearnix.shared.entity.ContactSubmission;
-import com.cyberlearnix.shared.entity.User;
-import com.cyberlearnix.shared.entity.UserProfile;
-import com.cyberlearnix.shared.repository.ContactSubmissionRepository;
-import com.cyberlearnix.shared.repository.UserProfileRepository;
-import com.cyberlearnix.shared.repository.UserRepository;
+import com.cyberlearnix.shared.entity.user.ContactSubmission;
+import com.cyberlearnix.shared.entity.user.User;
+import com.cyberlearnix.shared.entity.user.UserProfile;
+import com.cyberlearnix.shared.repository.user.ContactSubmissionRepository;
+import com.cyberlearnix.shared.repository.user.UserProfileRepository;
+import com.cyberlearnix.shared.repository.user.UserRepository;
 import com.cyberlearnix.user.dto.UserResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

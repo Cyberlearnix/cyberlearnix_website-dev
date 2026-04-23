@@ -1,7 +1,7 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.PromoBanner;
-import com.cyberlearnix.shared.repository.PromoBannerRepository;
+import com.cyberlearnix.shared.entity.course.PromoBanner;
+import com.cyberlearnix.shared.repository.course.PromoBannerRepository;
 import com.cyberlearnix.course.dto.PromoDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

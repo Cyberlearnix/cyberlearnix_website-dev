@@ -2,12 +2,13 @@ package com.cyberlearnix.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 
-@SpringBootApplication(scanBasePackages = "com.cyberlearnix")
-@EntityScan("com.cyberlearnix.shared.entity")
-@EnableJpaRepositories("com.cyberlearnix.shared.repository")
+@SpringBootApplication(
+        exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class},
+        scanBasePackages = "com.cyberlearnix.gateway"
+)
 public class GatewayApplication {
     static {
         java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
@@ -17,3 +18,4 @@ public class GatewayApplication {
         SpringApplication.run(GatewayApplication.class, args);
     }
 }
+

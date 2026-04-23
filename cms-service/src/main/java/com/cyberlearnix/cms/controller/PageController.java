@@ -2,9 +2,9 @@ package com.cyberlearnix.cms.controller;
 
 import com.cyberlearnix.cms.dto.PageCreateDTO;
 import com.cyberlearnix.cms.service.PageService;
-import com.cyberlearnix.shared.entity.Page;
-import com.cyberlearnix.shared.entity.PageSection;
-import com.cyberlearnix.shared.entity.PageComponent;
+import com.cyberlearnix.shared.entity.cms.Page;
+import com.cyberlearnix.shared.entity.cms.PageSection;
+import com.cyberlearnix.shared.entity.cms.PageComponent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

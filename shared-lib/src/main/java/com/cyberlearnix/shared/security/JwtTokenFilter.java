@@ -36,6 +36,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        boolean authenticated = false;
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -59,13 +60,16 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
                 if (userId != null) {
                     authenticateUser(userId, role, request);
+                    authenticated = true;
                 }
             } catch (Exception e) {
-                // Ignore invalid tokens; Spring Security will handle unauthorized access
+                // JWT parsing failed — fall through to header-based fallback
                 System.err.println("JWT Validation Error: " + e.getMessage());
             }
-        } else {
-            // Fallback: Check for headers from Gateway
+        }
+
+        // Fallback: use gateway/service-injected headers if JWT was absent or failed to parse
+        if (!authenticated) {
             String userId = request.getHeader("X-User-Id");
             String role = request.getHeader("X-User-Role");
             if (userId != null) {

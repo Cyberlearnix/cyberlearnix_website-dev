@@ -1,6 +1,6 @@
 package com.cyberlearnix.user.service;
 
-import com.cyberlearnix.shared.repository.BlacklistedTokenRepository;
+import com.cyberlearnix.shared.repository.user.BlacklistedTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

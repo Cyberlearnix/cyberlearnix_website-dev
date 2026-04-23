@@ -1,12 +1,12 @@
 package com.cyberlearnix.cms.service;
 
 import com.cyberlearnix.cms.dto.PageCreateDTO;
-import com.cyberlearnix.shared.entity.Page;
-import com.cyberlearnix.shared.entity.PageSection;
-import com.cyberlearnix.shared.entity.PageComponent;
-import com.cyberlearnix.shared.repository.PageRepository;
-import com.cyberlearnix.shared.repository.PageSectionRepository;
-import com.cyberlearnix.shared.repository.PageComponentRepository;
+import com.cyberlearnix.shared.entity.cms.Page;
+import com.cyberlearnix.shared.entity.cms.PageSection;
+import com.cyberlearnix.shared.entity.cms.PageComponent;
+import com.cyberlearnix.shared.repository.cms.PageRepository;
+import com.cyberlearnix.shared.repository.cms.PageSectionRepository;
+import com.cyberlearnix.shared.repository.cms.PageComponentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

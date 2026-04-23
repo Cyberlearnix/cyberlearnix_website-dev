@@ -13,7 +13,7 @@ COPY shared-lib shared-lib
 COPY course-service course-service
 
 # Build the course-service
-RUN ./gradlew :course-service:bootJar --no-daemon
+RUN gradle :course-service:bootJar --no-daemon
 
 # Run stage
 FROM eclipse-temurin:21-jre-jammy
