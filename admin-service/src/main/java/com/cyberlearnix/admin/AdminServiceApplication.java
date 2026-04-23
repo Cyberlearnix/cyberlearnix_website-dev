@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.TimeZone;
 
@@ -13,6 +14,7 @@ import java.util.TimeZone;
 @EntityScan("com.cyberlearnix.admin.entity")
 @EnableJpaRepositories("com.cyberlearnix.admin.repository")
 @EnableJpaAuditing
+@EnableScheduling
 @EnableFeignClients(basePackages = "com.cyberlearnix.admin.client")
 public class AdminServiceApplication {
     static {
