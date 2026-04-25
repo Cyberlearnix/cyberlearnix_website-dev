@@ -20,6 +20,7 @@ spec:
       secretName: {{ $.Values.ingress.tls.secretName }}
   {{- end }}
   rules:
+    {{- if $.Values.hosts.api }}
     - host: {{ $.Values.hosts.api }}
       http:
         paths:
@@ -30,6 +31,17 @@ spec:
                 name: {{ $name }}
                 port:
                   name: http
+    {{- else }}
+    - http:
+        paths:
+          - path: {{ $svc.ingress.path | default "/" }}
+            pathType: {{ $svc.ingress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  name: http
+    {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
