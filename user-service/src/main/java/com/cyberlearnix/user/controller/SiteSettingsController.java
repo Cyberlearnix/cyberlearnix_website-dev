@@ -1,7 +1,7 @@
 package com.cyberlearnix.user.controller;
 
-import com.cyberlearnix.shared.entity.SiteSetting;
-import com.cyberlearnix.shared.repository.SiteSettingRepository;
+import com.cyberlearnix.shared.entity.user.SiteSetting;
+import com.cyberlearnix.shared.repository.user.SiteSettingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

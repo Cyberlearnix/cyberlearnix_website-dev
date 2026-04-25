@@ -1,7 +1,25 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.*;
-import com.cyberlearnix.shared.repository.*;
+import com.cyberlearnix.shared.entity.course.Course;
+import com.cyberlearnix.shared.entity.course.CourseModule;
+import com.cyberlearnix.shared.entity.course.ModuleContent;
+import com.cyberlearnix.shared.entity.course.CourseTeacher;
+import com.cyberlearnix.shared.entity.course.CourseTeacherId;
+import com.cyberlearnix.shared.entity.course.ContentPartner;
+import com.cyberlearnix.shared.entity.course.CourseSuggestion;
+import com.cyberlearnix.shared.entity.course.LabContent;
+import com.cyberlearnix.shared.entity.course.LectureContent;
+import com.cyberlearnix.shared.entity.course.QuizContent;
+import com.cyberlearnix.shared.entity.course.QuizQuestion;
+import com.cyberlearnix.shared.entity.course.QuestionOption;
+import com.cyberlearnix.shared.entity.course.AssignmentContent;
+import com.cyberlearnix.shared.entity.course.ContentReview;
+import com.cyberlearnix.shared.entity.course.ContentUpdate;
+import com.cyberlearnix.shared.entity.course.Banner;
+import com.cyberlearnix.shared.entity.course.PromoBanner;
+import com.cyberlearnix.shared.repository.course.*;
+import com.cyberlearnix.course.client.EnrollmentServiceClient;
+import com.cyberlearnix.course.client.UserServiceClient;
 import com.cyberlearnix.course.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -10,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,19 +43,16 @@ public class CourseController {
     private CourseRepository courseRepository;
 
     @Autowired
-    private UserProfileRepository userProfileRepository;
-
-    @Autowired
     private CourseTeacherRepository courseTeacherRepository;
 
     @Autowired
-    private TeacherPermissionRepository teacherPermissionRepository;
-
-    @Autowired
-    private EnrollmentRepository enrollmentRepository;
-
-    @Autowired
     private CourseModuleRepository moduleRepository;
+
+    @Autowired
+    private EnrollmentServiceClient enrollmentServiceClient;
+
+    @Autowired
+    private UserServiceClient userServiceClient;
 
     @GetMapping
     public ResponseEntity<?> getCourses(@RequestParam(required = false) Long id,
@@ -52,16 +69,17 @@ public class CourseController {
         }
 
         List<Course> courses = new ArrayList<>();
-        if ("student".equals(userRole)) {
+        String normalizedRole = userRole != null ? userRole.toLowerCase() : "";
+        if ("student".equals(normalizedRole)) {
             // Students can browse all courses, but might want to see their enrolled ones first
             // Standard browse: see all active/approved courses
             courses = courseRepository.findAll().stream()
                     .filter(c -> c.getActive() != null && c.getActive())
                     .collect(Collectors.toList());
-        } else if ("admin".equals(userRole)) {
+        } else if ("admin".equals(normalizedRole) || "administrator".equals(normalizedRole)) {
             // Admin sees all
             courses = courseRepository.findAll();
-        } else if ("teacher".equals(userRole) || "dual".equals(userRole)) {
+        } else if ("teacher".equals(normalizedRole) || "dual".equals(normalizedRole)) {
             // Teachers see their own courses OR assigned courses
             List<Course> teacherCourses = courseRepository.findByCreatedBy(userId);
             List<Long> assignedCourseIds = courseTeacherRepository.findByTeacherId(userId).stream()
@@ -72,19 +90,51 @@ public class CourseController {
             courses.addAll(teacherCourses);
             courses.addAll(assignedCourses);
 
-            if ("dual".equals(userRole)) {
-                // If dual, also see enrolled student courses
-                List<Course> enrolledCourses = enrollmentRepository.findByStudentId(userId).stream()
-                        .map(e -> e.getCourse())
-                        .collect(Collectors.toList());
-                courses.addAll(enrolledCourses);
+            if ("dual".equals(normalizedRole)) {
+                // If dual, also see enrolled student courses (via enrollment-service)
+                try {
+                    List<Long> enrolledCourseIds = enrollmentServiceClient.getEnrollments(userId, null).stream()
+                            .map(e -> ((Number) e.get("courseId")).longValue())
+                            .collect(Collectors.toList());
+                    courses.addAll(courseRepository.findAllById(enrolledCourseIds));
+                } catch (Exception ignored) {
+                }
             }
         }
 
         // Remove duplicates if any
         courses = courses.stream().distinct().collect(Collectors.toList());
 
-        return ResponseEntity.ok(Map.of("success", true, "courses", courses));
+        // Enrich with moduleCount using a single batch query
+        List<Long> courseIds = courses.stream().map(Course::getId).collect(Collectors.toList());
+        Map<Long, Long> moduleCountMap = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            moduleRepository.countByCourseIdIn(courseIds)
+                    .forEach(row -> moduleCountMap.put((Long) row[0], (Long) row[1]));
+        }
+        List<Map<String, Object>> enrichedCourses = courses.stream().map(c -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", c.getId());
+            map.put("title", c.getTitle());
+            map.put("description", c.getDescription());
+            map.put("category", c.getCategory());
+            map.put("difficultyLevel", c.getDifficultyLevel());
+            map.put("duration", c.getDuration());
+            map.put("contentUrl", c.getContentUrl());
+            map.put("thumbnailUrl", c.getThumbnailUrl());
+            map.put("basePrice", c.getBasePrice());
+            map.put("gstPercent", c.getGstPercent());
+            map.put("finalPrice", c.getFinalPrice());
+            map.put("isActive", c.getActive());
+            map.put("createdBy", c.getCreatedBy());
+            map.put("createdAt", c.getCreatedAt());
+            map.put("updatedAt", c.getUpdatedAt());
+            map.put("status", c.getStatus());
+            map.put("moduleCount", moduleCountMap.getOrDefault(c.getId(), 0L));
+            return map;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of("success", true, "courses", enrichedCourses));
     }
 
     @PostMapping
@@ -97,8 +147,13 @@ public class CourseController {
         }
 
         if ("teacher".equals(userRole) || "dual".equals(userRole)) {
-            Optional<TeacherPermission> p = teacherPermissionRepository.findById(userId);
-            if (p.isEmpty() || !p.get().getCanCreateCourses()) {
+            try {
+                Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                if (perm == null || !Boolean.TRUE.equals(perm.get("canCreateCourses"))) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "No permission to create courses"));
+                }
+            } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "No permission to create courses"));
             }

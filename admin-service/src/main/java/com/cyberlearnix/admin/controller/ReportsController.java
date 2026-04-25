@@ -1,8 +1,8 @@
 package com.cyberlearnix.admin.controller;
 
-import com.cyberlearnix.shared.repository.CourseRepository;
-import com.cyberlearnix.shared.repository.EnrollmentFormResponseRepository;
-import com.cyberlearnix.shared.repository.UserRepository;
+import com.cyberlearnix.admin.client.CourseServiceClient;
+import com.cyberlearnix.admin.client.EnrollmentServiceClient;
+import com.cyberlearnix.admin.client.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,54 +14,22 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ReportsController {
 
-    private final UserRepository userRepository;
-    private final CourseRepository courseRepository;
-    private final EnrollmentFormResponseRepository responseRepository;
+    private final UserServiceClient userServiceClient;
+    private final CourseServiceClient courseServiceClient;
+    private final EnrollmentServiceClient enrollmentServiceClient;
 
     @GetMapping("/users")
-    public ResponseEntity<?> getUserStats() {
-        long totalUsers = userRepository.count();
-        long admins = userRepository.countByRoleIgnoreCase("admin");
-        long teachers = userRepository.countByRolesIgnoreCase(java.util.List.of("teacher", "instructor"));
-        long students = userRepository.countByRolesIgnoreCase(java.util.List.of("student", "user"));
-        long duals = userRepository.countByRoleIgnoreCase("dual");
-        long others = totalUsers - (admins + teachers + students + duals);
-
-        return ResponseEntity.ok(Map.of(
-                "totalUsers", totalUsers,
-                "admins", admins,
-                "teachers", teachers,
-                "students", students,
-                "duals", duals,
-                "others", others
-        ));
+    public ResponseEntity<Map<String, Object>> getUserStats(@RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(userServiceClient.getUserStats(auth));
     }
 
     @GetMapping("/courses")
-    public ResponseEntity<?> getCourseStats() {
-        long totalCourses = courseRepository.count();
-        long approved = courseRepository.countByStatusIgnoreCase("APPROVED");
-        long pending = courseRepository.countByStatusIgnoreCase("PENDING");
-        long rejected = courseRepository.countByStatusIgnoreCase("REJECTED");
-
-        return ResponseEntity.ok(Map.of(
-                "totalCourses", totalCourses,
-                "approvedCourses", approved,
-                "pendingModeration", pending,
-                "rejected", rejected
-        ));
+    public ResponseEntity<Map<String, Object>> getCourseStats(@RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(courseServiceClient.getCourseStats(auth));
     }
 
     @GetMapping("/revenue")
-    public ResponseEntity<?> getRevenueStats() {
-        Double totalRevenue = responseRepository.calculateTotalRevenue();
-        long totalOrders = responseRepository.count();
-        long successfulOrders = responseRepository.countPaidOrders();
- 
-        return ResponseEntity.ok(Map.of(
-                "totalRevenue", totalRevenue != null ? totalRevenue : 0.0,
-                "totalOrders", totalOrders,
-                "totalSuccessfulOrders", successfulOrders
-        ));
+    public ResponseEntity<Map<String, Object>> getRevenueStats(@RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(enrollmentServiceClient.getRevenueStats(auth));
     }
 }

@@ -6,15 +6,13 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.core.Ordered;
 import reactor.core.publisher.Mono;
-import com.cyberlearnix.shared.repository.BlacklistedTokenRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import reactor.core.scheduler.Schedulers;
 
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
@@ -22,8 +20,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Autowired
-    private BlacklistedTokenRepository blacklistedTokenRepository;
+    private final ReactiveStringRedisTemplate redisTemplate;
+
+    public JwtAuthenticationFilter(ReactiveStringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -38,31 +39,24 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim();
-            try {
-                // Diagnostic log (redacted)
-                System.out.println("Gateway validating token for: " + path);
-                
-                // Blacklist Check
-                return Mono.fromCallable(() -> blacklistedTokenRepository.findByToken(token).isPresent())
-                    .subscribeOn(Schedulers.boundedElastic())
+            // Redis blacklist key must match what user-service writes: "blacklisted:" + token
+            String blacklistKey = "blacklisted:" + token;
+
+            return redisTemplate.hasKey(blacklistKey)
                     .flatMap(isBlacklisted -> {
-                        if (isBlacklisted) {
-                            System.err.println("Gateway: Blocking blacklisted token for path: " + path);
+                        if (Boolean.TRUE.equals(isBlacklisted)) {
                             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                             return exchange.getResponse().setComplete();
                         }
-                        
                         try {
                             Claims claims = Jwts.parser()
                                     .verifyWith(Keys.hmacShaKeyFor(jwtSecret.trim().getBytes()))
                                     .build()
                                     .parseSignedClaims(token)
                                     .getPayload();
-                                    
+
                             String userId = claims.getSubject();
                             String userRole = (String) claims.get("role");
-
-                            System.out.println("Gateway validated user: " + userId + " with role: " + userRole);
 
                             ServerHttpRequest.Builder builder = exchange.getRequest().mutate();
                             if (userId != null) builder.header("X-User-Id", userId);
@@ -70,18 +64,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                             return chain.filter(exchange.mutate().request(builder.build()).build());
                         } catch (Exception e) {
-                            System.err.println("Gateway JWT Validation Error: " + e.getMessage());
-                            return chain.filter(exchange);
+                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return exchange.getResponse().setComplete();
                         }
                     });
-            } catch (Exception e) {
-                // log error but CONTINUE - let the microservice handle security
-                System.err.println("Gateway JWT Validation Error for " + path + ": " + e.getMessage());
-                // e.printStackTrace(); // Optional for deep debug
-            }
         }
 
-        // Proceed without blocking - protected routes will be caught by microservice SecurityConfig
+        // No token — let downstream service enforce its own security
         return chain.filter(exchange);
     }
 

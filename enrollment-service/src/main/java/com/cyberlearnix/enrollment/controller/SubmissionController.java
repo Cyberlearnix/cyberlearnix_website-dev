@@ -1,7 +1,7 @@
 package com.cyberlearnix.enrollment.controller;
 
-import com.cyberlearnix.shared.entity.EnrollmentSubmission;
-import com.cyberlearnix.shared.repository.EnrollmentSubmissionRepository;
+import com.cyberlearnix.shared.entity.enrollment.EnrollmentSubmission;
+import com.cyberlearnix.shared.repository.enrollment.EnrollmentSubmissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

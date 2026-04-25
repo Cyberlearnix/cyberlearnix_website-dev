@@ -1,7 +1,7 @@
 package com.cyberlearnix.admin.config;
 
-import com.cyberlearnix.shared.entity.ActivityLog;
-import com.cyberlearnix.shared.repository.ActivityLogRepository;
+import com.cyberlearnix.admin.entity.AdminActivityLog;
+import com.cyberlearnix.admin.repository.AdminActivityLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AdminAuditInterceptor implements HandlerInterceptor {
 
-    private final ActivityLogRepository activityLogRepository;
+    private final AdminActivityLogRepository activityLogRepository;
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
@@ -31,16 +31,16 @@ public class AdminAuditInterceptor implements HandlerInterceptor {
     private void logAction(HttpServletRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String userId = (auth != null && auth.getPrincipal() != null) ? auth.getPrincipal().toString() : "SYSTEM";
-        
-        ActivityLog log = new ActivityLog();
+
+        AdminActivityLog log = new AdminActivityLog();
         log.setUserId(userId);
         log.setEventType("ADMIN_ACTION");
         log.setDescription(request.getMethod() + " " + request.getRequestURI());
         log.setMetadata(Map.of(
-            "ip", request.getRemoteAddr(),
-            "userAgent", request.getHeader("User-Agent") != null ? request.getHeader("User-Agent") : "unknown"
+                "ip", request.getRemoteAddr(),
+                "userAgent", request.getHeader("User-Agent") != null ? request.getHeader("User-Agent") : "unknown"
         ));
-        
+
         activityLogRepository.save(log);
     }
 }

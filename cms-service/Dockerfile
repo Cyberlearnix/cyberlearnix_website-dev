@@ -1,5 +1,5 @@
 # Build stage
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM gradle:8.14-jdk21 AS build
 WORKDIR /app
 
 # Copy gradle files
@@ -13,7 +13,7 @@ COPY shared-lib shared-lib
 COPY cms-service cms-service
 
 # Build the cms-service
-RUN ./gradlew :cms-service:bootJar --no-daemon
+RUN gradle :cms-service:bootJar --no-daemon
 
 # Run stage
 FROM eclipse-temurin:21-jre-jammy

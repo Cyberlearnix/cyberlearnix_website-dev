@@ -1,7 +1,8 @@
 package com.cyberlearnix.enrollment.controller;
 
-import com.cyberlearnix.shared.entity.Enrollment;
-import com.cyberlearnix.shared.repository.EnrollmentRepository;
+import com.cyberlearnix.shared.entity.enrollment.Enrollment;
+import com.cyberlearnix.shared.repository.enrollment.EnrollmentRepository;
+import com.cyberlearnix.enrollment.client.CourseServiceClient;
 import com.cyberlearnix.enrollment.service.EnrollmentService;
 import com.cyberlearnix.enrollment.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +37,7 @@ public class EnrollmentController {
     }
 
     @Autowired
-    private com.cyberlearnix.shared.repository.CourseTeacherRepository courseTeacherRepository;
+    private CourseServiceClient courseServiceClient;
 
     @GetMapping
     public ResponseEntity<?> getEnrollments(@RequestParam(required = false) String studentId,
@@ -62,7 +63,10 @@ public class EnrollmentController {
 
         if (("teacher".equals(userRole) || "dual".equals(userRole)) && courseId != null) {
             // Check if teacher is assigned to this course
-            boolean isAssigned = courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId);
+            boolean isAssigned = false;
+            try {
+                isAssigned = courseServiceClient.teacherExistsForCourse(userId, courseId);
+            } catch (Exception ignored) {}
             if (isAssigned) {
                 return ResponseEntity
                         .ok(Map.of("success", true, "enrollments", enrollmentRepository.findByCourseId(courseId)));
@@ -75,20 +79,34 @@ public class EnrollmentController {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    @Autowired
-    private com.cyberlearnix.shared.repository.CourseRepository courseRepository;
+    @PatchMapping("/progress")
+    public ResponseEntity<?> updateProgressByStudentAndCourse(@RequestBody Map<String, Object> body) {
+        String studentId = (String) body.get("studentId");
+        Long courseId = body.get("courseId") instanceof Number
+                ? ((Number) body.get("courseId")).longValue()
+                : Long.valueOf(String.valueOf(body.get("courseId")));
+        Integer progress = body.get("progress") instanceof Number
+                ? ((Number) body.get("progress")).intValue()
+                : null;
+        String completedAt = (String) body.get("completedAt");
+
+        return enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId).map(enrollment -> {
+            if (progress != null) enrollment.setProgress(progress);
+            if (completedAt != null) enrollment.setCompletedAt(LocalDateTime.parse(completedAt));
+            else if (progress != null && progress >= 100) enrollment.setCompletedAt(LocalDateTime.now());
+            return (ResponseEntity<?>) ResponseEntity.ok(Map.of("success", true, "enrollment", enrollmentRepository.save(enrollment)));
+        }).orElse(ResponseEntity.notFound().build());
+    }
 
     @PostMapping
     public ResponseEntity<?> createEnrollment(@RequestBody EnrollmentRequest request) {
-        return courseRepository.findById(request.getCourseId()).map(course -> {
-            Enrollment enrollment = new Enrollment();
-            enrollment.setStudentId(request.getStudentId());
-            enrollment.setCourse(course);
-            enrollment.setEnrolledAt(LocalDateTime.now());
-            
-            Enrollment saved = enrollmentRepository.save(enrollment);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", true, "enrollment", saved));
-        }).orElse(ResponseEntity.badRequest().body(Map.of("error", "Course not found")));
+        Enrollment enrollment = new Enrollment();
+        enrollment.setStudentId(request.getStudentId());
+        enrollment.setCourseId(request.getCourseId());
+        enrollment.setEnrolledAt(LocalDateTime.now());
+
+        Enrollment saved = enrollmentRepository.save(enrollment);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", true, "enrollment", saved));
     }
 
     @PutMapping("/{id}")

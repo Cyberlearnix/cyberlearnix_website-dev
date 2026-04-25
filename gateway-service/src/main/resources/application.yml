@@ -6,36 +6,28 @@ spring:
     name: gateway-service
   codec:
     max-in-memory-size: 512MB
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 512MB
-      max-request-size: 512MB
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5433}/${DB_NAME:cyberlearnix}?currentSchema=public
-    username: ${DB_USER:postgres}
-    password: ${DB_PASS:postgres}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        jdbc:
-          time_zone: UTC
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
+      httpclient:
+        wiretap: true
+      httpserver:
+        wiretap: true
       routes:
         # Auth Service (on user-service)
         - id: auth-service
-          uri: http://127.0.0.1:8081
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:
             - Path=/api/auth/**
 
         # User Service Bridge
         - id: user-service-legacy
-          uri: http://127.0.0.1:8081
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:
             - Path=/api/get-users,/api/create-user,/api/admin-reset-password-and-notify,/api/manage-teacher-permissions
           filters:
@@ -58,7 +50,7 @@ spring:
 
         # Course Service Bridge (legacy path aliases)
         - id: course-service-legacy
-          uri: http://127.0.0.1:8082
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
             - Path=/api/manage-course-teachers
           filters:
@@ -68,29 +60,29 @@ spring:
                 replacement: /api/courses/teachers
 
         - id: user-service
-          uri: http://127.0.0.1:8081
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:
             - Path=/api/users/**, /api/send-form-receipt, /api/send-form-notification, /api/send-reply, /api/send-email, /api/careers, /api/careers/**, /api/contact-submissions, /api/contact-submissions/**, /api/site-settings, /api/site-settings/**, /api/menus, /api/menus/**, /api/chatbot, /api/chatbot/**, /api/teams, /api/teams/**
         
         # User-status toggle (PATCH /api/users/{id}/status)
         - id: user-status-service
-          uri: http://127.0.0.1:8081
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:
             - Path=/api/users/*/status
 
         # Course Service
         - id: course-service
-          uri: http://127.0.0.1:8082
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
-            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**
+            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**, /api/teacher/**
         - id: course-service-suggestions
-          uri: http://127.0.0.1:8082
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
             - Path=/api/suggestions/**
 
         # Enrollment Service Bridge
         - id: enrollment-service-legacy
-          uri: http://127.0.0.1:8083
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
           predicates:
             - Path=/api/manage-enrollments,/api/manage-forms,/api/manage-enrollment-responses
           filters:
@@ -108,34 +100,34 @@ spring:
                 replacement: /api/enrollments/responses
 
         - id: enrollment-service
-          uri: http://127.0.0.1:8083
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
           predicates:
             - Path=/api/enrollments/**, /api/payments/**, /api/payu-payment
 
         # Others
         - id: notification-service
-          uri: http://127.0.0.1:8084
+          uri: ${NOTIFICATION_SERVICE_URL:http://127.0.0.1:8084}
           predicates:
             - Path=/api/notifications/**
         - id: shop-service
-          uri: http://127.0.0.1:8085
+          uri: ${SHOP_SERVICE_URL:http://127.0.0.1:8085}
           predicates:
             - Path=/api/shop/**
 
         # Form Service
         - id: form-service
-          uri: http://127.0.0.1:8087
+          uri: ${FORM_SERVICE_URL:http://127.0.0.1:8087}
           predicates:
             - Path=/api/forms, /api/forms/**
 
         - id: activity-service
-          uri: http://127.0.0.1:8081
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:
             - Path=/api/activity/**
 
         # CMS Service & Unified Page Route
         - id: cms-service
-          uri: http://127.0.0.1:8089
+          uri: ${CMS_SERVICE_URL:http://127.0.0.1:8089}
           predicates:
             - Path=/api/cms/**, /api/pages, /api/pages/**
           filters:
@@ -152,15 +144,46 @@ spring:
 
         # Admin Service
         - id: admin-service
-          uri: http://127.0.0.1:8090
+          uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
           predicates:
             - Path=/api/admin/**
+
+        # Instructor Service
+        - id: instructor-service
+          uri: ${INSTRUCTOR_SERVICE_URL:http://127.0.0.1:8091}
+          predicates:
+            - Path=/api/instructor/**
 
 server:
   port: 8080
 
 jwt:
   secret: ${JWT_SECRET:cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      # Kubernetes liveness + readiness probe endpoints
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: INFO
+    reactor.netty.http.client: DEBUG
+    reactor.netty.http.server: DEBUG
+    com.cyberlearnix.gateway: DEBUG
 
 springdoc:
   swagger-ui:
