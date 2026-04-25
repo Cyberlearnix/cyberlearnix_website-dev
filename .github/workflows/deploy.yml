@@ -263,32 +263,44 @@ jobs:
           PORT="${PORT:-22}"
           ssh -p "${PORT}" -o BatchMode=yes \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "mkdir -p ~/cyberlearnix && cat > ~/cyberlearnix/docker-compose.prod.yml" \
+            "cat > ~/docker-compose.prod.yml" \
             < /tmp/docker-compose.prod.yml
 
       # Pull new images and do a rolling restart of changed containers.
       # --remove-orphans cleans up containers for services removed from compose.
+      # Heredoc is unquoted so $DH_USER/$DH_TOKEN expand on the runner before
+      # the script is piped to the server (GitHub Actions masks them in logs).
       - name: Pull images and restart services
+        env:
+          DH_USER:  ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           PORT="${{ secrets.SSH_PORT }}"
           PORT="${PORT:-22}"
-          ssh -p "${PORT}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" 'bash -s' << 'REMOTE_EOF'
+          ssh -p "${PORT}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" 'bash -s' << REMOTE_EOF
           set -euo pipefail
-          cd ~/cyberlearnix
+
+          echo "==> Logging into Docker Hub..."
+          echo "${DH_TOKEN}" | docker login -u "${DH_USER}" --password-stdin
+
+          cd ~
 
           COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 
           echo "==> Pulling latest images from Docker Hub..."
-          $COMPOSE pull
+          \$COMPOSE pull
 
           echo "==> Restarting services (rolling update, no downtime for unchanged)..."
-          $COMPOSE up -d --remove-orphans
+          \$COMPOSE up -d --remove-orphans
 
           echo "==> Removing dangling/unused images to free disk space..."
           docker image prune -f
 
           echo "==> Running containers:"
-          $COMPOSE ps
+          \$COMPOSE ps
+
+          echo "==> Logging out of Docker Hub..."
+          docker logout
           REMOTE_EOF
 
       # Append a summary table to the GitHub Actions job summary page.
