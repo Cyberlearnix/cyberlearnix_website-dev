@@ -1,0 +1,58 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+# Track log positions across restarts
+positions:
+  filename: /tmp/positions.yaml
+
+# Push to Loki
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchsize: 1048576
+    batchwait: 1s
+
+scrape_configs:
+  # ── Docker container log scraping via Docker socket ──────────────────────────
+  - job_name: cyberlearnix-services
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+
+    relabel_configs:
+      # Extract clean container name (strip leading /)
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container
+
+      # Use compose service label as the primary service label
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+
+      # Drop containers with no compose service label (non-project containers)
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        regex: '.+'
+        action: keep
+
+      # Tag log stream (stdout / stderr)
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: logstream
+
+    pipeline_stages:
+      # Parse Docker JSON log wrapper (adds log, stream, time fields)
+      - docker: {}
+
+      # Extract log level from Spring Boot log lines, e.g.:
+      # 2026-04-25T10:00:00.000Z  INFO 1 --- [main] com.cyberlearnix...
+      - regex:
+          expression: '(?i)\s+(?P<level>DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|TRACE)\s+'
+
+      # Promote extracted level to a Loki label (enables label-based filtering in Grafana)
+      - labels:
+          level:
+
+      # Drop DEBUG logs to save disk space — remove this stage if you need debug logs
+      - drop:
+          expression: '(?i)\slevel=debug\s|\sDEBUG\s'
+          drop_counter_reason: debug_dropped

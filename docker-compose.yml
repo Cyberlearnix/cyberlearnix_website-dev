@@ -278,6 +278,34 @@ services:
     networks:
       - cyberlearnix-network
 
+  # ── Logging stack ───────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: cyberlearnix-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: cyberlearnix-promtail
+    volumes:
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
   # ── Monitoring stack ────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.51.2
@@ -311,6 +339,7 @@ services:
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
+      - loki
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -324,3 +353,4 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  loki_data:
