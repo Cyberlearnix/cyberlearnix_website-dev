@@ -15,10 +15,7 @@ spec:
     matchLabels:
       {{- include "cyberlearnix.selectorLabels" (dict "serviceName" $name "root" $) | nindent 6 }}
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0    # Zero-downtime: always bring new pods up before taking old ones down
+    type: Recreate   # Kill all old pods before starting new ones (avoids Postgres max_connections overflow)
   template:
     metadata:
       labels:
@@ -103,10 +100,10 @@ spec:
           resources:
             {{- toYaml $svc.resources | nindent 12 }}
 
-          # Liveness: is the JVM alive? Restart if stuck.
+          # Liveness: is the JVM alive? TCP check avoids DB-health false positives.
+          # HTTP /actuator/health would return 503 if Postgres is slow -> kills healthy pods.
           livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
+            tcpSocket:
               port: http
             initialDelaySeconds: 90
             periodSeconds: 30
@@ -115,9 +112,10 @@ spec:
 
           # Readiness: is the service ready for traffic?
           # Do NOT send traffic until DB/Redis connections are established.
+          # NOTE: /actuator/health/readiness is blocked by security (only /actuator/health is permitAll)
           readinessProbe:
             httpGet:
-              path: /actuator/health/readiness
+              path: /actuator/health
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
@@ -125,14 +123,15 @@ spec:
             failureThreshold: 3
             successThreshold: 1
 
-          # Startup: give Spring Boot time to warm up (avoids premature liveness failures)
+          # Startup: TCP check — passes as soon as Tomcat opens the port.
+          # HTTP would fail if DB health is DOWN even after Tomcat is up.
           startupProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10
-            failureThreshold: 18   # 15s + 18×10s = up to 3 minutes to start
+            timeoutSeconds: 5
+            failureThreshold: 60   # 15s + 60×10s = up to 10 minutes to start
 
           # Level-2 Container security
           securityContext:
