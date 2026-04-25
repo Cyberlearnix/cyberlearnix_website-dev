@@ -301,25 +301,22 @@ jobs:
           COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
           SVCS="gateway-service user-service course-service enrollment-service notification-service shop-service form-service admin-service cms-service instructor-service"
 
+          echo "==> Backing up current prod config for rollback if needed..."
+          cp ~/docker-compose.prod.yml ~/docker-compose.prod.yml.bak 2>/dev/null || true
+
           echo "==> Pulling latest images from Docker Hub..."
           \$COMPOSE pull \$SVCS
 
-          echo "==> Restarting services (rolling update, no downtime for unchanged)..."
-          \$COMPOSE up -d --no-build \$SVCS
-
-          echo "==> Waiting for services to settle (10s)..."
-          sleep 10
-
-          echo "==> Health check — any containers not running?"
-          UNHEALTHY=0
-          for svc in \$SVCS; do
-            STATE=$(\$COMPOSE ps \$svc --format json 2>/dev/null | grep -o '"State":"[^"]*"' | head -1 || echo '"State":"unknown"')
-            echo "  \$svc → \$STATE"
-            echo "\$STATE" | grep -q '"running"' || UNHEALTHY=1
-          done
-          if [[ \$UNHEALTHY -eq 1 ]]; then
-            echo "ERROR: one or more services are not running — check logs above"
-            \$COMPOSE logs --tail=50 \$SVCS
+          echo "==> Starting services — waiting until all containers pass HEALTHCHECK..."
+          # --wait blocks until every container reaches 'healthy' (uses Dockerfile HEALTHCHECK)
+          # --wait-timeout is the maximum seconds to wait before declaring failure
+          if ! \$COMPOSE up -d --no-build --wait --wait-timeout 120 \$SVCS; then
+            echo "ERROR: one or more services failed to become healthy — check logs above"
+            \$COMPOSE logs --tail=80 \$SVCS
+            echo "==> Rolling back to previous image versions..."
+            cp ~/docker-compose.prod.yml.bak ~/docker-compose.prod.yml 2>/dev/null || true
+            \$COMPOSE up -d --no-build \$SVCS
+            echo "==> Rollback complete. Previous version is live."
             exit 1
           fi
 
