@@ -255,13 +255,16 @@ jobs:
           ssh-keyscan -p "${PORT}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
       # Push the freshly generated override file to the server.
+      # Using ssh+cat instead of scp to avoid "message too long" errors
+      # caused by shell startup scripts printing output on the server.
       - name: Upload docker-compose.prod.yml to server
         run: |
           PORT="${{ secrets.SSH_PORT }}"
           PORT="${PORT:-22}"
-          scp -P "${PORT}" \
-            /tmp/docker-compose.prod.yml \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/cyberlearnix/docker-compose.prod.yml"
+          ssh -p "${PORT}" -o BatchMode=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "mkdir -p ~/cyberlearnix && cat > ~/cyberlearnix/docker-compose.prod.yml" \
+            < /tmp/docker-compose.prod.yml
 
       # Pull new images and do a rolling restart of changed containers.
       # --remove-orphans cleans up containers for services removed from compose.
