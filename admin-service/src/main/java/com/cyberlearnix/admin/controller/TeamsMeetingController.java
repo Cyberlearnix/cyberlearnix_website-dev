@@ -1,8 +1,10 @@
 package com.cyberlearnix.admin.controller;
 
+import com.cyberlearnix.admin.dto.ParticipantDto;
 import com.cyberlearnix.admin.dto.TeamsMeetingRequest;
 import com.cyberlearnix.admin.dto.TeamsMeetingResponse;
 import com.cyberlearnix.admin.service.TeamsService;
+import com.cyberlearnix.admin.service.ZohoSyncService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,14 +17,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Admin endpoints for managing Microsoft Teams meetings.
+ * Admin endpoints for managing Zoho meetings.
  *
- * All endpoints require ADMIN role (enforced by SecurityConfig).
+ * POST   /api/admin/teams/meetings                         – schedule
+ * GET    /api/admin/teams/meetings                         – list
+ * GET    /api/admin/teams/meetings/{id}                    – details
+ * PUT    /api/admin/teams/meetings/{id}                    – reschedule / update invitees
+ * DELETE /api/admin/teams/meetings/{id}                    – cancel
  *
- * POST   /api/admin/teams/meetings             – schedule a new meeting
- * GET    /api/admin/teams/meetings             – list all meetings (optional ?status=SCHEDULED)
- * GET    /api/admin/teams/meetings/{id}        – get meeting details + join URL
- * DELETE /api/admin/teams/meetings/{id}        – cancel meeting
+ * GET    /api/admin/teams/meetings/{id}/participants       – attendance from local DB
+ *         (?sync=true to force a fresh Zoho fetch first)
+ * POST   /api/admin/teams/meetings/{id}/sync-participants  – force fetch participants from Zoho
+ * POST   /api/admin/teams/meetings/sync                    – force pull all sessions from Zoho
+ *
+ * GET    /api/admin/teams/meetings/debug-zoho?type=upcoming – DEBUG: raw Zoho response
  */
 @RestController
 @RequestMapping("/api/admin/teams/meetings")
@@ -30,6 +38,7 @@ import java.util.Map;
 public class TeamsMeetingController {
 
     private final TeamsService teamsService;
+    private final ZohoSyncService zohoSyncService;
 
     @PostMapping
     public ResponseEntity<?> scheduleMeeting(@Valid @RequestBody TeamsMeetingRequest request) {
@@ -87,6 +96,67 @@ public class TeamsMeetingController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to cancel meeting", "message", e.getMessage()));
+        }
+    }
+
+    // ─── Attendance / sync endpoints ────────────────────────────────────────
+
+    @GetMapping("/{id}/participants")
+    public ResponseEntity<?> getParticipants(@PathVariable Long id,
+                                             @RequestParam(defaultValue = "false") boolean sync) {
+        try {
+            if (sync) {
+                zohoSyncService.triggerParticipantSync(id);
+            }
+            List<ParticipantDto> participants = zohoSyncService.getParticipants(id);
+            return ResponseEntity.ok(participants);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch participants", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/sync-participants")
+    public ResponseEntity<?> syncParticipants(@PathVariable Long id) {
+        try {
+            int count = zohoSyncService.triggerParticipantSync(id);
+            return ResponseEntity.ok(Map.of("synced", count));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to sync participants", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sync")
+    public ResponseEntity<?> syncAllMeetings() {
+        try {
+            int n = zohoSyncService.triggerMeetingSync();
+            return ResponseEntity.ok(Map.of("upserted", n));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to sync meetings", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * DEBUG-ONLY. Returns Zoho's raw response so we can see exactly what the
+     * API returns for this org and fix the parser accordingly.
+     *
+     * Example: GET /api/admin/teams/meetings/debug-zoho?type=upcoming
+     *          GET /api/admin/teams/meetings/debug-zoho?type=past
+     */
+    @GetMapping("/debug-zoho")
+    public ResponseEntity<?> debugZoho(@RequestParam(defaultValue = "upcoming") String type) {
+        try {
+            Map<String, Object> raw = zohoSyncService.debugFetchZohoRaw(type);
+            return ResponseEntity.ok(raw);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
