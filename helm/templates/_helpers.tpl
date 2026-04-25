@@ -32,9 +32,11 @@ app.kubernetes.io/part-of: cyberlearnix
 {{- end }}
 
 {{/*
-Full image reference: registry/service:tag
+Full image reference: registry/[imagePrefix]service:tag
+imagePrefex is empty by default; set to "cyberlearnix-" for Docker Hub naming.
 */}}
 {{- define "cyberlearnix.image" -}}
 {{- $tag := index .root.Values.images .serviceName | default "latest" -}}
-{{- printf "%s/%s:%s" .root.Values.global.registry .serviceName $tag }}
+{{- $prefix := .root.Values.global.imagePrefix | default "" -}}
+{{- printf "%s/%s%s:%s" .root.Values.global.registry $prefix .serviceName $tag }}
 {{- end }}

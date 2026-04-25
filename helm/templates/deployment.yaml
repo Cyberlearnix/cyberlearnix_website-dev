@@ -30,6 +30,11 @@ spec:
       serviceAccountName: {{ $name }}
       automountServiceAccountToken: false
 
+      {{- if $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $.Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+
       # Level-1 Pod security: all containers run non-root
       securityContext:
         runAsNonRoot: true
@@ -39,11 +44,12 @@ spec:
         seccompProfile:
           type: RuntimeDefault
 
-      # Spread pods across nodes to survive a node failure
+      # Spread pods across nodes to survive a node failure.
+      # whenUnsatisfiable: DoNotSchedule (multi-node) or ScheduleAnyway (single-node K3s)
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
+          whenUnsatisfiable: {{ $.Values.topology.whenUnsatisfiable | default "DoNotSchedule" }}
           labelSelector:
             matchLabels:
               app.kubernetes.io/name: {{ $name }}

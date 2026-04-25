@@ -1,44 +1,48 @@
 # =============================================================================
-# Cyberlearnix Helm Values — Default (shared across environments)
-# Override with values-staging.yaml or values-production.yaml
+# Cyberlearnix Helm Values — K3s single-node (no Azure, SSH-only)
+#
+# Architecture:
+#   • K3s on the existing Azure VM (IP: 20.197.21.226)
+#   • Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
+#   • K3s handles:           10 Spring Boot microservices
+#   • Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
+#
+# Usage (from setup script / CI):
+#   helm upgrade --install cyberlearnix ./helm \
+#     -f ./helm/values-k3s.yaml \
+#     --set global.registry=$DOCKERHUB_USERNAME \
+#     --set appConfig.DB_HOST=$HOST_IP \
+#     --set appConfig.REDIS_HOST=$HOST_IP \
+#     --set images.gateway-service=$SHA \
+#     ... (one --set per service, SHA injected by CI) \
+#     --namespace cyberlearnix --create-namespace
 # =============================================================================
 
 global:
-  registry: swachvegaregistry.azurecr.io
-  imagePrefix: ""       # set to "cyberlearnix-" for Docker Hub (K3s) deployments
-  pullPolicy: IfNotPresent
-  environment: staging
+  registry: ""              # injected at deploy: --set global.registry=<dockerhub-user>
+  imagePrefix: "cyberlearnix-"  # Docker Hub images are named: user/cyberlearnix-<service>
+  pullPolicy: Always        # always pull — CI pushes SHA-tagged images
+  environment: production
 
-# ── Image pull secrets (empty = ACR managed identity; set for Docker Hub) ────
-imagePullSecrets: []
+# Docker Hub pull secret — created once by k3s-setup.sh
+imagePullSecrets:
+  - name: dockerhub-secret
 
-# ── Topology spread — single-node K3s override to ScheduleAnyway ─────────────
+# Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
-  whenUnsatisfiable: DoNotSchedule
+  whenUnsatisfiable: ScheduleAnyway
 
-# ── Image tags ──────────────────────────────────────────────────────────────
-# Updated per deployment by GitHub Actions (image-override.yaml injected)
-images:
-  gateway-service: latest
-  user-service: latest
-  course-service: latest
-  enrollment-service: latest
-  notification-service: latest
-  shop-service: latest
-  form-service: latest
-  admin-service: latest
-  cms-service: latest
-  instructor-service: latest
-
-# ── Shared application config (injected as ConfigMap) ────────────────────────
+# ── Shared application config ─────────────────────────────────────────────────
+# DB_HOST and REDIS_HOST point to Docker Compose containers on the same VM.
+# They are injected via --set appConfig.DB_HOST=$VM_PRIVATE_IP at deploy time.
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: ""          # OVERRIDE per environment
+  DB_HOST: ""               # injected: --set appConfig.DB_HOST=<vm-private-ip>
   DB_PORT: "5432"
   DB_USER: "postgres"
-  REDIS_HOST: ""       # OVERRIDE per environment
+  REDIS_HOST: ""            # injected: --set appConfig.REDIS_HOST=<vm-private-ip>
   REDIS_PORT: "6379"
-  # Inter-service URLs — use Kubernetes DNS (service.namespace.svc.cluster.local)
+  # K8s DNS — services resolve within the cyberlearnix namespace
   USER_SERVICE_URL: "http://user-service:8081"
   COURSE_SERVICE_URL: "http://course-service:8082"
   ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
@@ -48,16 +52,28 @@ appConfig:
   CMS_SERVICE_URL: "http://cms-service:8089"
   ADMIN_SERVICE_URL: "http://admin-service:8090"
   INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
-  CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://staging.cyberlearnix.com"
+  CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://cyberlearnix.com"
 
-# ── Per-service configuration ─────────────────────────────────────────────────
-# Keys must match the service name in docker-compose.yml exactly
+# ── Ingress — K3s ships with Traefik v2 ──────────────────────────────────────
+ingress:
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  tls:
+    enabled: false          # add cert-manager later when domain is ready
+    secretName: ""
+
+# ── External access host ──────────────────────────────────────────────────────
+hosts:
+  api: "20.197.21.226"      # replace with domain name when DNS is configured
+
+# ── Per-service overrides — single replica, HPA/PDB disabled (single node) ──
 services:
 
   gateway-service:
     port: 8080
     containerPort: 8080
-    replicas: 2
+    replicas: 1
     dbRequired: false
     ingress:
       enabled: true
@@ -71,17 +87,14 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 10
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   user-service:
     port: 8081
     containerPort: 8081
-    replicas: 2
+    replicas: 1
     dbName: cyberlearnix_users
     dbRequired: true
     ingress:
@@ -94,17 +107,14 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 8
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   course-service:
     port: 8082
     containerPort: 8082
-    replicas: 2
+    replicas: 1
     dbName: cyberlearnix_courses
     dbRequired: true
     ingress:
@@ -117,17 +127,14 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 8
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   enrollment-service:
     port: 8083
     containerPort: 8083
-    replicas: 2
+    replicas: 1
     dbName: cyberlearnix_enrollments
     dbRequired: true
     ingress:
@@ -140,12 +147,9 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 6
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   notification-service:
     port: 8084
@@ -162,12 +166,9 @@ services:
         memory: "384Mi"
         cpu: "250m"
     hpa:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 4
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   shop-service:
     port: 8085
@@ -185,12 +186,9 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 6
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   form-service:
     port: 8087
@@ -208,12 +206,9 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 4
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   admin-service:
     port: 8090
@@ -231,9 +226,9 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false   # Admin traffic is low
+      enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   cms-service:
     port: 8089
@@ -253,7 +248,7 @@ services:
     hpa:
       enabled: false
     pdb:
-      minAvailable: 1
+      minAvailable: 0
 
   instructor-service:
     port: 8091
@@ -271,25 +266,6 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 4
-      targetCPUUtilizationPercentage: 70
+      enabled: false
     pdb:
-      minAvailable: 1
-
-# ── Ingress (gateway-service is the only external entry point) ───────────────
-ingress:
-  className: nginx
-  annotations:
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  tls:
-    enabled: true
-    secretName: cyberlearnix-tls
-
-# ── NGINX Ingress hosts (override per environment) ───────────────────────────
-hosts:
-  api: api.cyberlearnix.com
+      minAvailable: 0
