@@ -16,7 +16,7 @@ COPY admin-service admin-service
 RUN gradle :admin-service:bootJar --no-daemon
 
 # Run stage
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 WORKDIR /app
 # curl is required for HEALTHCHECK probes
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
