@@ -121,12 +121,59 @@ jobs:
             fi
           fi
 
+  # ── 1.5 Run tests before building any images ───────────────────────────────
+  # Tests run in parallel (one job per changed service, same matrix as build).
+  # fail-fast: true means the first test failure aborts all other test jobs,
+  # preventing wasted build time when the code is already broken.
+  test:
+    name: Test — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
+    strategy:
+      fail-fast: true
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run tests — ${{ matrix.service }}
+        run: ./gradlew :${{ matrix.service }}:test --no-daemon
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: ${{ matrix.service }}/build/test-results/**/*.xml
+          comment_mode: off
+
+      - name: Upload test report on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-report-deploy-${{ matrix.service }}
+          path: ${{ matrix.service }}/build/reports/tests/
+          retention-days: 7
+
   # ── 2. Build & push Docker images to Docker Hub ─────────────────────────────
   build-push:
     name: Build & Push — ${{ matrix.service }}
     runs-on: ubuntu-latest
     timeout-minutes: 30          # fail fast if a build hangs
-    needs: changes
+    needs: [changes, test]
     if: needs.changes.outputs.matrix != '[]'
     strategy:
       fail-fast: false   # Let other services continue if one fails
@@ -198,11 +245,12 @@ jobs:
     name: Deploy via SSH
     runs-on: ubuntu-latest
     timeout-minutes: 20          # docker pull on a slow connection shouldn't block forever
-    needs: [changes, build-push]
+    needs: [changes, test, build-push]
     # Run if builds succeeded OR if nothing was built (no source changes this push).
-    # Either way we SSH in and ensure the server is in the desired state.
+    # NEVER run if tests failed — a broken test must block the deploy.
     if: |
       always() &&
+      needs.test.result != 'failure' &&
       (needs.build-push.result == 'success' || needs.build-push.result == 'skipped') &&
       needs.changes.result == 'success'
     steps:

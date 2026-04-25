@@ -110,8 +110,11 @@ jobs:
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
 
-      - name: Test ${{ matrix.service }}
-        run: ./gradlew :${{ matrix.service }}:test --no-daemon
+      - name: Run unit tests — ${{ matrix.service }}
+        run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Djunit.platform.tag.include.pattern=unit
+
+      - name: Run integration tests — ${{ matrix.service }}
+        run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Djunit.platform.tag.include.pattern=integration
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false"
 
