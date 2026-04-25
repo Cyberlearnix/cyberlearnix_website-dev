@@ -164,8 +164,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
+    prometheus:
+      enabled: true
     health:
       show-details: never
       # Kubernetes liveness + readiness probe endpoints

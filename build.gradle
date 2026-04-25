@@ -32,6 +32,7 @@ subprojects {
         implementation 'org.springframework.boot:spring-boot-starter'
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         testRuntimeOnly 'com.h2database:h2'   // in-memory DB for context-load tests
+        implementation 'io.micrometer:micrometer-registry-prometheus'
         
         compileOnly 'org.projectlombok:lombok'
         annotationProcessor 'org.projectlombok:lombok'
