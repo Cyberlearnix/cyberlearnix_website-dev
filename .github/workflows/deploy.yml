@@ -125,6 +125,7 @@ jobs:
   build-push:
     name: Build & Push — ${{ matrix.service }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30          # fail fast if a build hangs
     needs: changes
     if: needs.changes.outputs.matrix != '[]'
     strategy:
@@ -133,6 +134,16 @@ jobs:
         service: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+
+      # Cache Gradle dependency downloads — shaves 2-4 min off every build
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - name: Compute image metadata
         id: meta
@@ -160,6 +171,7 @@ jobs:
           context: .
           file: ${{ matrix.service }}/Dockerfile
           push: true
+          platforms: linux/amd64   # lock to server arch — prevents manifest mismatch
           tags: |
             ${{ steps.meta.outputs.image }}:latest
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.short-sha }}
@@ -185,6 +197,7 @@ jobs:
   deploy:
     name: Deploy via SSH
     runs-on: ubuntu-latest
+    timeout-minutes: 20          # docker pull on a slow connection shouldn't block forever
     needs: [changes, build-push]
     # Run if builds succeeded OR if nothing was built (no source changes this push).
     # Either way we SSH in and ensure the server is in the desired state.
@@ -292,13 +305,29 @@ jobs:
           \$COMPOSE pull \$SVCS
 
           echo "==> Restarting services (rolling update, no downtime for unchanged)..."
-          \$COMPOSE up -d \$SVCS
+          \$COMPOSE up -d --no-build \$SVCS
+
+          echo "==> Waiting for services to settle (10s)..."
+          sleep 10
+
+          echo "==> Health check — any containers not running?"
+          UNHEALTHY=0
+          for svc in \$SVCS; do
+            STATE=$(\$COMPOSE ps \$svc --format json 2>/dev/null | grep -o '"State":"[^"]*"' | head -1 || echo '"State":"unknown"')
+            echo "  \$svc → \$STATE"
+            echo "\$STATE" | grep -q '"running"' || UNHEALTHY=1
+          done
+          if [[ \$UNHEALTHY -eq 1 ]]; then
+            echo "ERROR: one or more services are not running — check logs above"
+            \$COMPOSE logs --tail=50 \$SVCS
+            exit 1
+          fi
 
           echo "==> Removing dangling/unused images to free disk space..."
           docker image prune -f
 
           echo "==> Running containers:"
-          \$COMPOSE ps
+          \$COMPOSE ps \$SVCS
 
           echo "==> Logging out of Docker Hub..."
           docker logout
