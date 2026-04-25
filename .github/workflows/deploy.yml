@@ -286,12 +286,13 @@ jobs:
           cd ~
 
           COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+          SVCS="gateway-service user-service course-service enrollment-service notification-service shop-service form-service admin-service cms-service instructor-service"
 
           echo "==> Pulling latest images from Docker Hub..."
-          \$COMPOSE pull
+          \$COMPOSE pull \$SVCS
 
           echo "==> Restarting services (rolling update, no downtime for unchanged)..."
-          \$COMPOSE up -d --remove-orphans
+          \$COMPOSE up -d \$SVCS
 
           echo "==> Removing dangling/unused images to free disk space..."
           docker image prune -f
