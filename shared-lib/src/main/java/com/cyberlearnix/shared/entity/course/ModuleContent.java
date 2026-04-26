@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
         @JsonSubTypes.Type(value = AssignmentContent.class, name = "ASSIGNMENT"),
         @JsonSubTypes.Type(value = LectureContent.class, name = "LECTURE"),
         @JsonSubTypes.Type(value = LectureContent.class, name = "VIDEO"),
+        @JsonSubTypes.Type(value = LectureContent.class, name = "IMAGE"),
+        @JsonSubTypes.Type(value = LectureContent.class, name = "TEXT"),
         @JsonSubTypes.Type(value = QuizContent.class, name = "QUIZ"),
         @JsonSubTypes.Type(value = QuizContent.class, name = "EXAM")
 })

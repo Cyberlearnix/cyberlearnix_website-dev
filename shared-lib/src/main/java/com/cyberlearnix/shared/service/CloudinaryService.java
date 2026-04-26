@@ -59,27 +59,26 @@ public class CloudinaryService {
      * @param resourceType "image", "video", "raw", or "auto"
      */
     public String upload(MultipartFile file, String folder, String resourceType) throws IOException {
-        Map<?, ?> params;
+        Map<?, ?> result;
         if (apiKey != null && apiSecret != null) {
-            // Signed upload
-            params = ObjectUtils.asMap(
+            // Signed upload — all params allowed
+            Map<?, ?> params = ObjectUtils.asMap(
                     "folder", folder,
                     "resource_type", resourceType,
                     "overwrite", false,
                     "unique_filename", true
             );
+            result = cloudinary.uploader().upload(file.getBytes(), params);
         } else {
-            // Unsigned upload with preset
-            params = ObjectUtils.asMap(
+            // Unsigned upload — Cloudinary only allows: folder, public_id, tags, context, metadata, etc.
+            // overwrite and unique_filename are NOT permitted for unsigned uploads
+            Map<?, ?> params = ObjectUtils.asMap(
                     "folder", folder,
-                    "upload_preset", uploadPreset,
-                    "resource_type", resourceType,
-                    "overwrite", false,
-                    "unique_filename", true
+                    "resource_type", resourceType
             );
+            result = cloudinary.uploader().unsignedUpload(file.getBytes(), uploadPreset, params);
         }
 
-        Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(), params);
         String secureUrl = (String) result.get("secure_url");
         if (secureUrl == null) {
             throw new IOException("Cloudinary upload failed: no secure_url returned");

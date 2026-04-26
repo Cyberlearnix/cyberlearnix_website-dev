@@ -14,8 +14,19 @@ public class LectureContent extends ModuleContent {
     @Column(name = "video_url")
     private String videoUrl;
 
+    // For IMAGE content type: stores the image URL
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @Column(name = "content_text", columnDefinition = "TEXT")
     private String contentText;
+
+    // Rich text blocks stored as JSON string.
+    // Format: [{"type":"HEADING","level":1,"text":"..."},{"type":"SUBHEADING","text":"..."},
+    //          {"type":"PARAGRAPH","text":"..."},{"type":"BULLET","items":["..."]},
+    //          {"type":"IMAGE","url":"...","caption":"..."},{"type":"VIDEO","url":"..."}]
+    @Column(name = "content_blocks", columnDefinition = "TEXT")
+    private String contentBlocks;
 
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
@@ -28,4 +39,9 @@ public class LectureContent extends ModuleContent {
 
     @Column(name = "interactive_url")
     private String interactiveUrl; // Support for Packet Tracer web, simulations, etc.
+
+    // Manual setter for Lombok bool compatibility
+    public void setIsPreview(Boolean isPreview) {
+        this.isPreview = isPreview;
+    }
 }

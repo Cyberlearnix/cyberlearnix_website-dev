@@ -231,16 +231,28 @@ public class CourseManagementController {
             CourseModule module = new CourseModule();
             module.setTitle(moduleDTO.getTitle());
             module.setDescription(moduleDTO.getDescription());
+            module.setImageUrl(moduleDTO.getImageUrl());
             module.setOrderIndex(moduleDTO.getOrderIndex());
             module.setCourse(course);
             module.setCreatedBy(userId);
             module.setCreatedAt(LocalDateTime.now());
             module.setUpdatedAt(LocalDateTime.now());
 
+            // Optionally nest under a parent module (sub-chapter)
+            if (moduleDTO.getParentModuleId() != null) {
+                moduleRepository.findById(moduleDTO.getParentModuleId())
+                        .ifPresent(module::setParentModule);
+            }
+
             // Set order index if not provided
             if (module.getOrderIndex() == null || module.getOrderIndex() == 0) {
-                Integer maxOrder = moduleRepository.findMaxOrderIndexByCourseId(courseId);
-                module.setOrderIndex(maxOrder != null ? maxOrder + 1 : 1);
+                if (moduleDTO.getParentModuleId() != null) {
+                    Integer maxOrder = moduleRepository.findMaxOrderIndexByParentId(moduleDTO.getParentModuleId());
+                    module.setOrderIndex(maxOrder != null ? maxOrder + 1 : 1);
+                } else {
+                    Integer maxOrder = moduleRepository.findMaxOrderIndexByCourseId(courseId);
+                    module.setOrderIndex(maxOrder != null ? maxOrder + 1 : 1);
+                }
             }
 
             CourseModule savedModule = moduleRepository.save(module);
@@ -316,6 +328,16 @@ public class CourseManagementController {
                 lect.setAttachmentUrl(contentDTO.getAttachmentUrl());
                 lect.setDurationMinutes(contentDTO.getDurationMinutes());
                 content = lect;
+            } else if ("IMAGE".equals(type)) {
+                LectureContent img = new LectureContent();
+                img.setImageUrl(contentDTO.getImageUrl());
+                img.setContentText(contentDTO.getCaption() != null ? contentDTO.getCaption() : contentDTO.getContentText());
+                content = img;
+            } else if ("TEXT".equals(type)) {
+                LectureContent txt = new LectureContent();
+                txt.setContentText(contentDTO.getContentText());
+                txt.setContentBlocks(contentDTO.getContentBlocks());
+                content = txt;
             } else if ("QUIZ".equals(type) || "EXAM".equals(type)) {
                 QuizContent quiz = new QuizContent();
                 quiz.setQuizId(contentDTO.getQuizId());
@@ -427,6 +449,8 @@ public class CourseManagementController {
                 module.setTitle(moduleUpdate.getTitle());
             if (moduleUpdate.getDescription() != null)
                 module.setDescription(moduleUpdate.getDescription());
+            if (moduleUpdate.getImageUrl() != null)
+                module.setImageUrl(moduleUpdate.getImageUrl());
             if (moduleUpdate.getOrderIndex() != null)
                 module.setOrderIndex(moduleUpdate.getOrderIndex());
             module.setUpdatedAt(LocalDateTime.now());
@@ -493,10 +517,12 @@ public class CourseManagementController {
                 if (contentDTO.getInstructions() != null) ass.setInstructions(contentDTO.getInstructions());
                 if (contentDTO.getMaxScore() != null) ass.setMaxScore(contentDTO.getMaxScore());
                 savedContent = assignmentRepository.save(ass);
-            } else if (("LECTURE".equals(type) || "VIDEO".equals(type)) && content instanceof LectureContent) {
+            } else if (("LECTURE".equals(type) || "VIDEO".equals(type) || "IMAGE".equals(type) || "TEXT".equals(type)) && content instanceof LectureContent) {
                 LectureContent lect = (LectureContent) content;
                 if (contentDTO.getVideoUrl() != null) lect.setVideoUrl(contentDTO.getVideoUrl());
+                if (contentDTO.getImageUrl() != null) lect.setImageUrl(contentDTO.getImageUrl());
                 if (contentDTO.getContentText() != null) lect.setContentText(contentDTO.getContentText());
+                if (contentDTO.getContentBlocks() != null) lect.setContentBlocks(contentDTO.getContentBlocks());
                 if (contentDTO.getDurationMinutes() != null) lect.setDurationMinutes(contentDTO.getDurationMinutes());
                 if (contentDTO.getIsPreview() != null) lect.setIsPreview(contentDTO.getIsPreview());
                 if (contentDTO.getAttachmentUrl() != null) lect.setAttachmentUrl(contentDTO.getAttachmentUrl());
@@ -627,6 +653,114 @@ public class CourseManagementController {
             return ResponseEntity.ok(Map.of("success", true, "moduleTitle", module.getTitle(), "contents", contents));
         }).orElse(ResponseEntity.notFound().build());
     }
+
+    // ── Sub-chapter endpoints ──────────────────────────────────────────────────
+
+    // GET /courses/{courseId}/modules — top-level chapters + their sub-modules
+    @GetMapping("/courses/{courseId}/modules")
+    public ResponseEntity<?> getCourseModules(@PathVariable Long courseId,
+            @RequestHeader("X-User-Role") String userRole) {
+
+        if (!"admin".equalsIgnoreCase(userRole) && !"teacher".equalsIgnoreCase(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        if (!courseRepository.existsById(courseId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<CourseModule> topLevel = moduleRepository.findTopLevelByCourseId(courseId);
+        List<Map<String, Object>> result = topLevel.stream().map(m -> {
+            Map<String, Object> map = new java.util.LinkedHashMap<>();
+            map.put("id", m.getId());
+            map.put("title", m.getTitle());
+            map.put("description", m.getDescription());
+            map.put("imageUrl", m.getImageUrl());
+            map.put("orderIndex", m.getOrderIndex());
+            map.put("isActive", m.getIsActive());
+            map.put("createdBy", m.getCreatedBy());
+            map.put("subModules", moduleRepository.findByParentModuleId(m.getId()).stream().map(sub -> {
+                Map<String, Object> s = new java.util.LinkedHashMap<>();
+                s.put("id", sub.getId());
+                s.put("title", sub.getTitle());
+                s.put("description", sub.getDescription());
+                s.put("imageUrl", sub.getImageUrl());
+                s.put("orderIndex", sub.getOrderIndex());
+                s.put("isActive", sub.getIsActive());
+                return s;
+            }).collect(Collectors.toList()));
+            return map;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of("success", true, "courseId", courseId, "modules", result));
+    }
+
+    // GET /modules/{moduleId}/submodules — list sub-chapters of a chapter
+    @GetMapping("/modules/{moduleId}/submodules")
+    public ResponseEntity<?> getSubModules(@PathVariable Long moduleId,
+            @RequestHeader("X-User-Role") String userRole) {
+
+        if (!"admin".equalsIgnoreCase(userRole) && !"teacher".equalsIgnoreCase(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        return moduleRepository.findById(moduleId).map(parent -> {
+            List<CourseModule> subs = moduleRepository.findByParentModuleId(moduleId);
+            return ResponseEntity.ok(Map.of("success", true, "parentModuleId", moduleId,
+                    "parentTitle", parent.getTitle(), "subModules", subs));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // POST /modules/{parentModuleId}/submodules — create a sub-chapter
+    @PostMapping("/modules/{parentModuleId}/submodules")
+    public ResponseEntity<?> createSubModule(@PathVariable Long parentModuleId,
+            @RequestBody ModuleCreateDTO moduleDTO,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Role") String userRole) {
+
+        return moduleRepository.findById(parentModuleId).map(parent -> {
+            if (!"admin".equalsIgnoreCase(userRole)) {
+                Long courseId = parent.getCourse().getId();
+                if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "You are not assigned to this course."));
+                }
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canAddModules"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to add sub-chapters"));
+                    }
+                } catch (Exception ex) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "You don't have permission to add sub-chapters"));
+                }
+            }
+
+            CourseModule sub = new CourseModule();
+            sub.setTitle(moduleDTO.getTitle());
+            sub.setDescription(moduleDTO.getDescription());
+            sub.setImageUrl(moduleDTO.getImageUrl());
+            sub.setCourse(parent.getCourse());
+            sub.setParentModule(parent);
+            sub.setCreatedBy(userId);
+            sub.setCreatedAt(LocalDateTime.now());
+            sub.setUpdatedAt(LocalDateTime.now());
+
+            if (moduleDTO.getOrderIndex() != null && moduleDTO.getOrderIndex() > 0) {
+                sub.setOrderIndex(moduleDTO.getOrderIndex());
+            } else {
+                Integer maxOrder = moduleRepository.findMaxOrderIndexByParentId(parentModuleId);
+                sub.setOrderIndex(maxOrder != null ? maxOrder + 1 : 1);
+            }
+
+            CourseModule saved = moduleRepository.save(sub);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of("success", true, "subModule", saved));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
 
     // New Endpoint for Teacher Dashboard: Student Monitoring
     @GetMapping("/courses/{id}/students")

@@ -19,7 +19,7 @@ public class User {
     private String passwordHash;
 
     @Column(nullable = false)
-    private String role; // admin, teacher, student, dual
+    private String role; // admin, teacher, student, dual, institute
 
     @Column(name = "is_first_login")
     private Boolean isFirstLogin = true;

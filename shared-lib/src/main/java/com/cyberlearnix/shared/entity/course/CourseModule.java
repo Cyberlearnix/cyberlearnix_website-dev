@@ -17,11 +17,28 @@ public class CourseModule {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
+    // Self-referencing: null = top-level chapter, set = sub-chapter
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_module_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
+    private CourseModule parentModule;
+
+    @OneToMany(mappedBy = "parentModule", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonManagedReference("submodule-ref")
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
+    private List<CourseModule> subModules;
+
     @Column(name = "title", nullable = false)
     private String title;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 
     @Column(name = "order_index")
     private Integer orderIndex = 0;

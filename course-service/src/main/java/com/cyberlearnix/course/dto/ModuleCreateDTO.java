@@ -6,5 +6,8 @@ import lombok.Data;
 public class ModuleCreateDTO {
     private String title;
     private String description;
+    private String imageUrl;
     private Integer orderIndex;
+    // Set to create a sub-chapter under a parent chapter
+    private Long parentModuleId;
 }

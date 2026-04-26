@@ -29,13 +29,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
+        String method = exchange.getRequest().getMethod().name();
 
-        // 1. Whitelist Public Endpoints
-        if (isPublicPath(path)) {
+        // 1. Whitelist Public Endpoints (mutating methods always require auth)
+        if (isPublicPath(path, method)) {
             return chain.filter(exchange);
         }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+        System.err.println("[GW] " + method + " " + path + " | auth=" + (authHeader != null ? "present" : "missing"));
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim();
@@ -43,8 +45,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             String blacklistKey = "blacklisted:" + token;
 
             return redisTemplate.hasKey(blacklistKey)
+                    .defaultIfEmpty(false)
+                    .onErrorReturn(false)
                     .flatMap(isBlacklisted -> {
                         if (Boolean.TRUE.equals(isBlacklisted)) {
+                            System.err.println("[GW] Token is blacklisted — rejecting");
                             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                             return exchange.getResponse().setComplete();
                         }
@@ -57,6 +62,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                             String userId = claims.getSubject();
                             String userRole = (String) claims.get("role");
+                            System.err.println("[GW] JWT valid — userId=" + userId + " role=" + userRole + " injecting headers");
 
                             ServerHttpRequest.Builder builder = exchange.getRequest().mutate();
                             if (userId != null) builder.header("X-User-Id", userId);
@@ -64,17 +70,26 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                             return chain.filter(exchange.mutate().request(builder.build()).build());
                         } catch (Exception e) {
+                            System.err.println("[GW] JWT parse failed [" + e.getClass().getSimpleName() + "]: " + e.getMessage() + " — rejecting");
                             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                             return exchange.getResponse().setComplete();
                         }
                     });
         }
 
+        System.err.println("[GW] No Bearer token — forwarding without auth headers");
         // No token — let downstream service enforce its own security
         return chain.filter(exchange);
     }
 
-    private boolean isPublicPath(String path) {
+    private boolean isPublicPath(String path, String method) {
+        // Mutating operations always require authentication
+        if ("POST".equals(method) || "PUT".equals(method) || 
+            "PATCH".equals(method) || "DELETE".equals(method)) {
+            // Only auth endpoints remain public for POST
+            return path.startsWith("/api/auth/");
+        }
+
         if (path.startsWith("/api/auth/") || 
             path.startsWith("/api/careers") ||
             path.startsWith("/api/contact-submissions") || 
