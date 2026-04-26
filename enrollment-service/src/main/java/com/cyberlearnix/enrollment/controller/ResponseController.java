@@ -1,13 +1,16 @@
 package com.cyberlearnix.enrollment.controller;
 
 import com.cyberlearnix.enrollment.service.EnrollmentService;
+import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormConfig;
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
+import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormConfigRepository;
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepository;
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentSubmissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -22,6 +25,9 @@ public class ResponseController {
 
     @Autowired
     private EnrollmentFormResponseRepository responseRepository;
+
+    @Autowired
+    private EnrollmentFormConfigRepository configRepository;
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getResponses(@RequestParam(required = false) String view) {
@@ -38,8 +44,34 @@ public class ResponseController {
     }
 
     @PostMapping
-    public ResponseEntity<EnrollmentFormResponse> submitResponse(@RequestBody EnrollmentFormResponse response) {
-        return ResponseEntity.ok(enrollmentService.submitResponse(response));
+    public ResponseEntity<Map<String, Object>> submitResponse(@RequestBody EnrollmentFormResponse response) {
+        EnrollmentFormResponse saved = enrollmentService.submitResponse(response);
+
+        // Tell the frontend whether this form requires payment
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("response", saved);
+
+        configRepository.findById(saved.getFormId()).ifPresent(config -> {
+            result.put("paymentRequired", config.isPaymentEnabled());
+            if (config.isPaymentEnabled()) {
+                result.put("paymentAmount", config.getPaymentAmount());
+                result.put("paymentCurrency", config.getPaymentCurrency());
+                result.put("formResponseId", saved.getId());
+                result.put("message",
+                        "Form submitted. Please complete payment of "
+                                + config.getPaymentCurrency() + " " + config.getPaymentAmount()
+                                + " to confirm your enrollment.");
+            } else {
+                result.put("message", "Form submitted successfully.");
+            }
+        });
+
+        if (!result.containsKey("paymentRequired")) {
+            result.put("paymentRequired", false);
+            result.put("message", "Form submitted successfully.");
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")

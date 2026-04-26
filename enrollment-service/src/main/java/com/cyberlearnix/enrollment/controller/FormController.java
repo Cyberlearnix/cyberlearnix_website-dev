@@ -52,6 +52,7 @@ public class FormController {
         return configRepository.findById(id).map(config -> {
             config.setTitle(updates.getTitle());
             config.setCourseId(updates.getCourseId());
+            if (updates.getEnrolleeRole() != null) config.setEnrolleeRole(updates.getEnrolleeRole());
             config.setFields(updates.getFields());
             config.setDescription(updates.getDescription());
             config.setActive(updates.isActive());
@@ -60,6 +61,9 @@ public class FormController {
             config.setQuiz(updates.isQuiz());
             config.setQuizSettings(updates.getQuizSettings());
             config.setLimitOneResponse(updates.isLimitOneResponse());
+            if (updates.getPaymentEnabled() != null) config.setPaymentEnabled(updates.getPaymentEnabled());
+            if (updates.getPaymentAmount() != null) config.setPaymentAmount(updates.getPaymentAmount());
+            if (updates.getPaymentCurrency() != null) config.setPaymentCurrency(updates.getPaymentCurrency());
             return ResponseEntity.ok(configRepository.save(config));
         }).orElse(ResponseEntity.notFound().build());
     }

@@ -1,98 +1,157 @@
 package com.cyberlearnix.enrollment.controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.cyberlearnix.enrollment.service.PaymentService;
+import com.cyberlearnix.shared.entity.enrollment.PaymentTransaction;
+import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
+import java.util.List;
+import java.util.Map;
+
+/**
+ * PayU Payment Gateway endpoints.
+ *
+ * Flow:
+ *   1.  POST /api/enrollments/payments/initiate          → get PayU form fields + hash
+ *   2.  Browser submits the form to PayU (action URL from step 1)
+ *   3a. PayU browser redirect → POST /api/enrollments/payments/callback/success  (surl)
+ *   3b. PayU browser redirect → POST /api/enrollments/payments/callback/failure  (furl)
+ *   4.  PayU server webhook   → POST /api/enrollments/payments/webhook
+ *   5.  Frontend polls        → GET  /api/enrollments/payments/status/{txnid}
+ *   6.  Frontend polls        → GET  /api/enrollments/payments/status/response/{responseId}
+ */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/enrollments/payments")
 public class PaymentController {
 
-    @Value("${payu.merchant.key}")
-    private String merchantKey;
+    @Autowired
+    private PaymentService paymentService;
 
-    @Value("${payu.merchant.salt}")
-    private String merchantSalt;
+    @Autowired
+    private PaymentTransactionRepository transactionRepository;
 
-    @Value("${server.port}")
-    private String serverPort;
+    // ── 1. Initiate ───────────────────────────────────────────────────────────
 
-    @PostMapping("/payu-payment")
+    /**
+     * Called by the frontend after the student submits the enrollment form.
+     * Returns the PayU form parameters including the signed hash.
+     *
+     * Request body:
+     * {
+     *   "formResponseId": 123,
+     *   "studentName":    "John Doe",
+     *   "studentEmail":   "john@example.com",
+     *   "studentPhone":   "9876543210"   // optional
+     * }
+     */
+    @PostMapping("/initiate")
     public ResponseEntity<?> initiatePayment(@RequestBody Map<String, Object> payload) {
         try {
-            String txnid = "TXN" + System.currentTimeMillis();
-            String amount = String.valueOf(payload.get("amount"));
-            String productInfo = (String) payload.get("courseName");
-            String firstName = (String) payload.get("studentName");
-            String email = (String) payload.get("studentEmail");
-            String phone = (String) payload.get("studentPhone");
+            Long formResponseId = Long.valueOf(String.valueOf(payload.get("formResponseId")));
+            String studentName  = (String) payload.get("studentName");
+            String studentEmail = (String) payload.get("studentEmail");
+            String studentPhone = (String) payload.getOrDefault("studentPhone", "");
 
-            String formId = (String) payload.get("formId");
-            String responseId = String.valueOf(payload.get("enrollmentFormResponseId"));
+            Map<String, Object> result = paymentService.initiatePayment(
+                    formResponseId, studentName, studentEmail, studentPhone);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()));
+        }
+    }
 
-            // Success and Failure URLs (routed through gateway)
-            String surl = "http://localhost:3000/enroll-form.html?status=success&formId=" + formId + "&txnid=" + txnid
-                    + "&email=" + email + "&responseId=" + responseId;
-            String furl = "http://localhost:3000/enroll-form.html?status=failure&formId=" + formId + "&txnid=" + txnid
-                    + "&email=" + email + "&responseId=" + responseId;
+    // ── 2. PayU Success Callback (browser redirect) ───────────────────────────
 
-            // Generate Hash
-            // hash =
-            // sha512(key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5||||||SALT)
-            String hashSequence = String.format("%s|%s|%s|%s|%s|%s|||||||||||%s",
-                    merchantKey, txnid, amount, productInfo, firstName, email, merchantSalt);
-
-            String hash = hashCal("SHA-512", hashSequence);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-
-            Map<String, String> paymentData = new HashMap<>();
-            paymentData.put("key", merchantKey);
-            paymentData.put("txnid", txnid);
-            paymentData.put("amount", amount);
-            paymentData.put("productinfo", productInfo);
-            paymentData.put("firstname", firstName);
-            paymentData.put("email", email);
-            paymentData.put("phone", phone);
-            paymentData.put("surl", surl);
-            paymentData.put("furl", furl);
-            paymentData.put("hash", hash);
-            paymentData.put("action", "https://secure.payu.in/_payment");
-
-            response.put("paymentData", paymentData);
-
-            return ResponseEntity.ok(response);
+    /**
+     * PayU redirects the student's browser here after a SUCCESSFUL payment.
+     * Verifies the hash and marks the transaction + form response as PAID.
+     * Redirects to the frontend with status parameters.
+     */
+    @PostMapping("/callback/success")
+    public ResponseEntity<?> paymentSuccess(@RequestParam Map<String, String> params) {
+        try {
+            Map<String, Object> result = paymentService.handleCallback(params);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of(
                     "success", false,
-                    "message", "Payment initialization failed: " + e.getMessage()));
+                    "message", "Callback processing failed: " + e.getMessage()));
         }
     }
 
-    private String hashCal(String type, String str) {
-        byte[] hashseq = str.getBytes(StandardCharsets.UTF_8);
-        StringBuilder hexString = new StringBuilder();
+    // ── 3. PayU Failure Callback (browser redirect) ───────────────────────────
+
+    /**
+     * PayU redirects the student's browser here after a FAILED/CANCELLED payment.
+     */
+    @PostMapping("/callback/failure")
+    public ResponseEntity<?> paymentFailure(@RequestParam Map<String, String> params) {
         try {
-            MessageDigest algorithm = MessageDigest.getInstance(type);
-            algorithm.reset();
-            algorithm.update(hashseq);
-            byte[] messageDigest = algorithm.digest();
-            for (byte b : messageDigest) {
-                String hex = Integer.toHexString(0xFF & b);
-                if (hex.length() == 1)
-                    hexString.append("0");
-                hexString.append(hex);
-            }
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            Map<String, Object> result = paymentService.handleCallback(params);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "message", "Callback processing failed: " + e.getMessage()));
         }
-        return hexString.toString();
+    }
+
+    // ── 4. PayU Server-to-Server Webhook ──────────────────────────────────────
+
+    /**
+     * PayU calls this directly (not via browser) for guaranteed delivery.
+     * Must return 200 OK; PayU retries on failure.
+     */
+    @PostMapping("/webhook")
+    public ResponseEntity<?> paymentWebhook(@RequestParam Map<String, String> params) {
+        try {
+            paymentService.handleWebhook(params);
+            return ResponseEntity.ok(Map.of("status", "OK"));
+        } catch (Exception e) {
+            // Log but still return 200 to avoid PayU retrying
+            System.err.println("[PayU Webhook] Error: " + e.getMessage());
+            return ResponseEntity.ok(Map.of("status", "OK", "note", e.getMessage()));
+        }
+    }
+
+    // ── 5. Status: by txnid ───────────────────────────────────────────────────
+
+    @GetMapping("/status/{txnid}")
+    public ResponseEntity<?> getStatus(@PathVariable String txnid) {
+        try {
+            return ResponseEntity.ok(paymentService.getPaymentStatus(txnid));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // ── 6. Status: by form response ID ────────────────────────────────────────
+
+    @GetMapping("/status/response/{responseId}")
+    public ResponseEntity<?> getStatusByResponse(@PathVariable Long responseId) {
+        return ResponseEntity.ok(paymentService.getStatusByResponseId(responseId));
+    }
+
+    // ── 7. List transactions for a form (admin) ───────────────────────────────
+
+    @GetMapping("/form/{formId}")
+    public ResponseEntity<List<PaymentTransaction>> getByForm(@PathVariable String formId) {
+        return ResponseEntity.ok(transactionRepository.findByFormId(formId));
+    }
+
+    // ── Legacy endpoint (kept for backward compatibility) ─────────────────────
+
+    /**
+     * @deprecated Use POST /api/enrollments/payments/initiate instead.
+     */
+    @Deprecated
+    @PostMapping("/payu-payment")
+    public ResponseEntity<?> initiatePaymentLegacy(@RequestBody Map<String, Object> payload) {
+        return initiatePayment(payload);
     }
 }
+

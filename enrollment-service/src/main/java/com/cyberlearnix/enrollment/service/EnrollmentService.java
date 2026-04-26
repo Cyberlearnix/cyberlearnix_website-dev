@@ -104,7 +104,8 @@ public class EnrollmentService {
 
         // 4. Save
         response.setCreatedAt(LocalDateTime.now());
-        response.setPaymentStatus("UNPAID");
+        // If this form requires payment, start in PENDING state; else UNPAID (manual/free)
+        response.setPaymentStatus(config.isPaymentEnabled() ? "PENDING" : "UNPAID");
         EnrollmentFormResponse saved = responseRepository.save(response);
 
         // 5. Trigger Confirmation Email

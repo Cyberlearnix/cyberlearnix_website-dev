@@ -240,7 +240,7 @@ public class AuthController {
 
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Only administrators can register students and teachers"));
+                        .body(Map.of("error", "Only administrators can register students, teachers, and institutes"));
             }
 
             String email = registerRequest.getEmail();

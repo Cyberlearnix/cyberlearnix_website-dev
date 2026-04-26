@@ -32,6 +32,8 @@ public class SecurityConfig {
                 }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Spring Boot error dispatcher — must be public or it returns 403 on any controller exception
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/enrollments/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Public: form config lookup (embed on website without login)
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/config").permitAll()
@@ -41,6 +43,15 @@ public class SecurityConfig {
                         // Public: submit enrollment form response
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/responses").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/responses/**").permitAll()
+                        // Public: payment initiation (student starts payment after form submit)
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payments/initiate").permitAll()
+                        // Public: PayU callbacks & webhook (PayU posts to these — no JWT)
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payments/callback/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payments/webhook").permitAll()
+                        // Public: legacy payment endpoint
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payu-payment").permitAll()
+                        // Public: payment status check by student
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/payments/status/**").permitAll()
                         // Public: create a new enrollment submission (application form)
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/submissions").permitAll()
                         // Everything else requires auth

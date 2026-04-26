@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getPath().value();
         String method = exchange.getRequest().getMethod().name();
 
-        // 1. Whitelist Public Endpoints (mutating methods always require auth)
+        // 1. Whitelist Public Endpoints
         if (isPublicPath(path, method)) {
             return chain.filter(exchange);
         }
@@ -83,11 +83,21 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublicPath(String path, String method) {
-        // Mutating operations always require authentication
-        if ("POST".equals(method) || "PUT".equals(method) || 
-            "PATCH".equals(method) || "DELETE".equals(method)) {
-            // Only auth endpoints remain public for POST
-            return path.startsWith("/api/auth/");
+        // Public POST endpoints (no auth required)
+        if ("POST".equals(method)) {
+            if (path.startsWith("/api/auth/")) return true;
+            if (path.equals("/api/enrollments/responses")) return true;
+            if (path.startsWith("/api/enrollments/payments/callback/")) return true;
+            if (path.equals("/api/enrollments/payments/initiate")) return true;
+            if (path.equals("/api/enrollments/payments/webhook")) return true;
+            if (path.equals("/api/enrollments/payu-payment")) return true;
+            if (path.endsWith("/responses") || path.endsWith("/responses/check")) return true;
+            return false;
+        }
+
+        // PUT/PATCH/DELETE always require auth
+        if ("PUT".equals(method) || "PATCH".equals(method) || "DELETE".equals(method)) {
+            return false;
         }
 
         if (path.startsWith("/api/auth/") || 
