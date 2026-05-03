@@ -19,68 +19,68 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['gateway-service:8080']
-    labels:
-      service: 'gateway-service'
+        labels:
+          service: 'gateway-service'
 
   - job_name: 'user-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['user-service:8081']
-    labels:
-      service: 'user-service'
+        labels:
+          service: 'user-service'
 
   - job_name: 'course-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['course-service:8082']
-    labels:
-      service: 'course-service'
+        labels:
+          service: 'course-service'
 
   - job_name: 'enrollment-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['enrollment-service:8083']
-    labels:
-      service: 'enrollment-service'
+        labels:
+          service: 'enrollment-service'
 
   - job_name: 'notification-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['notification-service:8084']
-    labels:
-      service: 'notification-service'
+        labels:
+          service: 'notification-service'
 
   - job_name: 'shop-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['shop-service:8085']
-    labels:
-      service: 'shop-service'
+        labels:
+          service: 'shop-service'
 
   - job_name: 'form-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['form-service:8087']
-    labels:
-      service: 'form-service'
+        labels:
+          service: 'form-service'
 
   - job_name: 'cms-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['cms-service:8089']
-    labels:
-      service: 'cms-service'
+        labels:
+          service: 'cms-service'
 
   - job_name: 'admin-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['admin-service:8090']
-    labels:
-      service: 'admin-service'
+        labels:
+          service: 'admin-service'
 
   - job_name: 'instructor-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['instructor-service:8091']
-    labels:
-      service: 'instructor-service'
+        labels:
+          service: 'instructor-service'
