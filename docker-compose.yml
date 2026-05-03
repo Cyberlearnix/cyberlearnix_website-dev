@@ -101,6 +101,7 @@ services:
       - DB_NAME=cyberlearnix_users
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -134,6 +135,7 @@ services:
       - DB_NAME=cyberlearnix_courses
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
@@ -159,6 +161,7 @@ services:
       - DB_NAME=cyberlearnix_enrollments
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URL=http://user-service:8081
       - NOTIFICATION_SERVICE_URL=http://notification-service:8084
@@ -202,6 +205,7 @@ services:
       - DB_NAME=cyberlearnix_shop
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
@@ -227,6 +231,7 @@ services:
       - DB_NAME=cyberlearnix_forms
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URL=http://user-service:8081
       - NOTIFICATION_SERVICE_URL=http://notification-service:8084
@@ -250,6 +255,7 @@ services:
       - DB_NAME=cyberlearnix_admin
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URL=http://user-service:8081
       - COURSE_SERVICE_URL=http://course-service:8082
@@ -280,6 +286,7 @@ services:
       - DB_NAME=cyberlearnix_instructor
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URL=http://user-service:8081
       - COURSE_SERVICE_URL=http://course-service:8082
@@ -310,6 +317,7 @@ services:
       - DB_NAME=cyberlearnix_cms
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
