@@ -202,10 +202,12 @@ services:
       - DB_NAME=cyberlearnix_shop
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
-      - JWT_SECRET=${JWT_SECRET}      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - JWT_SECRET=${JWT_SECRET}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
-      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}    depends_on:
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
+    depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
@@ -309,6 +311,10 @@ services:
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
       - JWT_SECRET=${JWT_SECRET}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
     depends_on:
       postgres:
         condition: service_healthy
