@@ -3,6 +3,8 @@ package com.cyberlearnix.gateway;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -16,6 +18,8 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -37,7 +41,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
-        System.err.println("[GW] " + method + " " + path + " | auth=" + (authHeader != null ? "present" : "missing"));
+        log.debug("[GW] {} {} | auth={}", method, path, authHeader != null ? "present" : "missing");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim();
@@ -49,7 +53,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     .onErrorReturn(false)
                     .flatMap(isBlacklisted -> {
                         if (Boolean.TRUE.equals(isBlacklisted)) {
-                            System.err.println("[GW] Token is blacklisted — rejecting");
+                            log.warn("[GW] Token is blacklisted — rejecting");
                             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                             return exchange.getResponse().setComplete();
                         }
@@ -62,7 +66,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                             String userId = claims.getSubject();
                             String userRole = (String) claims.get("role");
-                            System.err.println("[GW] JWT valid — userId=" + userId + " role=" + userRole + " injecting headers");
+                            log.debug("[GW] JWT valid — userId={} role={} injecting headers", userId, userRole);
 
                             ServerHttpRequest.Builder builder = exchange.getRequest().mutate();
                             if (userId != null) builder.header("X-User-Id", userId);
@@ -70,14 +74,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                             return chain.filter(exchange.mutate().request(builder.build()).build());
                         } catch (Exception e) {
-                            System.err.println("[GW] JWT parse failed [" + e.getClass().getSimpleName() + "]: " + e.getMessage() + " — rejecting");
+                            log.warn("[GW] JWT parse failed [{}]: {} — rejecting", e.getClass().getSimpleName(), e.getMessage());
                             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                             return exchange.getResponse().setComplete();
                         }
                     });
         }
 
-        System.err.println("[GW] No Bearer token — forwarding without auth headers");
+        log.debug("[GW] No Bearer token — forwarding without auth headers");
         // No token — let downstream service enforce its own security
         return chain.filter(exchange);
     }
