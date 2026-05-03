@@ -324,7 +324,7 @@ jobs:
           PORT="${PORT:-22}"
           ssh -p "${PORT}" -o BatchMode=yes \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "cat > ~/docker-compose.prod.yml" \
+            "mkdir -p ~/cyberlearnix && cat > ~/cyberlearnix/docker-compose.prod.yml" \
             < /tmp/docker-compose.prod.yml
 
       # Pull new images and do a rolling restart of changed containers.
@@ -344,13 +344,13 @@ jobs:
           echo "==> Logging into Docker Hub..."
           echo "${DH_TOKEN}" | docker login -u "${DH_USER}" --password-stdin
 
-          cd ~
+          cd ~/cyberlearnix
 
           COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
           SVCS="gateway-service user-service course-service enrollment-service notification-service shop-service form-service admin-service cms-service instructor-service"
 
           echo "==> Backing up current prod config for rollback if needed..."
-          cp ~/docker-compose.prod.yml ~/docker-compose.prod.yml.bak 2>/dev/null || true
+          cp ~/cyberlearnix/docker-compose.prod.yml ~/cyberlearnix/docker-compose.prod.yml.bak 2>/dev/null || true
 
           echo "==> Pulling latest images from Docker Hub..."
           \$COMPOSE pull \$SVCS
@@ -362,7 +362,7 @@ jobs:
             echo "ERROR: one or more services failed to become healthy — check logs above"
             \$COMPOSE logs --tail=80 \$SVCS
             echo "==> Rolling back to previous image versions..."
-            cp ~/docker-compose.prod.yml.bak ~/docker-compose.prod.yml 2>/dev/null || true
+            cp ~/cyberlearnix/docker-compose.prod.yml.bak ~/cyberlearnix/docker-compose.prod.yml 2>/dev/null || true
             \$COMPOSE up -d --no-build \$SVCS
             echo "==> Rollback complete. Previous version is live."
             exit 1

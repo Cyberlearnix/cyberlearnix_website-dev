@@ -67,23 +67,23 @@ services:
       redis:
         condition: service_started
       user-service:
-        condition: service_started
+        condition: service_healthy
       course-service:
-        condition: service_started
+        condition: service_healthy
       enrollment-service:
-        condition: service_started
+        condition: service_healthy
       notification-service:
-        condition: service_started
+        condition: service_healthy
       shop-service:
-        condition: service_started
+        condition: service_healthy
       form-service:
-        condition: service_started
+        condition: service_healthy
       admin-service:
-        condition: service_started
+        condition: service_healthy
       cms-service:
-        condition: service_started
+        condition: service_healthy
       instructor-service:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -105,6 +105,13 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,6 +135,10 @@ services:
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
       - JWT_SECRET=${JWT_SECRET}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
     depends_on:
       postgres:
         condition: service_healthy
@@ -151,6 +162,10 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URL=http://user-service:8081
       - NOTIFICATION_SERVICE_URL=http://notification-service:8084
+      - PAYU_MERCHANT_KEY=${PAYU_MERCHANT_KEY:-}
+      - PAYU_SALT=${PAYU_SALT:-}
+      - PAYU_BASE_URL=${PAYU_BASE_URL:-https://secure.payu.in}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,6 +182,9 @@ services:
       - "127.0.0.1:8084:8084"
     environment:
       - JWT_SECRET=${JWT_SECRET}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -184,8 +202,10 @@ services:
       - DB_NAME=cyberlearnix_shop
       - DB_USER=postgres
       - DB_PASS=${DB_PASS}
-      - JWT_SECRET=${JWT_SECRET}
-    depends_on:
+      - JWT_SECRET=${JWT_SECRET}      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}    depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped

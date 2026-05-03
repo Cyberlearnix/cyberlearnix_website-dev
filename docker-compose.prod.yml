@@ -8,17 +8,22 @@
 #
 # ── First-time server setup ───────────────────────────────────────────────────
 # 1. Replace YOUR_DOCKERHUB_USERNAME with your actual Docker Hub username.
-# 2. Copy both docker-compose.yml and this file to ~/cyberlearnix/ on the server.
-# 3. Run:
+# 2. Create the deploy directory and copy both compose files to the server:
+#      mkdir -p ~/cyberlearnix
+#      scp docker-compose.yml docker-compose.prod.yml user@server:~/cyberlearnix/
+# 3. Create ~/cyberlearnix/.env from .env.example and fill in real values.
+# 4. Run:
+#      cd ~/cyberlearnix
 #      docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 #      docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
 # ── Useful commands on the server ────────────────────────────────────────────
 # Check status:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+#   cd ~/cyberlearnix && docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 # Tail logs for one service:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f gateway-service
+#   cd ~/cyberlearnix && docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f gateway-service
 # Rollback a single service to a previous SHA (example):
+#   cd ~/cyberlearnix
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 #     up -d --no-deps gateway-service  (after updating the image tag here)
 #
