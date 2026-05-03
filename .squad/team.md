@@ -12,11 +12,11 @@
 
 | Name | Role | Charter | Status |
 |------|------|---------|--------|
-| Vance | Tech Lead | .squad/agents/vance/charter.md | Active |
-| Nova | Backend Engineer | .squad/agents/nova/charter.md | Active |
-| Aria | API & Security Engineer | .squad/agents/aria/charter.md | Active |
-| Kai | DevOps Engineer | .squad/agents/kai/charter.md | Active |
-| Quinn | QA & Test Engineer | .squad/agents/quinn/charter.md | Active |
+| Srini | Tech Lead | .squad/agents/srini/charter.md | Active |
+| Shiva | Backend Engineer | .squad/agents/shiva/charter.md | Active |
+| Sandeep | API & Security Engineer | .squad/agents/sandeep/charter.md | Active |
+| Rohit | DevOps Engineer | .squad/agents/rohit/charter.md | Active |
+| Sneha | QA & Test Engineer | .squad/agents/sneha/charter.md | Active |
 | Scribe | Memory Manager | .squad/agents/scribe/charter.md | Background |
 | Ralph | Issue Triager | .squad/agents/ralph/charter.md | Watch |
 
