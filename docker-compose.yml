@@ -41,13 +41,27 @@ services:
     networks:
       - cyberlearnix-network
 
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: cyberlearnix-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - gateway-service
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
   gateway-service:
     build:
       context: .
       dockerfile: gateway-service/Dockerfile
     container_name: gateway-service
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -67,23 +81,23 @@ services:
       redis:
         condition: service_started
       user-service:
-        condition: service_healthy
+        condition: service_started
       course-service:
-        condition: service_healthy
+        condition: service_started
       enrollment-service:
-        condition: service_healthy
+        condition: service_started
       notification-service:
-        condition: service_healthy
+        condition: service_started
       shop-service:
-        condition: service_healthy
+        condition: service_started
       form-service:
-        condition: service_healthy
+        condition: service_started
       admin-service:
-        condition: service_healthy
+        condition: service_started
       cms-service:
-        condition: service_healthy
+        condition: service_started
       instructor-service:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -118,6 +132,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -144,6 +164,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -172,6 +198,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -188,6 +220,12 @@ services:
       - GMAIL_USER=${GMAIL_USER:-}
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -214,6 +252,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -238,6 +282,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -269,6 +319,12 @@ services:
         condition: service_started
       enrollment-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -300,6 +356,12 @@ services:
         condition: service_started
       enrollment-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -326,6 +388,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
