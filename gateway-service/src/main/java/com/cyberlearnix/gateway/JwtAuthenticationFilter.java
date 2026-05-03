@@ -32,6 +32,16 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // SECURITY: Strip spoofed identity headers unconditionally before ANY routing.
+        // Prevents privilege escalation via X-User-Id / X-User-Role header injection.
+        ServerHttpRequest sanitized = exchange.getRequest().mutate()
+                .headers(h -> {
+                    h.remove("X-User-Id");
+                    h.remove("X-User-Role");
+                })
+                .build();
+        exchange = exchange.mutate().request(sanitized).build();
+
         String path = exchange.getRequest().getPath().value();
         String method = exchange.getRequest().getMethod().name();
 
@@ -107,11 +117,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         if (path.startsWith("/api/auth/") || 
             path.startsWith("/api/careers") ||
             path.startsWith("/api/contact-submissions") || 
-            path.startsWith("/api/shop") ||
-            path.equals("/swagger-ui.html") ||
-            path.startsWith("/swagger-ui/") ||
-            path.startsWith("/v3/api-docs") ||
-            path.contains("/v3/api-docs")) {
+            path.startsWith("/api/shop")) {
             return true;
         }
 

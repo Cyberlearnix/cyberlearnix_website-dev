@@ -17,9 +17,9 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
       httpclient:
-        wiretap: true
+        wiretap: false
       httpserver:
-        wiretap: true
+        wiretap: false
       routes:
         # Auth Service (on user-service)
         - id: auth-service
@@ -160,7 +160,7 @@ server:
   port: 8080
 
 jwt:
-  secret: ${JWT_SECRET:cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant}
+  secret: ${JWT_SECRET}
 
 management:
   endpoints:
@@ -183,11 +183,11 @@ management:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: INFO
-    reactor.netty.http.client: DEBUG
-    reactor.netty.http.server: DEBUG
-    com.cyberlearnix.gateway: DEBUG
+    org.springframework.cloud.gateway: WARN
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: WARN
+    reactor.netty.http.client: WARN
+    reactor.netty.http.server: WARN
+    com.cyberlearnix.gateway: INFO
 
 springdoc:
   swagger-ui:
