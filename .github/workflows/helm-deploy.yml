@@ -26,23 +26,11 @@
 
 name: Deploy to K3s (Helm)
 
+# DISABLED — This workflow is superseded by ArgoCD GitOps (ci-cd.yml).
+# Remove the push trigger so it never runs automatically.
 on:
-  push:
-    branches: [main]
-    paths:
-      # Only trigger when service code or helm chart changes
-      - 'gateway-service/**'
-      - 'user-service/**'
-      - 'course-service/**'
-      - 'enrollment-service/**'
-      - 'notification-service/**'
-      - 'shop-service/**'
-      - 'form-service/**'
-      - 'admin-service/**'
-      - 'cms-service/**'
-      - 'instructor-service/**'
-      - 'shared-lib/**'
-      - 'build.gradle'
+  workflow_dispatch:
+    inputs: {}
       - 'settings.gradle'
       - 'helm/**'
   workflow_dispatch:

@@ -25,9 +25,9 @@
 
 name: Deploy via SSH + Docker Compose
 
+# DISABLED — This workflow is superseded by ArgoCD GitOps (ci-cd.yml).
+# Remove the push trigger so it never runs automatically.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       force_rebuild_all:

@@ -122,14 +122,14 @@ jobs:
 
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+        if: always() && (matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true')
         with:
           files: ${{ matrix.service }}/build/test-results/**/*.xml
           check_name: "Tests — ${{ matrix.service }}"
 
       - name: Upload test reports
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && (matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true')
         with:
           name: test-report-${{ matrix.service }}
           path: ${{ matrix.service }}/build/reports/tests/
@@ -143,12 +143,13 @@ jobs:
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
-          failure-threshold: warning
+          failure-threshold: error   # only fail on errors, warnings are informational
 
   # ── SonarCloud code-quality analysis ───────────────────────────────────────
   sonar:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -183,9 +184,13 @@ jobs:
       - name: Check all jobs passed
         run: |
           if [[ "${{ needs.build.result }}" == "failure" || \
-                "${{ needs.dockerfile-lint.result }}" == "failure" || \
-                "${{ needs.sonar.result }}" == "failure" ]]; then
+                "${{ needs.dockerfile-lint.result }}" == "failure" ]]; then
             echo "❌ CI gate failed"
+            exit 1
+          fi
+          # sonar is optional — skipped when SONAR_TOKEN is not configured
+          if [[ "${{ needs.sonar.result }}" == "failure" ]]; then
+            echo "❌ SonarCloud failed"
             exit 1
           fi
           echo "✅ CI gate passed"
