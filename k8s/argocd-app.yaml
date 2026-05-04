@@ -32,6 +32,7 @@ spec:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - RespectIgnoreDifferences=true
+      - ServerSideApply=true
     retry:
       limit: 3
       backoff:
@@ -44,4 +45,5 @@ spec:
     - group: apps
       kind: Deployment
       jsonPointers:
-        - /spec/replicas   # ignore manual replica scaling
+        - /spec/replicas              # ignore manual replica scaling
+        - /spec/template/spec/serviceAccount  # k8s deprecated alias, auto-added
