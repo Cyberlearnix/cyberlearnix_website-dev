@@ -17,8 +17,8 @@ on:
       - '.squad/**'
 
 permissions:
-  contents: read
-  packages: write
+  contents: write    # deploy job commits updated image tags back to main
+  packages: write    # build-push job pushes images to ghcr.io
 
 jobs:
   # ── 1. Detect which services changed ────────────────────────────────────────
@@ -188,48 +188,44 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 5. Deploy to production server ──────────────────────────────────────────
+  # ── 5. Update image tags in helm/values-k3s.yaml → ArgoCD auto-syncs ────────
   deploy:
-    name: Deploy to production
+    name: Update image tags → ArgoCD syncs
     needs: [detect, build-push]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: write   # needed to commit updated image tags back to main
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        env:
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
+      - uses: actions/checkout@v4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: GHCR_TOKEN,GITHUB_ACTOR,CHANGED_SERVICES
-          script: |
-            set -e
-            cd ~/cyberlearnix
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
 
-            # Auth with ghcr.io
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Update image tags in helm/values-k3s.yaml
+        env:
+          CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
+          for svc in $SERVICES; do
+            # Replace:  service-name: <old-tag>
+            # With:     service-name: <git-sha>
+            sed -i "s|^\(  ${svc}:\).*|\1 ${GIT_SHA}|" helm/values-k3s.yaml
+            echo "  ✓ $svc → $GIT_SHA"
+          done
 
-            # Pull updated images for changed services only
-            SERVICES=$(echo "$CHANGED_SERVICES" | jq -r '.[]' | tr '\n' ' ')
-            for svc in $SERVICES; do
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml pull $svc
-            done
-
-            # Rolling restart — only changed services, no downtime on others
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps $SERVICES
-
-            # Wait and verify health
-            sleep 15
-            for svc in $SERVICES; do
-              STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$svc" 2>/dev/null || echo "running")
-              echo "✓ $svc: $STATUS"
-            done
-
-            # Cleanup old images
-            docker logout ghcr.io
-            docker image prune -f --filter "until=24h"
+      - name: Commit and push updated image tags
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add helm/values-k3s.yaml
+          # Only commit if something changed
+          if git diff --cached --quiet; then
+            echo "No image tag changes to commit"
+          else
+            git commit -m "chore(deploy): update image tags to ${{ github.sha }} [skip ci]"
+            git push origin main
+            echo "✅ Image tags updated — ArgoCD will sync within ~30 seconds"
+          fi

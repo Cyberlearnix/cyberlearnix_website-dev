@@ -19,13 +19,28 @@
 # =============================================================================
 
 global:
-  registry: "cyberlearnix"  # local docker images: cyberlearnix/cyberlearnix-<service>
-  imagePrefix: "cyberlearnix-"  # Docker Hub images are named: user/cyberlearnix-<service>
-  pullPolicy: IfNotPresent  # images are pre-loaded into K3s containerd
+  registry: "ghcr.io/cyberlearnix"  # images: ghcr.io/cyberlearnix/cyberlearnix-<service>
+  imagePrefix: "cyberlearnix-"       # image name: cyberlearnix-{service}
+  pullPolicy: Always                 # always pull latest from ghcr.io
   environment: production
 
-# imagePullSecrets not needed — images imported directly into K3s containerd
-imagePullSecrets: []
+# Pull secret created by k3s-setup.sh (kubectl create secret docker-registry ghcr-secret)
+imagePullSecrets:
+  - name: ghcr-secret
+
+# ── Image tags — updated automatically by CI on every main push ──────────────
+# Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
+images:
+  gateway-service: latest
+  user-service: latest
+  course-service: latest
+  enrollment-service: latest
+  notification-service: latest
+  shop-service: latest
+  form-service: latest
+  admin-service: latest
+  cms-service: latest
+  instructor-service: latest
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
@@ -36,10 +51,10 @@ topology:
 # They are injected via --set appConfig.DB_HOST=$VM_PRIVATE_IP at deploy time.
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: ""               # injected: --set appConfig.DB_HOST=<vm-private-ip>
+  DB_HOST: "postgres"       # k8s service name — resolves within namespace
   DB_PORT: "5432"
   DB_USER: "postgres"
-  REDIS_HOST: ""            # injected: --set appConfig.REDIS_HOST=<vm-private-ip>
+  REDIS_HOST: "redis"       # k8s service name — resolves within namespace
   REDIS_PORT: "6379"
   # K8s DNS — services resolve within the cyberlearnix namespace
   USER_SERVICE_URL: "http://user-service:8081"
@@ -55,18 +70,29 @@ appConfig:
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
 
-# ── Ingress — K3s ships with Traefik v2 ──────────────────────────────────────
+# ── Ingress — NGINX Ingress Controller (installed by k3s-setup.sh) ─────────
 ingress:
-  className: traefik
+  className: nginx
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
   tls:
-    enabled: false          # add cert-manager later when domain is ready
+    enabled: false          # add cert-manager later when DNS is ready
     secretName: ""
 
 # ── External access host ──────────────────────────────────────────────────────
 hosts:
-  api: ""                   # empty = catch-all; replace with domain name when DNS is configured
+  api: "api.cyberlearnix.com"   # replace with your domain
+
+# ── PostgreSQL (deployed as k8s StatefulSet) ──────────────────────────────────
+postgres:
+  enabled: true
+  user: postgres
+  storage: 10Gi
+
+# ── Redis (deployed as k8s Deployment) ───────────────────────────────────────
+redis:
+  enabled: true
 
 # ── Per-service overrides — single replica, HPA/PDB disabled (single node) ──
 services:

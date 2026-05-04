@@ -1,32 +1,26 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/k3s-setup.sh — One-time K3s setup on the Cyberlearnix VM
+# scripts/k3s-setup.sh — One-time k3s + ArgoCD setup on Cyberlearnix VPS
 #
-# Run this ONCE via SSH to set up K3s on your VM.
-# After this, CI/CD (helm-deploy.yml) handles all subsequent deployments.
+# Run ONCE via SSH. After this, every git push triggers ArgoCD to auto-deploy.
 #
-# Prerequisites (set as environment variables before running):
-#   DOCKERHUB_USERNAME   — Docker Hub username
-#   DOCKERHUB_TOKEN      — Docker Hub access token
-#   DB_PASSWORD          — Postgres password (must match docker-compose.yml)
-#   JWT_SECRET           — JWT signing secret (must match running services)
-#   GITHUB_REPO          — e.g. "Cyberlearnix/cyberlearnix_website-dev"
-#   REDIS_PASSWORD       — (optional) Redis password if AUTH is enabled
+# Prerequisites (export before running):
+#   GHCR_TOKEN      — GitHub PAT with read:packages + write:packages
+#   GHCR_USERNAME   — GitHub org/user owning the ghcr.io packages (Cyberlearnix)
+#   DB_PASSWORD     — Postgres password
+#   JWT_SECRET      — JWT signing secret
+#   GITHUB_REPO     — e.g. "Cyberlearnix/cyberlearnix_website-dev"
+#   REDIS_PASSWORD  — (optional) Redis password
 #
-# Usage from your local machine (SSH):
-#   ssh swachvegadev@20.197.21.226 "bash -s" < scripts/k3s-setup.sh
-#
-# Or copy + source on the VM:
-#   scp scripts/k3s-setup.sh swachvegadev@20.197.21.226:~/
-#   ssh swachvegadev@20.197.21.226
-#   export DOCKERHUB_USERNAME=... DB_PASSWORD=... JWT_SECRET=... GITHUB_REPO=...
-#   bash k3s-setup.sh
+# Usage from local Mac:
+#   export GHCR_TOKEN=... GHCR_USERNAME=Cyberlearnix DB_PASSWORD=... JWT_SECRET=... GITHUB_REPO=Cyberlearnix/cyberlearnix_website-dev
+#   ssh root@145.223.22.177 "$(declare -p GHCR_TOKEN GHCR_USERNAME DB_PASSWORD JWT_SECRET GITHUB_REPO); bash -s" < scripts/k3s-setup.sh
 # =============================================================================
 set -euo pipefail
 
 # ── Validation ────────────────────────────────────────────────────────────────
-: "${DOCKERHUB_USERNAME:?Set DOCKERHUB_USERNAME}"
-: "${DOCKERHUB_TOKEN:?Set DOCKERHUB_TOKEN}"
+: "${GHCR_TOKEN:?Set GHCR_TOKEN}"
+: "${GHCR_USERNAME:?Set GHCR_USERNAME}"
 : "${DB_PASSWORD:?Set DB_PASSWORD}"
 : "${JWT_SECRET:?Set JWT_SECRET}"
 : "${GITHUB_REPO:?Set GITHUB_REPO (e.g. Cyberlearnix/cyberlearnix_website-dev)}"
@@ -36,23 +30,33 @@ log() { echo -e "\n\033[1;34m==> $*\033[0m"; }
 ok()  { echo -e "\033[1;32m    ✓ $*\033[0m"; }
 err() { echo -e "\033[1;31m    ✗ $*\033[0m" >&2; exit 1; }
 
-# ── 1. Install K3s ────────────────────────────────────────────────────────────
-log "Installing K3s (lightweight Kubernetes)..."
-if command -v k3s &>/dev/null; then
-  ok "K3s already installed: $(k3s --version | head -1)"
+# ── 0. Stop Docker Compose (frees ports 80, 443, 5432, 6379) ─────────────────
+log "Stopping Docker Compose stack..."
+if [[ -d "$HOME/cyberlearnix" ]] && command -v docker &>/dev/null; then
+  cd "$HOME/cyberlearnix"
+  docker compose down --remove-orphans 2>/dev/null || true
+  ok "Docker Compose stopped"
 else
-  # --write-kubeconfig-mode 644 so helm/kubectl work as non-root
-  curl -sfL https://get.k3s.io | \
-    INSTALL_K3S_EXEC="--write-kubeconfig-mode 644" \
-    sh -s - server
-  ok "K3s installed successfully"
+  ok "Docker Compose not running — skipping"
 fi
 
-# Wait for K3s API server to be ready
-log "Waiting for K3s API server..."
+# ── 1. Install k3s ────────────────────────────────────────────────────────────
+log "Installing k3s (lightweight Kubernetes)..."
+if command -v k3s &>/dev/null; then
+  ok "k3s already installed: $(k3s --version | head -1)"
+else
+  curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik" \
+    sh -s - server
+  # Disable built-in Traefik — nginx ingress controller will be used instead
+  ok "k3s installed successfully"
+fi
+
+# Wait for k3s API server to be ready
+log "Waiting for k3s API server..."
 for i in $(seq 1 30); do
-  if kubectl get nodes &>/dev/null; then
-    ok "K3s API server is ready"
+  if kubectl get nodes &>/dev/null 2>&1; then
+    ok "k3s API server is ready"
     break
   fi
   echo "  waiting... ($i/30)"
@@ -60,18 +64,14 @@ for i in $(seq 1 30); do
 done
 kubectl get nodes
 
-# ── 2. Configure kubeconfig for current user ──────────────────────────────────
+# ── 2. Configure kubeconfig ───────────────────────────────────────────────────
 log "Configuring kubeconfig..."
 mkdir -p "$HOME/.kube"
-sudo cp /etc/rancher/k3s/k3s.yaml "$HOME/.kube/config"
-sudo chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+cp /etc/rancher/k3s/k3s.yaml "$HOME/.kube/config"
 chmod 600 "$HOME/.kube/config"
 export KUBECONFIG="$HOME/.kube/config"
-
-# Persist in shell profile
-if ! grep -q "KUBECONFIG" "$HOME/.bashrc" 2>/dev/null; then
+grep -q "KUBECONFIG" "$HOME/.bashrc" 2>/dev/null || \
   echo 'export KUBECONFIG="$HOME/.kube/config"' >> "$HOME/.bashrc"
-fi
 ok "kubeconfig saved to ~/.kube/config"
 
 # ── 3. Install Helm 3 ─────────────────────────────────────────────────────────
@@ -83,95 +83,107 @@ else
   ok "Helm installed: $(helm version --short)"
 fi
 
-# ── 4. Clone the repo on the VM ──────────────────────────────────────────────
+# ── 4. Install NGINX Ingress Controller ───────────────────────────────────────
+log "Installing NGINX Ingress Controller..."
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx --force-update
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx --create-namespace \
+  --set controller.hostNetwork=true \
+  --set controller.kind=DaemonSet \
+  --set controller.service.type=ClusterIP \
+  --wait --timeout 3m
+ok "NGINX Ingress Controller installed (hostNetwork mode — binds to port 80/443 on VPS)"
+
+# ── 5. Install ArgoCD ─────────────────────────────────────────────────────────
+log "Installing ArgoCD..."
+kubectl create namespace argocd 2>/dev/null || true
+kubectl apply -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+log "Waiting for ArgoCD to be ready..."
+kubectl wait --for=condition=available deployment/argocd-server \
+  -n argocd --timeout=3m
+ok "ArgoCD installed"
+
+# Patch ArgoCD server to use insecure mode (nginx handles TLS externally)
+kubectl patch deployment argocd-server -n argocd \
+  --type='json' \
+  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--insecure"}]'
+
+# ── 6. Clone repo ──────────────────────────────────────────────────────────────
 log "Setting up repo at ~/cyberlearnix..."
 REPO_DIR="$HOME/cyberlearnix"
 if [[ -d "$REPO_DIR/.git" ]]; then
-  ok "Repo already cloned — pulling latest..."
   git -C "$REPO_DIR" pull --ff-only
+  ok "Repo updated"
 else
   git clone "https://github.com/${GITHUB_REPO}.git" "$REPO_DIR"
   ok "Repo cloned to $REPO_DIR"
 fi
 
-# ── 5. Detect VM's private IP (accessible from K3s pods) ─────────────────────
-log "Detecting VM private IP for pod→Docker connectivity..."
-HOST_IP=$(ip route get 1.1.1.1 2>/dev/null | awk 'NR==1{print $7}')
-if [[ -z "$HOST_IP" ]]; then
-  # Fallback: use the IP of the primary interface
-  HOST_IP=$(hostname -I | awk '{print $1}')
-fi
-echo "  VM private IP: $HOST_IP"
-ok "Pods will reach Postgres/Redis at $HOST_IP"
-
-# ── 6. Create namespace ───────────────────────────────────────────────────────
+# ── 7. Create namespaces ──────────────────────────────────────────────────────
 log "Creating 'cyberlearnix' namespace..."
 kubectl create namespace cyberlearnix 2>/dev/null || ok "Namespace already exists"
-
-# Apply PSA labels (restrict pod security)
 kubectl label namespace cyberlearnix \
   pod-security.kubernetes.io/enforce=baseline \
   pod-security.kubernetes.io/warn=restricted \
   --overwrite
 ok "Namespace 'cyberlearnix' configured"
 
-# NOTE: Using 'baseline' not 'restricted' because restricted requires
-# seccompProfile: RuntimeDefault which K3s v1.24 default containerd may not
-# support on all distros. Set to 'restricted' once you verify pods start cleanly.
-
-# ── 7. Create Docker Hub image pull secret ────────────────────────────────────
-log "Creating Docker Hub pull secret..."
-kubectl create secret docker-registry dockerhub-secret \
-  --docker-server=https://index.docker.io/v1/ \
-  --docker-username="$DOCKERHUB_USERNAME" \
-  --docker-password="$DOCKERHUB_TOKEN" \
+# ── 8. Create ghcr.io pull secret ─────────────────────────────────────────────
+log "Creating ghcr.io pull secret..."
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username="$GHCR_USERNAME" \
+  --docker-password="$GHCR_TOKEN" \
   --namespace cyberlearnix \
   --dry-run=client -o yaml | kubectl apply -f -
-ok "Docker Hub pull secret created/updated"
+ok "ghcr.io pull secret created"
 
-# ── 8. Create application secrets ────────────────────────────────────────────
-log "Creating application secrets (DB passwords, JWT)..."
+# ── 9. Create application secrets ────────────────────────────────────────────
+log "Creating application secrets..."
 kubectl create secret generic cyberlearnix-secrets \
   --from-literal=db-password="$DB_PASSWORD" \
   --from-literal=jwt-secret="$JWT_SECRET" \
   --from-literal=redis-password="$REDIS_PASSWORD" \
   --namespace cyberlearnix \
   --dry-run=client -o yaml | kubectl apply -f -
-ok "Application secrets created/updated"
+ok "Application secrets created"
 
-# ── 9. Initial Helm deploy ────────────────────────────────────────────────────
-log "Running initial Helm deploy..."
-cd "$REPO_DIR"
+# ── 10. Apply ArgoCD Application manifest ─────────────────────────────────────
+log "Registering Cyberlearnix app in ArgoCD..."
+kubectl apply -f "$REPO_DIR/k8s/argocd-app.yaml"
+ok "ArgoCD Application registered — will auto-sync from GitHub"
 
-helm upgrade --install cyberlearnix ./helm \
-  -f ./helm/values-k3s.yaml \
-  --set global.registry="$DOCKERHUB_USERNAME" \
-  --set appConfig.DB_HOST="$HOST_IP" \
-  --set appConfig.REDIS_HOST="$HOST_IP" \
-  --namespace cyberlearnix \
-  --create-namespace \
-  --timeout 5m \
-  --wait
+# ── 11. Get ArgoCD admin password ─────────────────────────────────────────────
+log "ArgoCD admin password:"
+ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d)
+echo "  Username: admin"
+echo "  Password: $ARGOCD_PASS"
+echo "  (save this — the secret will be deleted once you log in and change it)"
 
-ok "Initial Helm deploy complete!"
-
-# ── 10. Status summary ────────────────────────────────────────────────────────
-log "Deployment status:"
-kubectl get pods -n cyberlearnix
+# ── 12. Status ────────────────────────────────────────────────────────────────
+log "Status:"
 echo ""
-kubectl get svc -n cyberlearnix
+echo "k3s nodes:"
+kubectl get nodes
 echo ""
-kubectl get ingress -n cyberlearnix
+echo "ArgoCD:"
+kubectl get pods -n argocd
+echo ""
+echo "App sync status (may still be syncing):"
+kubectl get application -n argocd 2>/dev/null || true
+
+VPS_IP=$(curl -s https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')
 
 echo ""
 echo "============================================================"
-echo "  K3s setup complete!"
+echo "  k3s + ArgoCD setup complete!"
 echo ""
-echo "  Gateway service: http://$HOST_IP:80 (via Traefik Ingress)"
-echo "  Or directly:     http://$HOST_IP:8080"
+echo "  ArgoCD UI: http://$VPS_IP/argocd"
+echo "  Username: admin  |  Password: $ARGOCD_PASS"
 echo ""
-echo "  Verify: curl http://$HOST_IP/actuator/health"
-echo ""
-echo "  CI/CD: the helm-deploy.yml workflow will now deploy"
-echo "         automatically on every push to main."
+echo "  From now on: every git push to main triggers ArgoCD"
+echo "  to automatically deploy your updated services."
 echo "============================================================"
