@@ -97,7 +97,7 @@ ok "NGINX Ingress Controller installed (hostNetwork mode — binds to port 80/44
 # ── 5. Install ArgoCD ─────────────────────────────────────────────────────────
 log "Installing ArgoCD..."
 kubectl create namespace argocd 2>/dev/null || true
-kubectl apply -n argocd \
+kubectl apply -n argocd --server-side \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 log "Waiting for ArgoCD to be ready..."
