@@ -31,16 +31,16 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
-  gateway-service: latest
-  user-service: latest
-  course-service: latest
-  enrollment-service: latest
-  notification-service: latest
-  shop-service: latest
-  form-service: latest
-  admin-service: latest
-  cms-service: latest
-  instructor-service: latest
+  gateway-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  user-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  course-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  enrollment-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  notification-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  shop-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  form-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  admin-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  cms-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  instructor-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
@@ -97,7 +97,7 @@ redis:
 # ── Per-service overrides — single replica, HPA/PDB disabled (single node) ──
 services:
 
-  gateway-service:
+  gateway-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8080
     containerPort: 8080
     replicas: 1
@@ -118,7 +118,7 @@ services:
     pdb:
       minAvailable: 0
 
-  user-service:
+  user-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8081
     containerPort: 8081
     replicas: 1
@@ -138,7 +138,7 @@ services:
     pdb:
       minAvailable: 0
 
-  course-service:
+  course-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8082
     containerPort: 8082
     replicas: 1
@@ -158,7 +158,7 @@ services:
     pdb:
       minAvailable: 0
 
-  enrollment-service:
+  enrollment-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8083
     containerPort: 8083
     replicas: 1
@@ -178,7 +178,7 @@ services:
     pdb:
       minAvailable: 0
 
-  notification-service:
+  notification-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8084
     containerPort: 8084
     replicas: 1
@@ -197,7 +197,7 @@ services:
     pdb:
       minAvailable: 0
 
-  shop-service:
+  shop-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8085
     containerPort: 8085
     replicas: 1
@@ -217,7 +217,7 @@ services:
     pdb:
       minAvailable: 0
 
-  form-service:
+  form-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8087
     containerPort: 8087
     replicas: 1
@@ -237,7 +237,7 @@ services:
     pdb:
       minAvailable: 0
 
-  admin-service:
+  admin-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8090
     containerPort: 8090
     replicas: 1
@@ -257,7 +257,7 @@ services:
     pdb:
       minAvailable: 0
 
-  cms-service:
+  cms-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8089
     containerPort: 8089
     replicas: 1
@@ -277,7 +277,7 @@ services:
     pdb:
       minAvailable: 0
 
-  instructor-service:
+  instructor-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
     port: 8091
     containerPort: 8091
     replicas: 1
