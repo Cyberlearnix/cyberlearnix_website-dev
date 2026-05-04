@@ -76,9 +76,11 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
   tls:
-    enabled: false          # add cert-manager later when DNS is ready
-    secretName: ""
+    enabled: true
+    secretName: cyberlearnix-tls
 
 # ── External access host ──────────────────────────────────────────────────────
 hosts:
