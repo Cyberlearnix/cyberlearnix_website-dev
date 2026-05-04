@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +36,9 @@ class TeamsMeetingRepositoryIT {
         m.setGraphMeetingId(graphId);
         m.setOrganizerUserId("organizer-001");
         m.setRecurring(false);
+        m.setStartDateTime(LocalDateTime.of(2025, 6, 1, 10, 0));
+        m.setEndDateTime(LocalDateTime.of(2025, 6, 1, 11, 0));
+        m.setCreatedAt(LocalDateTime.now());
         return m;
     }
 

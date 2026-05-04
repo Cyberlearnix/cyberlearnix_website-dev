@@ -2,10 +2,12 @@ package com.cyberlearnix.user.repository;
 
 import com.cyberlearnix.shared.entity.user.User;
 import com.cyberlearnix.shared.repository.user.UserRepository;
+import com.cyberlearnix.user.service.OtpService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @Transactional
 class UserRepositoryIT {
+
+    /** Mock out OtpService so the context loads without a real Redis connection. */
+    @MockBean
+    private OtpService otpService;
 
     @Autowired
     private UserRepository userRepository;
