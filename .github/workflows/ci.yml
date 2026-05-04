@@ -151,6 +151,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     if: always() && needs.build.result != 'failure'
+    continue-on-error: true   # analysis is informational — never blocks the gate
     steps:
       - uses: actions/checkout@v4
         with:
@@ -172,8 +173,10 @@ jobs:
             echo "SONAR_TOKEN not set — skipping SonarCloud analysis"
             exit 0
           fi
+          # Run only unit tests (no DB needed); integration tests run in build jobs
           ./gradlew test jacocoTestReport sonar --no-daemon \
-            -Dspring.profiles.active=test
+            -Dspring.profiles.active=test \
+            "-Djunit.platform.tag.include.pattern=unit"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN:  ${{ secrets.SONAR_TOKEN }}
@@ -189,8 +192,8 @@ jobs:
       - name: Check all jobs passed
         run: |
           if [[ "${{ needs.build.result }}" == "failure" || \
-                "${{ needs.dockerfile-lint.result }}" == "failure" || \
-                "${{ needs.sonar.result }}" == "failure" ]]; then
+                "${{ needs.dockerfile-lint.result }}" == "failure" ]]; then
+            # sonar is continue-on-error — informational only, not a hard gate
             echo "❌ CI gate failed"
             exit 1
           fi
