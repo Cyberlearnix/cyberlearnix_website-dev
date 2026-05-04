@@ -12,6 +12,15 @@ metadata:
 spec:
   serviceName: postgres
   replicas: 1
+  revisionHistoryLimit: 10
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
   selector:
     matchLabels:
       app.kubernetes.io/name: postgres
@@ -21,6 +30,10 @@ spec:
         app.kubernetes.io/name: postgres
         app.kubernetes.io/part-of: cyberlearnix
     spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
       securityContext:
         runAsUser: 999
         runAsGroup: 999
@@ -29,6 +42,8 @@ spec:
         - name: postgres
           image: postgres:15-alpine
           imagePullPolicy: IfNotPresent
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
           ports:
             - name: postgres
               containerPort: 5432
