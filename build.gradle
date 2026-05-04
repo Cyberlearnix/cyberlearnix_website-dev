@@ -45,7 +45,12 @@ subprojects {
     }
 
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            def groups = System.getProperty('groups', '').trim()
+            if (!groups.isEmpty()) {
+                includeTags groups
+            }
+        }
         finalizedBy jacocoTestReport
     }
 
