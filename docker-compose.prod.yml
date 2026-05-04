@@ -33,40 +33,40 @@
 # the pre-built image from Docker Hub instead of building locally.
 # ──────────────────────────────────────────────────────────────────────────────
 
-# NOTE: This file is overwritten by CI on every deploy with pinned SHA tags.
-#       The :latest tags below are only used on the first manual setup.
+# NOTE: CI pushes :latest and :{git-sha} tags on every deploy.
+#       Images are stored at ghcr.io/cyberlearnix/cyberlearnix-{service}
 
 services:
 
   # ── API Gateway ──────────────────────────────────────────────────────────────
   gateway-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-gateway-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-gateway-service:latest
 
   # ── Core services ────────────────────────────────────────────────────────────
   user-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-user-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-user-service:latest
 
   course-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-course-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-course-service:latest
 
   enrollment-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-enrollment-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-enrollment-service:latest
 
   notification-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-notification-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-notification-service:latest
 
   shop-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-shop-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-shop-service:latest
 
   form-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-form-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-form-service:latest
 
   # ── Admin / instructor ───────────────────────────────────────────────────────
   admin-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-admin-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-admin-service:latest
 
   cms-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-cms-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-cms-service:latest
 
   instructor-service:
-    image: YOUR_DOCKERHUB_USERNAME/cyberlearnix-instructor-service:latest
+    image: ghcr.io/cyberlearnix/cyberlearnix-instructor-service:latest
