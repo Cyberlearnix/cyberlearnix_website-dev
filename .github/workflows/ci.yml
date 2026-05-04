@@ -167,8 +167,11 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build, test & analyze with SonarCloud
-        if: ${{ secrets.SONAR_TOKEN != '' }}
         run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "SONAR_TOKEN not set — skipping SonarCloud analysis"
+            exit 0
+          fi
           ./gradlew test jacocoTestReport sonar --no-daemon \
             -Dspring.profiles.active=test
         env:
