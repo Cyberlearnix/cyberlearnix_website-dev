@@ -235,7 +235,7 @@ jobs:
 
       - name: Commit and push updated image tags
         env:
-          PAT: ${{ secrets.GHCR_TOKEN }}
+          PAT: ${{ secrets.DEPLOY_PAT }}
           RULESET_ID: "15896943"
           REPO: "Cyberlearnix/cyberlearnix_website-dev"
         run: |
