@@ -15,6 +15,12 @@ on:
       - 'docs/**'
       - '*.md'
       - '.squad/**'
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: 'Force build all services'
+        required: false
+        default: 'true'
 
 permissions:
   contents: write    # deploy job commits updated image tags back to main
@@ -72,7 +78,7 @@ jobs:
         run: |
           ALL='["gateway-service","user-service","course-service","enrollment-service","notification-service","shop-service","form-service","admin-service","cms-service","instructor-service"]'
 
-          if [[ "$SHARED_CHANGED" == "true" ]]; then
+          if [[ "$SHARED_CHANGED" == "true" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             MATRIX="$ALL"
           else
             MATRIX=$(echo "$FILTER_OUTPUTS" | jq -c '[to_entries[] | select(.key != "shared" and .value == "true") | .key]')
