@@ -4,6 +4,7 @@ import com.cyberlearnix.shared.entity.user.User;
 import com.cyberlearnix.shared.repository.user.UserRepository;
 import com.cyberlearnix.user.service.EmailNotificationService;
 import com.cyberlearnix.user.service.OtpService;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,13 @@ class UserRepositoryIT {
     @MockBean
     private OtpService otpService;
 
-    /** Mock out EmailNotificationService so the context loads without JavaMailSender. */
+    /** Mock out EmailNotificationService (needs JavaMailSender, excluded in test profile). */
     @MockBean
     private EmailNotificationService emailNotificationService;
+
+    /** Mock out JavaMailSender directly (EmailController also autowires it). */
+    @MockBean
+    private JavaMailSender mailSender;
 
     @Autowired
     private UserRepository userRepository;
