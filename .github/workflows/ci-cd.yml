@@ -113,6 +113,10 @@ jobs:
           cache: gradle
 
       - name: Run unit tests – ${{ matrix.service }}
+        env:
+          JWT_SECRET: ci-test-secret-not-for-production
+          DB_PASS: ci-test-pass
+          SPRING_PROFILES_ACTIVE: test
         run: |
           chmod +x gradlew
           ./gradlew :shared-lib:build :${{ matrix.service }}:test \
@@ -147,6 +151,10 @@ jobs:
           cache: gradle
 
       - name: Run integration tests – ${{ matrix.service }}
+        env:
+          JWT_SECRET: ci-test-secret-not-for-production
+          DB_PASS: ci-test-pass
+          SPRING_PROFILES_ACTIVE: test
         run: |
           chmod +x gradlew
           ./gradlew :shared-lib:build :${{ matrix.service }}:test \
