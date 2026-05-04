@@ -213,7 +213,7 @@ jobs:
       # Build context is the repo root so Gradle multi-project builds resolve
       # shared-lib correctly.  Each service has its own Dockerfile.
       - name: Build and push — ${{ matrix.service }}
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.service }}/Dockerfile
