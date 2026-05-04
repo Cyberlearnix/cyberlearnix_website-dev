@@ -49,7 +49,10 @@ spec:
       jsonPointers:
         - /spec/replicas              # ignore manual replica scaling
         - /spec/template/spec/serviceAccount  # k8s deprecated alias, auto-added
+        - /metadata/annotations/deployment.kubernetes.io~1revision  # set by k8s Deployment controller
     - group: apps
       kind: StatefulSet
       managedFieldsManagers:
         - k3s                         # same k3s-managed annotation on StatefulSets
+      jsonPointers:
+        - /metadata/annotations/deployment.kubernetes.io~1revision
