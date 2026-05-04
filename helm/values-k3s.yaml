@@ -66,7 +66,7 @@ appConfig:
   CMS_SERVICE_URL: "http://cms-service:8089"
   ADMIN_SERVICE_URL: "http://admin-service:8090"
   INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
-  CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://cyberlearnix.com"
+  CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://cyberlearnix.com,https://apis.cyberlearnix.com"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
 
@@ -80,11 +80,11 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   tls:
     enabled: true
-    secretName: cyberlearnix-tls
+    secretName: apis-cyberlearnix-tls
 
 # ── External access host ──────────────────────────────────────────────────────
 hosts:
-  api: "api.cyberlearnix.com"   # replace with your domain
+  api: "apis.cyberlearnix.com"
 
 # ── PostgreSQL (deployed as k8s StatefulSet) ──────────────────────────────────
 postgres:
