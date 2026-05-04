@@ -304,7 +304,7 @@ jobs:
 
       # Add the private key to the SSH agent so scp and ssh below can use it.
       - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
