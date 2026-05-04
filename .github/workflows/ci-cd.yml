@@ -25,6 +25,7 @@ on:
 permissions:
   contents: write    # deploy job commits updated image tags back to main
   packages: write    # build-push job pushes images to ghcr.io
+  checks: write      # mikepenz/action-junit-report needs this
 
 jobs:
   # ── 1. Detect which services changed ────────────────────────────────────────
@@ -113,6 +114,7 @@ jobs:
 
       - name: Run unit tests – ${{ matrix.service }}
         run: |
+          chmod +x gradlew
           ./gradlew :shared-lib:build :${{ matrix.service }}:test \
             -Dgroups=unit \
             --no-daemon --build-cache --continue
@@ -146,6 +148,7 @@ jobs:
 
       - name: Run integration tests – ${{ matrix.service }}
         run: |
+          chmod +x gradlew
           ./gradlew :shared-lib:build :${{ matrix.service }}:test \
             -Dgroups=integration \
             --no-daemon --build-cache --continue
