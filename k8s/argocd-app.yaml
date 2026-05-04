@@ -56,3 +56,4 @@ spec:
         - k3s                         # same k3s-managed annotation on StatefulSets
       jsonPointers:
         - /metadata/annotations/deployment.kubernetes.io~1revision
+        - /spec/volumeClaimTemplates  # VCTs are immutable after creation; k8s adds volumeMode+status
