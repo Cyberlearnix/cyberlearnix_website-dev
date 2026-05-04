@@ -86,11 +86,11 @@ jobs:
             echo "any_changed=true" >> $GITHUB_OUTPUT
           fi
 
-  # ── 2. PR: fast Gradle compile check (no Docker) ────────────────────────────
-  build-check:
-    name: Compile – ${{ matrix.service }}
+  # ── 2. PR: unit tests for changed services ──────────────────────────────────
+  unit-test:
+    name: Unit tests – ${{ matrix.service }}
     needs: detect
-    if: github.event_name == 'pull_request' && needs.detect.outputs.any_changed == 'true'
+    if: needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -105,15 +105,57 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Compile ${{ matrix.service }}
+      - name: Run unit tests – ${{ matrix.service }}
         run: |
-          ./gradlew :shared-lib:build :${{ matrix.service }}:bootJar \
-            -x test --no-daemon --build-cache --quiet
+          ./gradlew :shared-lib:build :${{ matrix.service }}:test \
+            -Dgroups=unit \
+            --no-daemon --build-cache --continue
 
-  # ── 3. Main: Build Docker images and push to ghcr.io ────────────────────────
+      - name: Publish test report
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: '${{ matrix.service }}/build/test-results/test/*.xml'
+          check_name: 'Unit Tests – ${{ matrix.service }}'
+          fail_on_failure: true
+
+  # ── 3. Main only: integration tests (H2 in-memory, no real DB needed) ───────
+  integration-test:
+    name: Integration tests – ${{ matrix.service }}
+    needs: [detect, unit-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.any_changed == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Run integration tests – ${{ matrix.service }}
+        run: |
+          ./gradlew :shared-lib:build :${{ matrix.service }}:test \
+            -Dgroups=integration \
+            --no-daemon --build-cache --continue
+
+      - name: Publish integration test report
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: '${{ matrix.service }}/build/test-results/test/*.xml'
+          check_name: 'Integration Tests – ${{ matrix.service }}'
+          fail_on_failure: true
+
+  # ── 4. Main: Build Docker images and push to ghcr.io ────────────────────────
   build-push:
     name: Docker – ${{ matrix.service }}
-    needs: detect
+    needs: [detect, integration-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
@@ -146,7 +188,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 4. Deploy to production server ──────────────────────────────────────────
+  # ── 5. Deploy to production server ──────────────────────────────────────────
   deploy:
     name: Deploy to production
     needs: [detect, build-push]
