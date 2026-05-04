@@ -30,7 +30,6 @@ name: Deploy to K3s (Helm)
 # Remove the push trigger so it never runs automatically.
 on:
   workflow_dispatch:
-    inputs: {}
       - 'settings.gradle'
       - 'helm/**'
   workflow_dispatch:
