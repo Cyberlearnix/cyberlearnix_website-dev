@@ -2,6 +2,7 @@ package com.cyberlearnix.user.repository;
 
 import com.cyberlearnix.shared.entity.user.User;
 import com.cyberlearnix.shared.repository.user.UserRepository;
+import com.cyberlearnix.user.service.EmailNotificationService;
 import com.cyberlearnix.user.service.OtpService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,10 @@ class UserRepositoryIT {
     /** Mock out OtpService so the context loads without a real Redis connection. */
     @MockBean
     private OtpService otpService;
+
+    /** Mock out EmailNotificationService so the context loads without JavaMailSender. */
+    @MockBean
+    private EmailNotificationService emailNotificationService;
 
     @Autowired
     private UserRepository userRepository;
