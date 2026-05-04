@@ -135,7 +135,7 @@ jobs:
   integration-test:
     name: Integration tests – ${{ matrix.service }}
     needs: [detect, unit-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.any_changed == 'true'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -173,7 +173,7 @@ jobs:
   build-push:
     name: Docker – ${{ matrix.service }}
     needs: [detect, integration-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.any_changed == 'true'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -197,7 +197,7 @@ jobs:
           build-args: |
             SERVICE_NAME=${{ matrix.service }}
             GIT_SHA=${{ github.sha }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
           tags: |
             ghcr.io/cyberlearnix/cyberlearnix-${{ matrix.service }}:latest
             ghcr.io/cyberlearnix/cyberlearnix-${{ matrix.service }}:${{ github.sha }}
@@ -209,7 +209,7 @@ jobs:
   deploy:
     name: Update image tags → ArgoCD syncs
     needs: [detect, build-push]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.any_changed == 'true'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     environment: production
     permissions:
