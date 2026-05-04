@@ -111,11 +111,10 @@ spec:
             failureThreshold: 3
 
           # Readiness: is the service ready for traffic?
-          # Do NOT send traffic until DB/Redis connections are established.
-          # NOTE: /actuator/health/readiness is blocked by security (only /actuator/health is permitAll)
+          # /actuator/health/readiness returns 200 when the app is ready (excludes mail/external checks)
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/readiness
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
