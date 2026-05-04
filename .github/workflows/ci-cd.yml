@@ -227,9 +227,9 @@ jobs:
         run: |
           SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
           for svc in $SERVICES; do
-            # Replace:  service-name: <old-tag>
-            # With:     service-name: <git-sha>
-            sed -i "s|^\(  ${svc}:\).*|\1 ${GIT_SHA}|" helm/values-k3s.yaml
+            # Replace ONLY lines in the images: section (value is a 40-char hex sha)
+            # This avoids corrupting the services: block where the same key appears without a sha value
+            sed -i "s|^\(  ${svc}:\s*\)[0-9a-f]\{40\}\s*$|\1 ${GIT_SHA}|" helm/values-k3s.yaml
             echo "  ✓ $svc → $GIT_SHA"
           done
 

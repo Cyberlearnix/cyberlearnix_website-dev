@@ -99,7 +99,7 @@ redis:
 # ── Per-service overrides — single replica, HPA/PDB disabled (single node) ──
 services:
 
-  gateway-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  gateway-service:
     port: 8080
     containerPort: 8080
     replicas: 1
@@ -120,7 +120,7 @@ services:
     pdb:
       minAvailable: 0
 
-  user-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  user-service:
     port: 8081
     containerPort: 8081
     replicas: 1
@@ -140,7 +140,7 @@ services:
     pdb:
       minAvailable: 0
 
-  course-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  course-service:
     port: 8082
     containerPort: 8082
     replicas: 1
@@ -160,7 +160,7 @@ services:
     pdb:
       minAvailable: 0
 
-  enrollment-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  enrollment-service:
     port: 8083
     containerPort: 8083
     replicas: 1
@@ -180,7 +180,7 @@ services:
     pdb:
       minAvailable: 0
 
-  notification-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  notification-service:
     port: 8084
     containerPort: 8084
     replicas: 1
@@ -199,7 +199,7 @@ services:
     pdb:
       minAvailable: 0
 
-  shop-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  shop-service:
     port: 8085
     containerPort: 8085
     replicas: 1
@@ -219,7 +219,7 @@ services:
     pdb:
       minAvailable: 0
 
-  form-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  form-service:
     port: 8087
     containerPort: 8087
     replicas: 1
@@ -239,7 +239,7 @@ services:
     pdb:
       minAvailable: 0
 
-  admin-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  admin-service:
     port: 8090
     containerPort: 8090
     replicas: 1
@@ -259,7 +259,7 @@ services:
     pdb:
       minAvailable: 0
 
-  cms-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  cms-service:
     port: 8089
     containerPort: 8089
     replicas: 1
@@ -279,7 +279,7 @@ services:
     pdb:
       minAvailable: 0
 
-  instructor-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  instructor-service:
     port: 8091
     containerPort: 8091
     replicas: 1
