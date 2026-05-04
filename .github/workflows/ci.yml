@@ -88,14 +88,12 @@ jobs:
             changed: ${{ needs.changes.outputs.cms }}
           - service: instructor-service
             changed: ${{ needs.changes.outputs.instructor }}
-    # Run if this service changed OR if shared-lib changed (all affected)
-    if: |
-      matrix.changed == 'true' ||
-      needs.changes.outputs.shared-lib == 'true'
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 21
+        # matrix context is only valid inside steps, not at job-level if
+        if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -103,17 +101,21 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
+        if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
         run: chmod +x gradlew
 
       - name: Build ${{ matrix.service }}
+        if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
         run: ./gradlew :${{ matrix.service }}:build --no-daemon -x test
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
 
       - name: Run unit tests — ${{ matrix.service }}
+        if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
         run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Djunit.platform.tag.include.pattern=unit
 
       - name: Run integration tests — ${{ matrix.service }}
+        if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
         run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Djunit.platform.tag.include.pattern=integration
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false"
