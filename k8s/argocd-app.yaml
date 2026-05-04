@@ -40,10 +40,16 @@ spec:
         factor: 2
         maxDuration: 3m
 
-  # ── Health checks ───────────────────────────────────────────────────────────
+  # ── Ignore fields that k8s/k3s controllers manage automatically ─────────────
   ignoreDifferences:
     - group: apps
       kind: Deployment
+      managedFieldsManagers:
+        - k3s                         # k3s sets deployment.kubernetes.io/revision
       jsonPointers:
         - /spec/replicas              # ignore manual replica scaling
         - /spec/template/spec/serviceAccount  # k8s deprecated alias, auto-added
+    - group: apps
+      kind: StatefulSet
+      managedFieldsManagers:
+        - k3s                         # same k3s-managed annotation on StatefulSets
