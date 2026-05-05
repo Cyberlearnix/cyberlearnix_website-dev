@@ -9,6 +9,7 @@ import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormConfigReposit
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepository;
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentRepository;
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentSubmissionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -47,6 +49,13 @@ class EnrollmentServiceVerifyPaymentTest {
 
     @InjectMocks
     private EnrollmentService enrollmentService;
+
+    @BeforeEach
+    void setUp() {
+        // @Lazy @Autowired self is not injected by Mockito — set it manually so
+        // self.bulkAssign() calls in verifyPayment() work without Spring context.
+        ReflectionTestUtils.setField(enrollmentService, "self", enrollmentService);
+    }
 
     private EnrollmentFormResponse buildFormResponse(String email, String formId) {
         EnrollmentFormResponse r = new EnrollmentFormResponse();
