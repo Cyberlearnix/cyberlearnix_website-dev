@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payu-payment").permitAll()
                         // Public: payment status check by student
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/payments/status/**").permitAll()
+                        // Public: coupon validate (students check discount without auth)
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/coupons/validate").permitAll()
                         // Public: create a new enrollment submission (application form)
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/submissions").permitAll()
                         // Everything else requires auth

@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
 import com.cyberlearnix.shared.entity.enrollment.PaymentTransaction;
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormConfigRepository;
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepository;
+import com.cyberlearnix.enrollment.client.CourseServiceClient;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +43,12 @@ public class PaymentService {
     @Autowired
     private EnrollmentFormConfigRepository configRepository;
 
+    @Autowired
+    private CourseServiceClient courseServiceClient;
+
+    @Autowired
+    private CouponService couponService;
+
     // ── Initiate Payment ──────────────────────────────────────────────────────
 
     /**
@@ -50,7 +57,7 @@ public class PaymentService {
      */
     @Transactional
     public Map<String, Object> initiatePayment(Long formResponseId, String studentName,
-            String studentEmail, String studentPhone) {
+            String studentEmail, String studentPhone, String couponCode) {
 
         // 1. Fetch response & form config
         EnrollmentFormResponse response = responseRepository.findById(formResponseId)
@@ -61,40 +68,97 @@ public class PaymentService {
         if (!config.isPaymentEnabled()) {
             throw new RuntimeException("This form does not require payment.");
         }
-        if (config.getPaymentAmount() == null || config.getPaymentAmount() <= 0) {
-            throw new RuntimeException("Payment amount is not configured for this form.");
+
+        // Resolve payment amount: use stored amount, or fall back to course's finalPrice
+        Double resolvedAmount = config.getPaymentAmount();
+        if (resolvedAmount == null || resolvedAmount <= 0) {
+            if (config.getCourseId() != null) {
+                try {
+                    Map<String, Object> coursePrice = courseServiceClient.getCoursePrice(config.getCourseId());
+                    Object fp = coursePrice.get("finalPrice");
+                    if (fp != null) {
+                        resolvedAmount = ((Number) fp).doubleValue();
+                    }
+                } catch (Exception e) {
+                    // Feign call failed — cannot determine amount
+                }
+            }
+        }
+        if (resolvedAmount == null || resolvedAmount <= 0) {
+            throw new RuntimeException("Payment amount is not configured for this form. Please ask the admin to set the course price.");
+        }
+
+        // Apply coupon discount if a user-supplied code was provided
+        double discountAmount = 0.0;
+        String appliedCoupon = null;
+        if (couponCode != null && !couponCode.isBlank()) {
+            discountAmount = couponService.applyAndConsume(couponCode, resolvedAmount);
+            resolvedAmount = Math.max(1.0, resolvedAmount - discountAmount);
+            appliedCoupon = couponCode.trim().toUpperCase();
+        } else if (config.isDiscountEnabled() && config.getDiscountValue() != null && config.getDiscountValue() > 0) {
+            // Form-level discount: auto-apply from form config when admin has enabled it
+            double formDiscount;
+            if ("PERCENTAGE".equalsIgnoreCase(config.getDiscountType())) {
+                formDiscount = resolvedAmount * config.getDiscountValue() / 100.0;
+            } else {
+                // FLAT discount
+                formDiscount = Math.min(config.getDiscountValue(), resolvedAmount - 1);
+            }
+            formDiscount = Math.max(0, formDiscount);
+            discountAmount = parseDouble2dp(formDiscount);
+            resolvedAmount = Math.max(1.0, resolvedAmount - discountAmount);
+            appliedCoupon = config.getDiscountCouponCode() != null
+                    ? config.getDiscountCouponCode() : "FORM-DISCOUNT";
         }
 
         // 2. Build transaction record
-        String txnid = "TXN" + System.currentTimeMillis();
-        String amount = String.format("%.2f", config.getPaymentAmount());
+        // BUG-002: Use UUID-based txnid to prevent timestamp collisions under concurrent load
+        String txnid = "TXN-" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+        String amount = String.format("%.2f", resolvedAmount);
         String currency = config.getPaymentCurrency() != null ? config.getPaymentCurrency() : "INR";
-        String productInfo = config.getTitle();
+
+        // productInfo must not contain pipe '|' — it's used verbatim in the hash
+        String productInfo = sanitizeForHash(config.getTitle() != null ? config.getTitle() : "Enrollment");
+
+        // PayU requires a 10-digit phone; use fallback if blank/invalid
+        String phone = (studentPhone != null && studentPhone.replaceAll("\\D", "").length() >= 10)
+                ? studentPhone.replaceAll("\\D", "").substring(0, 10)
+                : "0000000000";
+
+        // firstname must not contain pipe characters
+        String firstname = sanitizeForHash(studentName != null ? studentName : "Student");
+        String email = studentEmail != null ? studentEmail.trim() : "";
 
         PaymentTransaction txn = new PaymentTransaction();
         txn.setTxnid(txnid);
         txn.setFormResponseId(formResponseId);
         txn.setFormId(response.getFormId());
-        txn.setStudentEmail(studentEmail);
-        txn.setStudentName(studentName);
-        txn.setStudentPhone(studentPhone);
-        txn.setAmount(config.getPaymentAmount());
+        txn.setStudentEmail(email);
+        txn.setStudentName(firstname);
+        txn.setStudentPhone(phone);
+        txn.setAmount(resolvedAmount);
         txn.setCurrency(currency);
         txn.setProductInfo(productInfo);
         txn.setStatus("PENDING");
         txn.setInitiatedAt(LocalDateTime.now());
+        if (appliedCoupon != null) {
+            txn.setCouponCode(appliedCoupon);
+            txn.setDiscountAmount(discountAmount);
+        }
         transactionRepository.save(txn);
 
-        // 3. Build callback URLs
+        // 3. Build callback URLs (browser redirects — must be reachable by the student's browser)
+        String encodedEmail = java.net.URLEncoder.encode(email, StandardCharsets.UTF_8);
         String surl = frontendUrl + "/enroll-form.html?status=success&formId=" + response.getFormId()
-                + "&txnid=" + txnid + "&email=" + studentEmail + "&responseId=" + formResponseId;
+                + "&txnid=" + txnid + "&email=" + encodedEmail + "&responseId=" + formResponseId;
         String furl = frontendUrl + "/enroll-form.html?status=failure&formId=" + response.getFormId()
-                + "&txnid=" + txnid + "&email=" + studentEmail + "&responseId=" + formResponseId;
+                + "&txnid=" + txnid + "&email=" + encodedEmail + "&responseId=" + formResponseId;
 
         // 4. Generate PayU hash
         // Format: key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5||||||SALT
+        // After udf5 there are 6 additional empty fields before SALT (11 pipes total after email)
         String hashString = merchantKey + "|" + txnid + "|" + amount + "|" + productInfo + "|"
-                + studentName + "|" + studentEmail + "|||||||||||" + merchantSalt;
+                + firstname + "|" + email + "|||||||||||" + merchantSalt;
         String hash = sha512(hashString);
 
         // 5. Build payment data map
@@ -103,9 +167,9 @@ public class PaymentService {
         paymentData.put("txnid", txnid);
         paymentData.put("amount", amount);
         paymentData.put("productinfo", productInfo);
-        paymentData.put("firstname", studentName);
-        paymentData.put("email", studentEmail);
-        paymentData.put("phone", studentPhone != null ? studentPhone : "");
+        paymentData.put("firstname", firstname);
+        paymentData.put("email", email);
+        paymentData.put("phone", phone);
         paymentData.put("surl", surl);
         paymentData.put("furl", furl);
         paymentData.put("hash", hash);
@@ -240,6 +304,20 @@ public class PaymentService {
     }
 
     // ── Util ──────────────────────────────────────────────────────────────────
+
+    /** Round a double to 2 decimal places. */
+    private double parseDouble2dp(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    /**
+     * Remove pipe '|' characters from a string field used in PayU hash computation.
+     * A pipe in productinfo/firstname would corrupt the hash string.
+     */
+    private String sanitizeForHash(String value) {
+        if (value == null) return "";
+        return value.replace("|", " ").trim();
+    }
 
     private String sha512(String input) {
         try {

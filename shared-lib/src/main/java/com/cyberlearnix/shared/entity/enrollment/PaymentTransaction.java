@@ -62,6 +62,12 @@ public class PaymentTransaction {
     @Column(name = "bank_ref_num", length = 100)
     private String bankRefNum;
 
+    @Column(name = "coupon_code", length = 50)
+    private String couponCode;
+
+    @Column(name = "discount_amount")
+    private Double discountAmount;
+
     @Column(name = "hash_verified")
     private boolean hashVerified = false;
 

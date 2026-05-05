@@ -80,7 +80,10 @@ public class EnrollmentController {
     }
 
     @PatchMapping("/progress")
-    public ResponseEntity<?> updateProgressByStudentAndCourse(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> updateProgressByStudentAndCourse(
+            @RequestBody Map<String, Object> body,
+            @RequestHeader(value = "X-User-Id", required = false) String callerId,
+            @RequestHeader(value = "X-User-Role", required = false) String callerRole) {
         String studentId = (String) body.get("studentId");
         Long courseId = body.get("courseId") instanceof Number
                 ? ((Number) body.get("courseId")).longValue()
@@ -89,6 +92,15 @@ public class EnrollmentController {
                 ? ((Number) body.get("progress")).intValue()
                 : null;
         String completedAt = (String) body.get("completedAt");
+
+        // SEC-001: Only allow admin, teacher/dual, or the student themselves
+        boolean isAdmin = "admin".equals(callerRole);
+        boolean isTeacher = "teacher".equals(callerRole) || "dual".equals(callerRole);
+        boolean isSelf = studentId != null && studentId.equals(callerId);
+        if (!isAdmin && !isTeacher && !isSelf) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access denied: you can only update your own progress"));
+        }
 
         return enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId).map(enrollment -> {
             if (progress != null) enrollment.setProgress(progress);
@@ -99,7 +111,19 @@ public class EnrollmentController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createEnrollment(@RequestBody EnrollmentRequest request) {
+    public ResponseEntity<?> createEnrollment(@RequestBody EnrollmentRequest request,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        // SEC-002: Only admins may create direct enrollments (normal flow goes through payment/verification)
+        if (!"admin".equals(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Only admins can create direct enrollments"));
+        }
+        // BUG-003: Prevent duplicate enrollments
+        if (enrollmentRepository.findByStudentIdAndCourseId(request.getStudentId(), request.getCourseId()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Student is already enrolled in this course"));
+        }
+
         Enrollment enrollment = new Enrollment();
         enrollment.setStudentId(request.getStudentId());
         enrollment.setCourseId(request.getCourseId());

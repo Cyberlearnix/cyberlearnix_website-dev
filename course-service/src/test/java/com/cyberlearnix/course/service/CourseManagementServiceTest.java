@@ -15,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -87,5 +89,47 @@ class CourseManagementServiceTest {
                 .thenReturn(Map.of("canEditCourses", Boolean.TRUE));
 
         assertThat(service.canEditCourse(10L, "user-6")).isTrue();
+    }
+
+    // ── canDeleteCourse (BUG-004) ─────────────────────────────────────────────
+
+    // Guarantees: ownership check happens first — unassigned teacher is denied even before permission lookup
+    @Test
+    void canDeleteCourse_returnsFalse_whenTeacherNotAssignedToCourse() {
+        when(courseTeacherRepository.existsByCourseIdAndTeacherId(50L, "user-7")).thenReturn(false);
+
+        assertThat(service.canDeleteCourse(50L, "user-7")).isFalse();
+        verify(userServiceClient, never()).getTeacherPermission("user-7");
+    }
+
+    // Guarantees: teacher assigned to the course and holding delete permission is allowed
+    @Test
+    void canDeleteCourse_returnsTrue_whenTeacherAssignedAndHasDeletePermission() {
+        when(courseTeacherRepository.existsByCourseIdAndTeacherId(50L, "user-8")).thenReturn(true);
+        when(userServiceClient.getTeacherPermission("user-8"))
+                .thenReturn(Map.of("canDeleteCourses", Boolean.TRUE));
+
+        assertThat(service.canDeleteCourse(50L, "user-8")).isTrue();
+    }
+
+    // Guarantees: teacher assigned to the course but lacking delete permission is denied
+    @Test
+    void canDeleteCourse_returnsFalse_whenTeacherAssignedButLacksDeletePermission() {
+        when(courseTeacherRepository.existsByCourseIdAndTeacherId(50L, "user-9")).thenReturn(true);
+        when(userServiceClient.getTeacherPermission("user-9"))
+                .thenReturn(Map.of("canDeleteCourses", Boolean.FALSE));
+
+        assertThat(service.canDeleteCourse(50L, "user-9")).isFalse();
+    }
+
+    // Guarantees: BUG-004 regression — a teacher with global canDeleteCourses=true but NOT assigned to this
+    // specific course is still denied (ownership must be verified before the global permission flag)
+    @Test
+    void canDeleteCourse_returnsFalse_whenTeacherHasGlobalPermissionButIsNotAssignedToCourse() {
+        when(courseTeacherRepository.existsByCourseIdAndTeacherId(99L, "user-10")).thenReturn(false);
+
+        // Even if we were to stub global permission as true, the short-circuit must prevent the call
+        assertThat(service.canDeleteCourse(99L, "user-10")).isFalse();
+        verify(userServiceClient, never()).getTeacherPermission("user-10");
     }
 }

@@ -47,6 +47,12 @@ public class SecurityConfig {
                         // Public access for forms
                         .requestMatchers(HttpMethod.GET, "/api/forms/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/forms/*/public/**").permitAll()
+                        // Public access for payment callbacks (called by PayU)
+                        .requestMatchers("/api/forms/payments/callback/**").permitAll()
+                        .requestMatchers("/api/forms/payments/webhook").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/forms/payments/price/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/forms/payments/initiate").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/forms/payments/status/**").permitAll()
                         // Public access for responses (submission and check)
                         .requestMatchers(HttpMethod.POST, "/api/forms/{formId}/responses").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/forms/{formId}/responses/check").permitAll()

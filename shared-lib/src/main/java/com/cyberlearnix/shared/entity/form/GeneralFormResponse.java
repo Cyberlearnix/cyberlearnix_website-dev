@@ -26,6 +26,15 @@ public class GeneralFormResponse {
 
     private Double score;
 
+    @Column(name = "payment_status")
+    private String paymentStatus = "NOT_REQUIRED";
+
+    @Column(name = "transaction_id")
+    private String transactionId;
+
+    @Column(name = "amount_paid")
+    private Double amountPaid;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

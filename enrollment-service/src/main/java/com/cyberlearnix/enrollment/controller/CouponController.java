@@ -1,0 +1,96 @@
+package com.cyberlearnix.enrollment.controller;
+
+import com.cyberlearnix.shared.entity.enrollment.Coupon;
+import com.cyberlearnix.enrollment.service.CouponService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+/**
+ * REST endpoints for coupon / discount management.
+ *
+ * Admin endpoints (require JWT):
+ *   POST   /api/enrollments/coupons           — create coupon
+ *   GET    /api/enrollments/coupons           — list all coupons
+ *   DELETE /api/enrollments/coupons/{id}      — deactivate coupon
+ *
+ * Public endpoint (no auth):
+ *   POST   /api/enrollments/coupons/validate  — validate code and preview discount
+ */
+@RestController
+@RequestMapping("/api/enrollments/coupons")
+public class CouponController {
+
+    @Autowired
+    private CouponService couponService;
+
+    // ── Admin: create ─────────────────────────────────────────────────────────
+
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        try {
+            String code = (String) body.get("code");
+            String description = (String) body.getOrDefault("description", "");
+            String typeStr = (String) body.get("discountType");
+            Double value = body.get("discountValue") != null
+                    ? ((Number) body.get("discountValue")).doubleValue() : null;
+            Integer maxUsages = body.get("maxUsages") != null
+                    ? ((Number) body.get("maxUsages")).intValue() : null;
+            LocalDateTime expiresAt = null;
+            if (body.get("expiresAt") != null) {
+                expiresAt = LocalDateTime.parse((String) body.get("expiresAt"));
+            }
+
+            if (code == null || code.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Coupon code is required."));
+            }
+            if (typeStr == null || value == null) {
+                return ResponseEntity.badRequest().body(Map.of("message", "discountType and discountValue are required."));
+            }
+
+            Coupon.DiscountType type = Coupon.DiscountType.valueOf(typeStr.toUpperCase());
+            Coupon saved = couponService.createCoupon(code, description, type, value, maxUsages, expiresAt);
+            return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ── Admin: list ───────────────────────────────────────────────────────────
+
+    @GetMapping
+    public ResponseEntity<?> list() {
+        return ResponseEntity.ok(couponService.listAll());
+    }
+
+    // ── Admin: deactivate ─────────────────────────────────────────────────────
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deactivate(@PathVariable Long id) {
+        try {
+            couponService.deactivate(id);
+            return ResponseEntity.ok(Map.of("message", "Coupon deactivated."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ── Public: validate ──────────────────────────────────────────────────────
+
+    @PostMapping("/validate")
+    public ResponseEntity<?> validate(@RequestBody Map<String, Object> body) {
+        String code = (String) body.get("code");
+        double orderTotal = body.get("orderTotal") != null
+                ? ((Number) body.get("orderTotal")).doubleValue() : 0.0;
+        if (code == null || code.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Coupon code is required."));
+        }
+        Map<String, Object> result = couponService.validate(code, orderTotal);
+        return ResponseEntity.ok(result);
+    }
+}

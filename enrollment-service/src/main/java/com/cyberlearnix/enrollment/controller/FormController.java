@@ -64,6 +64,12 @@ public class FormController {
             if (updates.getPaymentEnabled() != null) config.setPaymentEnabled(updates.getPaymentEnabled());
             if (updates.getPaymentAmount() != null) config.setPaymentAmount(updates.getPaymentAmount());
             if (updates.getPaymentCurrency() != null) config.setPaymentCurrency(updates.getPaymentCurrency());
+            // Discount fields
+            config.setDiscountEnabled(updates.getDiscountEnabled());
+            if (updates.getDiscountType() != null) config.setDiscountType(updates.getDiscountType());
+            if (updates.getDiscountValue() != null) config.setDiscountValue(updates.getDiscountValue());
+            if (updates.getDiscountLabel() != null) config.setDiscountLabel(updates.getDiscountLabel());
+            if (updates.getDiscountCouponCode() != null) config.setDiscountCouponCode(updates.getDiscountCouponCode());
             return ResponseEntity.ok(configRepository.save(config));
         }).orElse(ResponseEntity.notFound().build());
     }

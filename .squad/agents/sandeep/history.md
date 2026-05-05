@@ -16,3 +16,22 @@
 ### First Session
 - Security infrastructure already in place
 - No new security changes yet via Squad
+
+## Learnings
+
+### [2026-05-05] Post-Fix Security Audit — SEC-001 through SEC-004
+
+**What was verified:**
+- `@EnableMethodSecurity` is present on `enrollment-service/SecurityConfig.java` — `@PreAuthorize` annotations are active.
+- Gateway `JwtAuthenticationFilter` correctly strips X-User-Id/X-User-Role before injection (anti-spoofing), then injects fresh values from validated JWT claims. Defense works.
+- Shared `JwtTokenFilter` maps JWT claim `role: "admin"` → `SimpleGrantedAuthority("ROLE_ADMIN")` — satisfies `hasRole('ADMIN')` in @PreAuthorize correctly.
+- SEC-001/002/003/004 fixes are all correctly implemented and structurally sound.
+
+**Blockers found (not yet fixed):**
+- `PUT /api/enrollments/{id}` — IDOR, no role/identity guard. Any authenticated user can overwrite any enrollment record.
+- `CouponController` create/list/delete endpoints — `authenticated()` only, no admin role check. Students can manage coupons.
+
+**Patterns to remember:**
+- Always check both `@EnableMethodSecurity` AND the `JwtTokenFilter` role authority format (`ROLE_` prefix) when auditing @PreAuthorize.
+- Local exception handlers in controllers bypass `GlobalExceptionHandler` — audit each catch block individually for message leakage.
+- Gateway `isPublicPath()` has a GET-whitelist gap for `/api/enrollments/` paths — not everything under that prefix is truly public, relying on downstream auth as second line.

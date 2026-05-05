@@ -1,6 +1,7 @@
 package com.cyberlearnix.shared.entity.enrollment;
 
 import com.cyberlearnix.shared.util.RawJsonDeserializer;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -61,10 +62,46 @@ public class EnrollmentFormConfig {
     }
 
     @Column(name = "payment_amount")
+    @JsonAlias("coursePrice")
     private Double paymentAmount;
+
+    /** Also expose as coursePrice in JSON for frontend compatibility. */
+    public Double getCoursePrice() {
+        return paymentAmount;
+    }
+
+    /** Accept coursePrice from admin UI JSON body. */
+    public void setCoursePrice(Double price) {
+        this.paymentAmount = price;
+    }
 
     @Column(name = "payment_currency", length = 10)
     private String paymentCurrency = "INR";
+
+    // ── Discount / Coupon ──────────────────────────────────────────────────────
+    /** Whether a form-level discount is active and visible to students. */
+    @Column(name = "discount_enabled", columnDefinition = "boolean default false")
+    private Boolean discountEnabled = false;
+
+    public boolean isDiscountEnabled() {
+        return Boolean.TRUE.equals(discountEnabled);
+    }
+
+    /** PERCENTAGE or FLAT */
+    @Column(name = "discount_type", length = 20)
+    private String discountType;
+
+    /** Discount value: percentage (0-100) or flat amount in INR. */
+    @Column(name = "discount_value")
+    private Double discountValue;
+
+    /** Optional label shown to student e.g. "Early Bird", "Special Offer". */
+    @Column(name = "discount_label", length = 100)
+    private String discountLabel;
+
+    /** Auto-generated coupon code exposed to students. */
+    @Column(name = "discount_coupon_code", length = 50)
+    private String discountCouponCode;
 
     // ─────────────────────────────────────────────────────────────────────────
 

@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.entity.enrollment.PaymentTransaction;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -53,9 +54,10 @@ public class PaymentController {
             String studentName  = (String) payload.get("studentName");
             String studentEmail = (String) payload.get("studentEmail");
             String studentPhone = (String) payload.getOrDefault("studentPhone", "");
+            String couponCode   = (String) payload.getOrDefault("couponCode", null);
 
             Map<String, Object> result = paymentService.initiatePayment(
-                    formResponseId, studentName, studentEmail, studentPhone);
+                    formResponseId, studentName, studentEmail, studentPhone, couponCode);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -138,6 +140,8 @@ public class PaymentController {
 
     // ── 7. List transactions for a form (admin) ───────────────────────────────
 
+    // SEC-003: Restrict to ADMIN — payment data contains PII (name, email, amount)
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/form/{formId}")
     public ResponseEntity<List<PaymentTransaction>> getByForm(@PathVariable String formId) {
         return ResponseEntity.ok(transactionRepository.findByFormId(formId));

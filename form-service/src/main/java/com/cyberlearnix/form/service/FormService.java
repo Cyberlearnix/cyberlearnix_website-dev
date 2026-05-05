@@ -141,6 +141,12 @@ public class FormService {
         duplicate.setQuiz(original.isQuiz());
         duplicate.setQuizSettings(original.getQuizSettings());
         duplicate.setLimitOneResponse(original.isLimitOneResponse());
+        duplicate.setPaymentEnabled(original.isPaymentEnabled());
+        duplicate.setCourseId(original.getCourseId());
+        duplicate.setPaymentAmount(original.getPaymentAmount());
+        duplicate.setGstPercent(original.getGstPercent());
+        duplicate.setGstAmount(original.getGstAmount());
+        duplicate.setTotalAmount(original.getTotalAmount());
         duplicate.setCreatedAt(LocalDateTime.now());
         duplicate.setUpdatedAt(LocalDateTime.now());
         return mapToResponseDTO(formRepository.save(duplicate));
@@ -188,6 +194,7 @@ public class FormService {
         response.setUserEmail(dto.getUserEmail());
         response.setSubmissionData(submissionDataJson);
         response.setCreatedAt(LocalDateTime.now());
+        response.setPaymentStatus(form.isPaymentEnabled() ? "PENDING" : "NOT_REQUIRED");
         
         if (form.isQuiz()) {
             try {
@@ -400,6 +407,12 @@ public class FormService {
                     .createdBy(entity.getCreatedBy())
                     .createdAt(entity.getCreatedAt())
                     .updatedAt(entity.getUpdatedAt())
+                    .paymentEnabled(entity.isPaymentEnabled())
+                    .courseId(entity.getCourseId())
+                    .paymentAmount(entity.getPaymentAmount())
+                    .gstPercent(entity.getGstPercent())
+                    .gstAmount(entity.getGstAmount())
+                    .totalAmount(entity.getTotalAmount())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Error mapping entity to DTO: " + e.getMessage());
@@ -417,6 +430,12 @@ public class FormService {
             entity.setQuiz(dto.isQuiz());
             entity.setQuizSettings(dto.getQuizSettings() != null ? objectMapper.writeValueAsString(dto.getQuizSettings()) : null);
             entity.setLimitOneResponse(dto.isLimitOneResponse());
+            entity.setPaymentEnabled(dto.isPaymentEnabled());
+            entity.setCourseId(dto.getCourseId());
+            entity.setPaymentAmount(dto.getPaymentAmount());
+            entity.setGstPercent(dto.getGstPercent());
+            entity.setGstAmount(dto.getGstAmount());
+            entity.setTotalAmount(dto.getTotalAmount());
         } catch (Exception e) {
             throw new RuntimeException("Error serializing JSON fields: " + e.getMessage());
         }

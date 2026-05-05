@@ -8,8 +8,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication(scanBasePackages = "com.cyberlearnix.form")
 @EnableFeignClients(basePackages = "com.cyberlearnix.form.client")
-@EntityScan("com.cyberlearnix.shared.entity.form")
-@EnableJpaRepositories("com.cyberlearnix.shared.repository.form")
+@EntityScan({"com.cyberlearnix.shared.entity.form", "com.cyberlearnix.shared.entity.enrollment"})
+@EnableJpaRepositories({"com.cyberlearnix.shared.repository.form", "com.cyberlearnix.shared.repository.enrollment"})
 public class FormServiceApplication {
 
     public static void main(String[] args) {

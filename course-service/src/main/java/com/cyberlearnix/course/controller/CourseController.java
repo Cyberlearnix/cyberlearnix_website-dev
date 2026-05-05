@@ -420,4 +420,21 @@ public class CourseController {
                     "modules", modules));
         }).orElse(ResponseEntity.notFound().build());
     }
+
+    /**
+     * Internal endpoint — returns course pricing data for inter-service calls.
+     * No authentication required; used by enrollment-service to resolve course price.
+     */
+    @GetMapping("/{id}/price")
+    public ResponseEntity<?> getCoursePrice(@PathVariable Long id) {
+        return courseRepository.findById(id)
+                .map(c -> ResponseEntity.ok(Map.of(
+                        "courseId", c.getId(),
+                        "title", c.getTitle() != null ? c.getTitle() : "",
+                        "basePrice", c.getBasePrice() != null ? c.getBasePrice() : 0.0,
+                        "gstPercent", c.getGstPercent() != null ? c.getGstPercent() : 0,
+                        "finalPrice", c.getFinalPrice() != null ? c.getFinalPrice() : 0.0
+                )))
+                .orElse(ResponseEntity.notFound().build());
+    }
 }
