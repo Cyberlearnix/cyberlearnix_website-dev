@@ -29,6 +29,29 @@
 **Decision:** Secrets (DB password, JWT secret, Redis password) stored in Azure Key Vault AND synced to GitHub Secrets. Kubernetes Secrets created/updated by GitHub Actions deploy workflow. No secrets in images, ConfigMaps, or git.
 **Status:** Accepted
 
+### [2026-05-05] ADR-006: Production Cluster is K3s (Not AKS)
+**Decision:** Acknowledge that the live production deployment runs on a single-node K3s cluster on VPS `145.223.22.177`, not Azure AKS.
+**Rationale:** The Azure AKS architecture (ADR-003) is the target/future state. Current production uses K3s + ArgoCD + GHCR. All K8s operations must target the K3s cluster.
+**Consequences:** Azure-specific tooling (ACR, Key Vault CSI, managed identity) not available. Node resources are constrained (2 CPU, 7.8GB RAM).
+**Status:** Accepted
+
+### [2026-05-05] ADR-007: BestEffort QoS for Monitoring Pods
+**Decision:** All monitoring pods (Prometheus, Grafana, Loki, Promtail) are deployed with NO `resources:` spec (BestEffort QoS).
+**Rationale:** The single K3s node has 2 CPUs 100% requested by the 10 application services. Any pod with a CPU request fails scheduling (`Insufficient cpu`). BestEffort pods have 0 CPU request and schedule without issue.
+**Consequences:** Monitoring pods may be the first evicted under memory pressure. Acceptable — monitoring is non-critical vs. application workloads.
+**Status:** Accepted
+
+### [2026-05-05] ADR-008: Daily Automated Backup Strategy
+**Decision:** PostgreSQL backups via `pg_dump` inside `postgres-0` pod, all 8 service DBs, daily at 1:00 AM, 7-day retention on `/var/backups/cyberlearnix-postgres/`.
+**Rationale:** No cloud backup service available on bare-metal K3s. `kubectl exec` into the StatefulSet pod is the portable solution. 7-day retention balances recovery window vs. disk usage.
+**Status:** Accepted
+
+### [2026-05-05] ADR-009: Monitoring Stack — Prometheus + Grafana + Loki
+**Decision:** Deploy Prometheus (metrics), Grafana (dashboards), Loki (logs), Promtail (log shipper) all in the `monitoring` namespace.
+**Rationale:** Full observability stack needed — metrics via Spring Actuator `/actuator/prometheus`, logs via pod log scraping. Loki WAL disabled (permission issue with emptyDir).
+**Access:** Grafana at `https://apis.cyberlearnix.com/grafana` (admin / CyberLearnix@2026), Prometheus at `/prometheus`.
+**Status:** Accepted
+
 ## Governance
 
 - Vance reviews all cross-service and shared-lib changes

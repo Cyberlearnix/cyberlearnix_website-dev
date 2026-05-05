@@ -72,3 +72,71 @@
   `management.endpoints.web.exposure.include=health` to each service's `application.properties`
   (required for Kubernetes liveness/readiness/startup probes)
 
+---
+
+## Learnings (Session: 2026-05-05)
+
+### ⚠️ CRITICAL: Actual Infrastructure is K3s, NOT AKS
+
+The production cluster is **K3s on a single bare-metal VPS**, not Azure AKS.
+Everything above about Azure/AKS is aspirational/future state — the current live deployment is:
+
+- **Server:** `145.223.22.177`, SSH port `9022`
+- **Cluster:** K3s single node (`srv1639541`), 2 CPUs, 7.8GB RAM, 96GB disk
+- **Registry:** `ghcr.io/cyberlearnix/`
+- **Namespace:** `cyberlearnix` (all 10 services + postgres StatefulSet + redis)
+- **GitOps:** ArgoCD (namespace `argocd`) — app `cyberlearnix` Synced/Healthy
+- **TLS:** cert-manager + Let's Encrypt, cert `apis-cyberlearnix-tls` is Ready
+- **Ingress:** `apis.cyberlearnix.com` → gateway-service:8080
+
+### K3s Resources Built This Session
+
+**DB Backups** (`/usr/local/bin/cyberlearnix-db-backup.sh`):
+- Runs daily at 1:00 AM via cron
+- Backs up all 8 DBs via `kubectl exec` into `postgres-0` pod, `pg_dump` + gzip
+- 7-day retention, stored at `/var/backups/cyberlearnix-postgres/`
+- Tested: all 8 DBs backed up successfully
+
+**Server Cleanup** (`/usr/local/bin/cyberlearnix-cleanup.sh`):
+- Runs daily at 2:00 AM via cron
+- Cleans /tmp, journal logs, unused container images, stopped pods, apt cache
+
+**HPA (all 10 services, namespace `cyberlearnix`):**
+- gateway-service: min=1, max=4 (CPU 70%, Memory 80%)
+- user/course/enrollment/shop-service: min=1, max=3
+- admin/cms/form/notification/instructor: min=1, max=2
+- Note: metrics show `<unknown>` initially — normal, metrics-server syncs after 5+ min
+
+**Monitoring namespace** (4 pods, all Running as BestEffort QoS):
+- Prometheus: scrapes Spring Actuator `/actuator/prometheus`, pod annotations, k8s node
+- Grafana: accessible at `https://apis.cyberlearnix.com/grafana` (admin / `CyberLearnix@2026`)
+- Loki: log aggregation, 7-day retention, WAL disabled (permission constraint)
+- Promtail: DaemonSet, ships pod logs to Loki
+
+**Postgres external access** (NodePort `postgres-external`, port 30432):
+- Selector: `app.kubernetes.io/name=postgres` (NOT `app=postgres` — that was the bug)
+
+**ArgoCD ingress lockdown:**
+- Restricted to host `apis.cyberlearnix.com` (was `*` / any host)
+- Forced HTTPS redirect enabled
+- TLS using `apis-cyberlearnix-tls` cert
+
+### Critical K3s Constraint
+
+Node CPU requests are 100% full (2000m/2000m). **All new pods MUST be deployed with NO `resources:` spec** (BestEffort QoS — 0 CPU request). Any pod with a CPU request will fail scheduling with `Insufficient cpu`.
+
+### Known Open Issue — Zoho Token
+
+`admin-service` logs `{error=invalid_code}` every 5 minutes from `ZohoTokenService.doRefresh()`.
+The Zoho refresh token in the `cyberlearnix-secrets` k8s secret is expired.
+**Fix requires:** Re-authorize in Zoho API Console → get new refresh token → `kubectl set env deployment/admin-service ZOHO_REFRESH_TOKEN=<new> -n cyberlearnix`
+
+### Key File Paths on Server
+- Backup script: `/usr/local/bin/cyberlearnix-db-backup.sh`
+- Cleanup script: `/usr/local/bin/cyberlearnix-cleanup.sh`
+- Backup files: `/var/backups/cyberlearnix-postgres/`
+- Cron: `crontab -l` as root
+
+### DB Password
+`lysohSpLe0Eah20T6iccn90op6s2Hg` (from `cyberlearnix-secrets` k8s secret)
+
