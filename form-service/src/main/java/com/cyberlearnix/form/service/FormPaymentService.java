@@ -8,6 +8,7 @@ import com.cyberlearnix.shared.repository.form.GeneralFormResponseRepository;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,10 @@ import java.util.Optional;
 
 @Service
 public class FormPaymentService {
+
+    @Lazy
+    @Autowired
+    private FormPaymentService self;
 
     @Value("${payu.merchant.key}")
     private String merchantKey;
@@ -175,7 +180,7 @@ public class FormPaymentService {
 
     @Transactional
     public void handleWebhook(Map<String, String> params) {
-        handleCallback(params);
+        self.handleCallback(params);
     }
 
     public Map<String, Object> getPaymentStatus(String txnid) {

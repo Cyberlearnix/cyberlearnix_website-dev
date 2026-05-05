@@ -7,6 +7,7 @@ import com.cyberlearnix.shared.entity.enrollment.EnrollmentSubmission;
 import com.cyberlearnix.shared.repository.enrollment.*;
 import com.cyberlearnix.shared.repository.form.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,10 @@ import java.util.Optional;
 
 @Service
 public class EnrollmentService {
+
+    @Lazy
+    @Autowired
+    private EnrollmentService self;
 
     @Autowired
     private EnrollmentRepository enrollmentRepository;
@@ -201,7 +206,7 @@ public class EnrollmentService {
                     // 2. Enroll Student in Course
                     if (courseId != null) {
                         if (studentUuid != null) {
-                            bulkAssign(studentUuid, List.of(courseId));
+                            self.bulkAssign(studentUuid, List.of(courseId));
                         } else {
                             System.err.println("Warning: registerUser did not return an id — skipping enrollment for " + r.getStudentEmail());
                         }

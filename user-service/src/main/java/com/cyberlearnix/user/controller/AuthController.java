@@ -24,6 +24,8 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private static final String KEY_ERROR = "error";
+
     @Autowired
     private AuthService authService;
 
@@ -49,7 +51,7 @@ public class AuthController {
 
             if (email == null || password == null || email.isEmpty() || password.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Email and password are required"));
+                        .body(Map.of(KEY_ERROR, "Email and password are required"));
             }
 
             // Perform authentication
@@ -91,7 +93,7 @@ public class AuthController {
         } catch (RuntimeException e) {
             log.warn("Login failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -110,7 +112,7 @@ public class AuthController {
 
             if (accessToken == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Authorization header required"));
+                        .body(Map.of(KEY_ERROR, "Authorization header required"));
             }
 
             authService.logout(refreshToken, accessToken);
@@ -132,7 +134,7 @@ public class AuthController {
         } catch (Exception e) {
             log.error("Logout failed: ", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -146,7 +148,7 @@ public class AuthController {
         try {
             if (refreshToken == null || refreshToken.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Refresh token not found"));
+                        .body(Map.of(KEY_ERROR, "Refresh token not found"));
             }
 
             Map<String, Object> result = authService.refreshToken(refreshToken);
@@ -163,7 +165,7 @@ public class AuthController {
         } catch (Exception e) {
             log.warn("Token refresh failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -180,7 +182,7 @@ public class AuthController {
 
         if (email == null || email.trim().isEmpty() || otp == null || sessionId == null) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Email, OTP and sessionId are required"));
+                    .body(Map.of(KEY_ERROR, "Email, OTP and sessionId are required"));
         }
 
         email = email.trim().toLowerCase();
@@ -188,7 +190,7 @@ public class AuthController {
             boolean valid = otpService.verifyOtp(email, otp, sessionId);
             if (!valid) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Invalid or expired OTP"));
+                        .body(Map.of(KEY_ERROR, "Invalid or expired OTP"));
             }
 
             Map<String, Object> authResult = authService.loginByEmail(email);
@@ -226,7 +228,7 @@ public class AuthController {
         } catch (Exception e) {
             log.warn("OTP login failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -240,7 +242,7 @@ public class AuthController {
 
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Only administrators can register students, teachers, and institutes"));
+                        .body(Map.of(KEY_ERROR, "Only administrators can register students, teachers, and institutes"));
             }
 
             String email = registerRequest.getEmail();
@@ -249,18 +251,18 @@ public class AuthController {
 
             if (email == null || password == null || email.isEmpty() || password.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Email and password are required"));
+                        .body(Map.of(KEY_ERROR, "Email and password are required"));
             }
 
             // Enforce minimum password strength
             if (password.length() < 8) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Password must be at least 8 characters"));
+                        .body(Map.of(KEY_ERROR, "Password must be at least 8 characters"));
             }
 
             if (!password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$")) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Password must contain uppercase, lowercase, number, and special character"));
+                        .body(Map.of(KEY_ERROR, "Password must contain uppercase, lowercase, number, and special character"));
             }
 
             Map<String, Object> result = authService.register(email, password, role);
@@ -270,7 +272,7 @@ public class AuthController {
         } catch (RuntimeException e) {
             log.warn("Registration failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -279,12 +281,12 @@ public class AuthController {
     public ResponseEntity<?> requestOtp(@RequestBody OtpRequest otpRequest) {
         String email = otpRequest.getEmail();
         if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Email is required"));
         }
         email = email.trim().toLowerCase();
         if (otpService.isOtpRateLimited(email)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("error", "Too many OTP requests. Please wait 15 minutes before trying again."));
+                    .body(Map.of(KEY_ERROR, "Too many OTP requests. Please wait 15 minutes before trying again."));
         }
         try {
             // Ensure user exists before sending OTP
@@ -292,7 +294,7 @@ public class AuthController {
             String sessionId = otpService.generateAndSendOtp(email);
             return ResponseEntity.ok(Map.of("success", true, "message", "OTP sent to email", "sessionId", sessionId));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -301,26 +303,26 @@ public class AuthController {
     public ResponseEntity<?> requestLoginOtp(@RequestBody OtpRequest otpRequest) {
         String email = otpRequest.getEmail();
         if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Email is required"));
         }
         email = email.trim().toLowerCase();
 
         if (otpService.isOtpRateLimited(email)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("error", "Too many OTP requests. Please wait 15 minutes before trying again."));
+                    .body(Map.of(KEY_ERROR, "Too many OTP requests. Please wait 15 minutes before trying again."));
         }
 
         // Check if user exists
         if (userRepository.findByEmail(email).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "No account found with this email address."));
+                    .body(Map.of(KEY_ERROR, "No account found with this email address."));
         }
 
         try {
             String sessionId = otpService.generateAndSendOtp(email);
             return ResponseEntity.ok(Map.of("message", "OTP sent", "sessionId", sessionId));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -332,25 +334,25 @@ public class AuthController {
         String sessionId = verifyRequest.getSessionId();
         if (email == null || email.trim().isEmpty() || otp == null || sessionId == null) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "email, otp, and sessionId are required"));
+                    .body(Map.of(KEY_ERROR, "email, otp, and sessionId are required"));
         }
         email = email.trim().toLowerCase();
         try {
             boolean valid = otpService.verifyOtp(email, otp, sessionId);
             if (!valid) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Invalid or expired OTP"));
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Invalid or expired OTP"));
             }
             String resetToken = authService.createPasswordResetToken(email);
             return ResponseEntity.ok(Map.of("success", true, "resetToken", resetToken));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody TokenPasswordResetRequest request) {
         if (request.getNewPassword() == null || !request.getNewPassword().equals(request.getConfirmPassword())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Passwords do not match"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Passwords do not match"));
         }
         try {
             authService.resetPasswordWithToken(request.getToken(), request.getNewPassword());
@@ -358,14 +360,14 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("success", true, "message", "Password has been reset successfully"));
         } catch (Exception e) {
             log.warn("Password reset failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody PasswordResetRequest request) {
         if (request.getNewPassword() == null || !request.getNewPassword().equals(request.getConfirmPassword())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Passwords do not match"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Passwords do not match"));
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getPrincipal() == null) {
@@ -378,7 +380,7 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("success", true, "message", "Password changed successfully"));
         } catch (Exception e) {
             log.warn("Password change failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -392,7 +394,7 @@ public class AuthController {
 
         String targetRole = roleSwitchRequest.getRole();
         if (targetRole == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Target role is required"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Target role is required"));
         }
         try {
             Map<String, Object> result = authService.switchRole(userId, targetRole);
@@ -400,7 +402,7 @@ public class AuthController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.warn("Role switch failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 

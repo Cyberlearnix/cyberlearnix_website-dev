@@ -38,6 +38,9 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/course-management")
 public class CourseManagementController {
+
+    private static final String NOT_ASSIGNED_MSG = "You are not assigned to this course.";
+
 // ... existing autowired fields ...
     @Autowired
     private CourseRepository courseRepository;
@@ -143,7 +146,7 @@ public class CourseManagementController {
                 // SECURITY CHECK: Is this teacher assigned to this course?
                 if (!courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId) && !userId.equals(existingCourse.getCreatedBy())) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You are not assigned to this course."));
+                            .body(Map.of("error", NOT_ASSIGNED_MSG));
                 }
 
                 try {
@@ -270,114 +273,31 @@ public class CourseManagementController {
 
         return moduleRepository.findById(moduleId).map(module -> {
             if (!"admin".equalsIgnoreCase(userRole)) {
-                // SECURITY CHECK: Is this teacher assigned to this course?
-                Long courseId = module.getCourse().getId();
-                if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You are not assigned to this course."));
-                }
-
-                try {
-                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
-                    if (!Boolean.TRUE.equals(perm.get("canAddContent"))) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                                .body(Map.of("error", "You don't have permission to add content"));
-                    }
-                    // Check exam permission
-                    String type = contentDTO.getContentType();
-                    if (("QUIZ".equalsIgnoreCase(type) || "EXAM".equalsIgnoreCase(type))
-                            && !Boolean.TRUE.equals(perm.get("canManageExams"))) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                                .body(Map.of("error", "You don't have permission to manage exams/quizzes"));
-                    }
-                    // Check content limit
-                    Object maxCont = perm.get("maxContentPerModule");
-                    if (maxCont != null) {
-                        Long contentCount = contentRepository.countByModuleId(moduleId);
-                        if (contentCount >= ((Number) maxCont).longValue()) {
-                            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                                    .body(Map.of("error", "Maximum content limit reached for this module"));
-                        }
-                    }
-                } catch (Exception ex) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You don't have permission to add content"));
-                }
+                ResponseEntity<Map<String, Object>> denied = checkTeacherContentPermission(module, moduleId, userId, contentDTO);
+                if (denied != null) return denied;
             }
 
-            ModuleContent content;
-            String type = contentDTO.getContentType();
-            if ("LAB".equals(type)) {
-                LabContent lab = new LabContent();
-                lab.setLabType(contentDTO.getLabType());
-                lab.setInstructions(contentDTO.getInstructions());
-                lab.setEnvironmentConfig(contentDTO.getEnvironmentConfig());
-                lab.setDurationMinutes(contentDTO.getDurationMinutes());
-                content = lab;
-            } else if ("ASSIGNMENT".equals(type)) {
-                AssignmentContent ass = new AssignmentContent();
-                ass.setAssignmentType(contentDTO.getAssignmentType());
-                ass.setInstructions(contentDTO.getInstructions());
-                ass.setMaxScore(contentDTO.getMaxScore());
-                content = ass;
-            } else if ("LECTURE".equals(type) || "VIDEO".equals(type)) {
-                LectureContent lect = new LectureContent();
-                lect.setVideoUrl(contentDTO.getVideoUrl());
-                lect.setContentText(contentDTO.getContentText());
-                lect.setIsPreview(contentDTO.getIsPreview() != null ? contentDTO.getIsPreview() : false);
-                lect.setAttachmentUrl(contentDTO.getAttachmentUrl());
-                lect.setDurationMinutes(contentDTO.getDurationMinutes());
-                content = lect;
-            } else if ("IMAGE".equals(type)) {
-                LectureContent img = new LectureContent();
-                img.setImageUrl(contentDTO.getImageUrl());
-                img.setContentText(contentDTO.getCaption() != null ? contentDTO.getCaption() : contentDTO.getContentText());
-                content = img;
-            } else if ("TEXT".equals(type)) {
-                LectureContent txt = new LectureContent();
-                txt.setContentText(contentDTO.getContentText());
-                txt.setContentBlocks(contentDTO.getContentBlocks());
-                content = txt;
-            } else if ("QUIZ".equals(type) || "EXAM".equals(type)) {
-                QuizContent quiz = new QuizContent();
-                quiz.setQuizId(contentDTO.getQuizId());
-                quiz.setTimeLimitMinutes(contentDTO.getTimeLimitMinutes());
-                quiz.setPassingScore(contentDTO.getPassingScore());
-                quiz.setMaxAttempts(contentDTO.getMaxAttempts());
-                content = quiz;
-            } else {
+            ModuleContent content = buildTypedContent(contentDTO);
+            if (content == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Invalid or unsupported content type: " + type));
+                        .body(Map.of("error", "Invalid or unsupported content type: " + contentDTO.getContentType()));
             }
 
             content.setTitle(contentDTO.getTitle());
             content.setDescription(contentDTO.getDescription());
-            content.setContentType(type);
+            content.setContentType(contentDTO.getContentType());
             content.setOrderIndex(contentDTO.getOrderIndex());
             content.setModule(module);
             content.setCreatedBy(userId);
             content.setCreatedAt(LocalDateTime.now());
             content.setUpdatedAt(LocalDateTime.now());
 
-            // Set order index if not provided
             if (content.getOrderIndex() == null || content.getOrderIndex() == 0) {
                 Integer maxOrder = contentRepository.findMaxOrderIndexByModuleId(moduleId);
                 content.setOrderIndex(maxOrder != null ? maxOrder + 1 : 1);
             }
 
-            ModuleContent savedContent;
-            if (content instanceof LabContent) {
-                savedContent = labRepository.save((LabContent) content);
-            } else if (content instanceof AssignmentContent) {
-                savedContent = assignmentRepository.save((AssignmentContent) content);
-            } else if (content instanceof LectureContent) {
-                savedContent = lectureRepository.save((LectureContent) content);
-            } else if (content instanceof QuizContent) {
-                savedContent = quizRepository.save((QuizContent) content);
-            } else {
-                savedContent = contentRepository.save(content);
-            }
-
+            ModuleContent savedContent = persistContent(content);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of("success", true, "content", savedContent));
         }).orElse(ResponseEntity.notFound().build());
@@ -430,7 +350,7 @@ public class CourseManagementController {
                 Long courseId = module.getCourse().getId();
                 if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You are not assigned to this course."));
+                            .body(Map.of("error", NOT_ASSIGNED_MSG));
                 }
 
                 try {
@@ -472,7 +392,7 @@ public class CourseManagementController {
                 Long courseId = content.getModule().getCourse().getId();
                 if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You are not assigned to this course."));
+                            .body(Map.of("error", NOT_ASSIGNED_MSG));
                 }
 
                 try {
@@ -723,7 +643,7 @@ public class CourseManagementController {
                 Long courseId = parent.getCourse().getId();
                 if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("error", "You are not assigned to this course."));
+                            .body(Map.of("error", NOT_ASSIGNED_MSG));
                 }
                 try {
                     Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
@@ -811,5 +731,98 @@ public class CourseManagementController {
             "studentCount", students.size(),
             "students", students
         ));
+    }
+
+    // ── Private helpers for createContent ────────────────────────────────────
+
+    private ResponseEntity<Map<String, Object>> checkTeacherContentPermission(
+            CourseModule module, Long moduleId, String userId, ContentCreateDTO contentDTO) {
+        Long courseId = module.getCourse().getId();
+        if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", NOT_ASSIGNED_MSG));
+        }
+        try {
+            Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+            if (!Boolean.TRUE.equals(perm.get("canAddContent"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "You don't have permission to add content"));
+            }
+            String type = contentDTO.getContentType();
+            if (("QUIZ".equalsIgnoreCase(type) || "EXAM".equalsIgnoreCase(type))
+                    && !Boolean.TRUE.equals(perm.get("canManageExams"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "You don't have permission to manage exams/quizzes"));
+            }
+            Object maxCont = perm.get("maxContentPerModule");
+            if (maxCont != null) {
+                Long contentCount = contentRepository.countByModuleId(moduleId);
+                if (contentCount >= ((Number) maxCont).longValue()) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "Maximum content limit reached for this module"));
+                }
+            }
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "You don't have permission to add content"));
+        }
+        return null;
+    }
+
+    private ModuleContent buildTypedContent(ContentCreateDTO contentDTO) {
+        String type = contentDTO.getContentType();
+        if ("LAB".equals(type)) {
+            LabContent lab = new LabContent();
+            lab.setLabType(contentDTO.getLabType());
+            lab.setInstructions(contentDTO.getInstructions());
+            lab.setEnvironmentConfig(contentDTO.getEnvironmentConfig());
+            lab.setDurationMinutes(contentDTO.getDurationMinutes());
+            return lab;
+        } else if ("ASSIGNMENT".equals(type)) {
+            AssignmentContent ass = new AssignmentContent();
+            ass.setAssignmentType(contentDTO.getAssignmentType());
+            ass.setInstructions(contentDTO.getInstructions());
+            ass.setMaxScore(contentDTO.getMaxScore());
+            return ass;
+        } else if ("LECTURE".equals(type) || "VIDEO".equals(type)) {
+            LectureContent lect = new LectureContent();
+            lect.setVideoUrl(contentDTO.getVideoUrl());
+            lect.setContentText(contentDTO.getContentText());
+            lect.setIsPreview(contentDTO.getIsPreview() != null ? contentDTO.getIsPreview() : false);
+            lect.setAttachmentUrl(contentDTO.getAttachmentUrl());
+            lect.setDurationMinutes(contentDTO.getDurationMinutes());
+            return lect;
+        } else if ("IMAGE".equals(type)) {
+            LectureContent img = new LectureContent();
+            img.setImageUrl(contentDTO.getImageUrl());
+            img.setContentText(contentDTO.getCaption() != null ? contentDTO.getCaption() : contentDTO.getContentText());
+            return img;
+        } else if ("TEXT".equals(type)) {
+            LectureContent txt = new LectureContent();
+            txt.setContentText(contentDTO.getContentText());
+            txt.setContentBlocks(contentDTO.getContentBlocks());
+            return txt;
+        } else if ("QUIZ".equals(type) || "EXAM".equals(type)) {
+            QuizContent quiz = new QuizContent();
+            quiz.setQuizId(contentDTO.getQuizId());
+            quiz.setTimeLimitMinutes(contentDTO.getTimeLimitMinutes());
+            quiz.setPassingScore(contentDTO.getPassingScore());
+            quiz.setMaxAttempts(contentDTO.getMaxAttempts());
+            return quiz;
+        }
+        return null;
+    }
+
+    private ModuleContent persistContent(ModuleContent content) {
+        if (content instanceof LabContent) {
+            return labRepository.save((LabContent) content);
+        } else if (content instanceof AssignmentContent) {
+            return assignmentRepository.save((AssignmentContent) content);
+        } else if (content instanceof LectureContent) {
+            return lectureRepository.save((LectureContent) content);
+        } else if (content instanceof QuizContent) {
+            return quizRepository.save((QuizContent) content);
+        }
+        return contentRepository.save(content);
     }
 }

@@ -18,6 +18,8 @@ import java.util.Map;
 @RequestMapping("/api/enrollments")
 public class EnrollmentController {
 
+    private static final String ROLE_ADMIN = "admin";
+
     @Autowired
     private EnrollmentRepository enrollmentRepository;
 
@@ -57,7 +59,7 @@ public class EnrollmentController {
                     .ok(Map.of("success", true, "enrollments", enrollmentRepository.findByStudentId(targetStudentId)));
         }
 
-        if ("admin".equals(userRole)) {
+        if (ROLE_ADMIN.equals(userRole)) {
             return ResponseEntity.ok(Map.of("success", true, "enrollments", enrollmentRepository.findAll()));
         }
 
@@ -94,7 +96,7 @@ public class EnrollmentController {
         String completedAt = (String) body.get("completedAt");
 
         // SEC-001: Only allow admin, teacher/dual, or the student themselves
-        boolean isAdmin = "admin".equals(callerRole);
+        boolean isAdmin = ROLE_ADMIN.equals(callerRole);
         boolean isTeacher = "teacher".equals(callerRole) || "dual".equals(callerRole);
         boolean isSelf = studentId != null && studentId.equals(callerId);
         if (!isAdmin && !isTeacher && !isSelf) {
@@ -114,7 +116,7 @@ public class EnrollmentController {
     public ResponseEntity<?> createEnrollment(@RequestBody EnrollmentRequest request,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
         // SEC-002: Only admins may create direct enrollments (normal flow goes through payment/verification)
-        if (!"admin".equals(userRole)) {
+        if (!ROLE_ADMIN.equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Only admins can create direct enrollments"));
         }
@@ -150,7 +152,7 @@ public class EnrollmentController {
             @RequestHeader(value = "X-User-Id", required = true) String adminId,
             @RequestHeader(value = "X-User-Role", required = true) String userRole) {
 
-        if (!"admin".equals(userRole)) {
+        if (!ROLE_ADMIN.equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -164,7 +166,7 @@ public class EnrollmentController {
     @PostMapping("/bulk-assign")
     public ResponseEntity<?> bulkAssign(@RequestBody BulkAssignRequest assignRequest,
             @RequestHeader(value = "X-User-Role", required = true) String userRole) {
-        if (!"admin".equals(userRole)) {
+        if (!ROLE_ADMIN.equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         String studentId = assignRequest.getUserId();

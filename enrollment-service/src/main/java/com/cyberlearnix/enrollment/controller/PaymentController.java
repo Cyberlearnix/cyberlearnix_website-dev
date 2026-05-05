@@ -48,7 +48,7 @@ public class PaymentController {
      * }
      */
     @PostMapping("/initiate")
-    public ResponseEntity<?> initiatePayment(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> initiatePayment(@RequestBody Map<String, Object> payload) {
         try {
             Long formResponseId = Long.valueOf(String.valueOf(payload.get("formResponseId")));
             String studentName  = (String) payload.get("studentName");
@@ -74,7 +74,7 @@ public class PaymentController {
      * Redirects to the frontend with status parameters.
      */
     @PostMapping("/callback/success")
-    public ResponseEntity<?> paymentSuccess(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Map<String, Object>> paymentSuccess(@RequestParam Map<String, String> params) {
         try {
             Map<String, Object> result = paymentService.handleCallback(params);
             return ResponseEntity.ok(result);
@@ -91,7 +91,7 @@ public class PaymentController {
      * PayU redirects the student's browser here after a FAILED/CANCELLED payment.
      */
     @PostMapping("/callback/failure")
-    public ResponseEntity<?> paymentFailure(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Map<String, Object>> paymentFailure(@RequestParam Map<String, String> params) {
         try {
             Map<String, Object> result = paymentService.handleCallback(params);
             return ResponseEntity.ok(result);
@@ -109,7 +109,7 @@ public class PaymentController {
      * Must return 200 OK; PayU retries on failure.
      */
     @PostMapping("/webhook")
-    public ResponseEntity<?> paymentWebhook(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Map<String, Object>> paymentWebhook(@RequestParam Map<String, String> params) {
         try {
             paymentService.handleWebhook(params);
             return ResponseEntity.ok(Map.of("status", "OK"));
@@ -123,7 +123,7 @@ public class PaymentController {
     // ── 5. Status: by txnid ───────────────────────────────────────────────────
 
     @GetMapping("/status/{txnid}")
-    public ResponseEntity<?> getStatus(@PathVariable String txnid) {
+    public ResponseEntity<Map<String, Object>> getStatus(@PathVariable String txnid) {
         try {
             return ResponseEntity.ok(paymentService.getPaymentStatus(txnid));
         } catch (Exception e) {
@@ -134,7 +134,7 @@ public class PaymentController {
     // ── 6. Status: by form response ID ────────────────────────────────────────
 
     @GetMapping("/status/response/{responseId}")
-    public ResponseEntity<?> getStatusByResponse(@PathVariable Long responseId) {
+    public ResponseEntity<Map<String, Object>> getStatusByResponse(@PathVariable Long responseId) {
         return ResponseEntity.ok(paymentService.getStatusByResponseId(responseId));
     }
 
@@ -154,7 +154,7 @@ public class PaymentController {
      */
     @Deprecated
     @PostMapping("/payu-payment")
-    public ResponseEntity<?> initiatePaymentLegacy(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> initiatePaymentLegacy(@RequestBody Map<String, Object> payload) {
         return initiatePayment(payload);
     }
 }

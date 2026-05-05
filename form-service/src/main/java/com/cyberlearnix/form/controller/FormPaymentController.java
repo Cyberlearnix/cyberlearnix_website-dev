@@ -24,7 +24,7 @@ public class FormPaymentController {
      * Body: { formResponseId, studentName, studentEmail, studentPhone }
      */
     @PostMapping("/initiate")
-    public ResponseEntity<?> initiatePayment(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> initiatePayment(@RequestBody Map<String, Object> body) {
         try {
             Long formResponseId = Long.parseLong(String.valueOf(body.get("formResponseId")));
             String studentName = (String) body.get("studentName");
@@ -42,7 +42,7 @@ public class FormPaymentController {
      * POST /api/forms/payments/callback/success
      */
     @PostMapping("/callback/success")
-    public ResponseEntity<?> callbackSuccess(@RequestParam MultiValueMap<String, String> params) {
+    public ResponseEntity<Map<String, Object>> callbackSuccess(@RequestParam MultiValueMap<String, String> params) {
         try {
             Map<String, String> flat = params.toSingleValueMap();
             flat.put("status", "success");
@@ -58,7 +58,7 @@ public class FormPaymentController {
      * POST /api/forms/payments/callback/failure
      */
     @PostMapping("/callback/failure")
-    public ResponseEntity<?> callbackFailure(@RequestParam MultiValueMap<String, String> params) {
+    public ResponseEntity<Map<String, Object>> callbackFailure(@RequestParam MultiValueMap<String, String> params) {
         try {
             Map<String, String> flat = params.toSingleValueMap();
             flat.put("status", "failure");
@@ -74,7 +74,7 @@ public class FormPaymentController {
      * POST /api/forms/payments/webhook
      */
     @PostMapping("/webhook")
-    public ResponseEntity<?> webhook(@RequestParam MultiValueMap<String, String> params) {
+    public ResponseEntity<Map<String, Object>> webhook(@RequestParam MultiValueMap<String, String> params) {
         try {
             paymentService.handleWebhook(params.toSingleValueMap());
             return ResponseEntity.ok(Map.of("status", "received"));
@@ -89,7 +89,7 @@ public class FormPaymentController {
      */
     @GetMapping("/status/{txnid}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> getPaymentStatus(@PathVariable String txnid) {
+    public ResponseEntity<Map<String, Object>> getPaymentStatus(@PathVariable String txnid) {
         try {
             return ResponseEntity.ok(paymentService.getPaymentStatus(txnid));
         } catch (Exception e) {
@@ -102,7 +102,7 @@ public class FormPaymentController {
      * GET /api/forms/payments/price/{formId}
      */
     @GetMapping("/price/{formId}")
-    public ResponseEntity<?> getFormPaymentInfo(@PathVariable String formId) {
+    public ResponseEntity<Map<String, Object>> getFormPaymentInfo(@PathVariable String formId) {
         try {
             return ResponseEntity.ok(paymentService.getFormPaymentInfo(formId));
         } catch (Exception e) {

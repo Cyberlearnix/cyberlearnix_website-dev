@@ -25,6 +25,9 @@ import java.util.Map;
 @RequestMapping("/api/materials")
 public class MaterialUploadController {
 
+    private static final String AUTH_REQUIRED = "Authentication required";
+    private static final String KEY_ERROR = "error";
+
     @Autowired
     private CloudinaryService cloudinaryService;
 
@@ -42,18 +45,18 @@ public class MaterialUploadController {
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
 
         // Validate type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed for thumbnails"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for thumbnails"));
         }
 
         // Max 5MB
         if (file.getSize() > 5 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Thumbnail must be under 5MB"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Thumbnail must be under 5MB"));
         }
 
         try {
@@ -62,7 +65,7 @@ public class MaterialUploadController {
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Thumbnail upload failed: " + msg));
+                    .body(Map.of("success", false, KEY_ERROR, "Thumbnail upload failed: " + msg));
         }
     }
 
@@ -83,16 +86,16 @@ public class MaterialUploadController {
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed for module images"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for module images"));
         }
 
         if (file.getSize() > 5 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Module image must be under 5MB"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Module image must be under 5MB"));
         }
 
         try {
@@ -101,7 +104,7 @@ public class MaterialUploadController {
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Module image upload failed: " + msg));
+                    .body(Map.of("success", false, KEY_ERROR, "Module image upload failed: " + msg));
         }
     }
 
@@ -119,23 +122,23 @@ public class MaterialUploadController {
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
 
         // Only admin/teacher can upload videos
         if (!"admin".equals(userRole) && !"teacher".equals(userRole) && !"dual".equals(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only teachers and admins can upload videos"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only teachers and admins can upload videos"));
         }
 
         // Validate type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("video/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only video files are allowed"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only video files are allowed"));
         }
 
         // Max 500MB
         if (file.getSize() > 500L * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Video must be under 500MB"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Video must be under 500MB"));
         }
 
         try {
@@ -144,7 +147,7 @@ public class MaterialUploadController {
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Video upload failed: " + msg));
+                    .body(Map.of("success", false, KEY_ERROR, "Video upload failed: " + msg));
         }
     }
 
@@ -162,16 +165,16 @@ public class MaterialUploadController {
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
 
         if (!"admin".equals(userRole) && !"teacher".equals(userRole) && !"dual".equals(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only teachers and admins can upload documents"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only teachers and admins can upload documents"));
         }
 
         // Max 50MB
         if (file.getSize() > 50L * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Document must be under 50MB"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Document must be under 50MB"));
         }
 
         try {
@@ -180,7 +183,7 @@ public class MaterialUploadController {
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Document upload failed: " + msg));
+                    .body(Map.of("success", false, KEY_ERROR, "Document upload failed: " + msg));
         }
     }
 
@@ -195,15 +198,15 @@ public class MaterialUploadController {
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
         if (!"admin".equals(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can upload banners"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only admins can upload banners"));
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed for banners"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for banners"));
         }
 
         try {
@@ -212,7 +215,7 @@ public class MaterialUploadController {
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", "Banner upload failed: " + msg));
+                    .body(Map.of("success", false, KEY_ERROR, "Banner upload failed: " + msg));
         }
     }
 }

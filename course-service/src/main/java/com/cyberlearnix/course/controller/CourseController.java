@@ -40,6 +40,10 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/courses")
 public class CourseController {
+
+    private static final String KEY_SUCCESS = "success";
+    private static final String KEY_DIFFICULTY_LEVEL = "difficultyLevel";
+
 // ... existing autowired fields ...
     @Autowired
     private CourseRepository courseRepository;
@@ -134,7 +138,7 @@ public class CourseController {
             map.put("title", c.getTitle());
             map.put("description", c.getDescription());
             map.put("category", c.getCategory());
-            map.put("difficultyLevel", c.getDifficultyLevel());
+            map.put(KEY_DIFFICULTY_LEVEL, c.getDifficultyLevel());
             map.put("duration", c.getDuration());
             map.put("contentUrl", c.getContentUrl());
             map.put("thumbnailUrl", c.getThumbnailUrl());
@@ -151,7 +155,7 @@ public class CourseController {
         }).collect(Collectors.toList());
 
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
+        response.put(KEY_SUCCESS, true);
         response.put("courses", enrichedCourses);
         response.put("pagination", Map.of(
                 "page", page,
@@ -209,19 +213,19 @@ public class CourseController {
         ct.setTeacherId(userId);
         courseTeacherRepository.save(ct);
         
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", true, "course", saved));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(KEY_SUCCESS, true, "course", saved));
     }
 
     // PUT — full replace, all required fields must be provided
     @PutMapping("/{id}")
-    public ResponseEntity<?> replaceCourse(@PathVariable Long id, @RequestBody CourseUpdateDTO courseDTO,
+    public ResponseEntity<Map<String, Object>> replaceCourse(@PathVariable Long id, @RequestBody CourseUpdateDTO courseDTO,
             @RequestHeader("X-User-Id") String userId, @RequestHeader("X-User-Role") String userRole) {
         return courseRepository.findById(id).map(course -> {
             boolean isAdmin = "admin".equals(userRole);
             boolean isAssignedTeacher = courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
             if (!isAdmin && !isAssignedTeacher) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("success", false, "error", "No permission to update this course"));
+                        .body(Map.<String, Object>of(KEY_SUCCESS, false, "error", "No permission to update this course"));
             }
 
             // Validate all required fields are present for a full replace
@@ -229,7 +233,7 @@ public class CourseController {
             if (courseDTO.getTitle() == null || courseDTO.getTitle().isBlank()) missing.add("title");
             if (courseDTO.getDescription() == null || courseDTO.getDescription().isBlank()) missing.add("description");
             if (courseDTO.getCategory() == null || courseDTO.getCategory().isBlank()) missing.add("category");
-            if (courseDTO.getDifficultyLevel() == null || courseDTO.getDifficultyLevel().isBlank()) missing.add("difficultyLevel");
+            if (courseDTO.getDifficultyLevel() == null || courseDTO.getDifficultyLevel().isBlank()) missing.add(KEY_DIFFICULTY_LEVEL);
             if (courseDTO.getDuration() == null || courseDTO.getDuration().isBlank()) missing.add("duration");
             if (courseDTO.getBasePrice() == null) missing.add("basePrice");
             if (courseDTO.getGstPercent() == null) missing.add("gstPercent");
@@ -237,7 +241,7 @@ public class CourseController {
             if (courseDTO.getIsActive() == null) missing.add("isActive");
             if (!missing.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "error", "Missing required fields for full update", "fields", missing));
+                        .body(Map.of(KEY_SUCCESS, false, "error", "Missing required fields for full update", "fields", missing));
             }
 
             // Replace all fields
@@ -253,20 +257,20 @@ public class CourseController {
             course.setFinalPrice(courseDTO.getFinalPrice());
             course.setActive(courseDTO.getIsActive());
             course.setUpdatedAt(LocalDateTime.now());
-            return ResponseEntity.ok(Map.of("success", true, "course", courseRepository.save(course)));
-        }).orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "course", courseRepository.save(course)));
+        }).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.<String, Object>of(KEY_SUCCESS, false, "error", "Course not found")));
     }
 
     // PATCH — partial update, only provided fields are changed
     @org.springframework.web.bind.annotation.PatchMapping("/{id}")
-    public ResponseEntity<?> patchCourse(@PathVariable Long id, @RequestBody CourseUpdateDTO courseDTO,
+    public ResponseEntity<Map<String, Object>> patchCourse(@PathVariable Long id, @RequestBody CourseUpdateDTO courseDTO,
             @RequestHeader("X-User-Id") String userId, @RequestHeader("X-User-Role") String userRole) {
         return courseRepository.findById(id).map(course -> {
             boolean isAdmin = "admin".equals(userRole);
             boolean isAssignedTeacher = courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
             if (!isAdmin && !isAssignedTeacher) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("success", false, "error", "No permission to update this course"));
+                        .body(Map.<String, Object>of(KEY_SUCCESS, false, "error", "No permission to update this course"));
             }
 
             // Apply only non-null fields
@@ -282,8 +286,8 @@ public class CourseController {
             if (courseDTO.getFinalPrice() != null) course.setFinalPrice(courseDTO.getFinalPrice());
             if (courseDTO.getIsActive() != null) course.setActive(courseDTO.getIsActive());
             course.setUpdatedAt(LocalDateTime.now());
-            return ResponseEntity.ok(Map.of("success", true, "course", courseRepository.save(course)));
-        }).orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "course", courseRepository.save(course)));
+        }).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.<String, Object>of(KEY_SUCCESS, false, "error", "Course not found")));
     }
 
     @DeleteMapping("/{id}")
@@ -291,7 +295,7 @@ public class CourseController {
     public ResponseEntity<?> deleteCourse(@PathVariable Long id, Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "error", "Authentication required"));
+                    .body(Map.of(KEY_SUCCESS, false, "error", "Authentication required"));
         }
         String userId = authentication.getPrincipal() != null ? authentication.getPrincipal().toString() : "";
         String userRole = authentication.getAuthorities().stream()
@@ -302,23 +306,23 @@ public class CourseController {
         boolean isAssignedTeacher = courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
         if (!isAdmin && !isAssignedTeacher) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("success", false, "error", "No permission to delete this course"));
+                    .body(Map.of(KEY_SUCCESS, false, "error", "No permission to delete this course"));
         }
         return courseRepository.findById(id).map(course -> {
             if ("TRASHED".equals(course.getStatus())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of("success", false, "error", "Course is already in trash"));
+                        .body(Map.of(KEY_SUCCESS, false, "error", "Course is already in trash"));
             }
             course.setStatus("TRASHED");
             course.setActive(false);
             course.setDeletedAt(LocalDateTime.now());
             courseRepository.save(course);
             return ResponseEntity.ok(Map.of(
-                    "success", true,
+                    KEY_SUCCESS, true,
                     "message", "Course moved to trash. You can restore it later.",
                     "id", id));
         }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "error", "Course not found", "id", id)));
+                .body(Map.of(KEY_SUCCESS, false, "error", "Course not found", "id", id)));
     }
 
     @GetMapping("/trash")
@@ -327,7 +331,7 @@ public class CourseController {
             @RequestParam(defaultValue = "20") int size) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "error", "Authentication required"));
+                    .body(Map.of(KEY_SUCCESS, false, "error", "Authentication required"));
         }
         String userId = authentication.getPrincipal() != null ? authentication.getPrincipal().toString() : "";
         String userRole = authentication.getAuthorities().stream()
@@ -349,7 +353,7 @@ public class CourseController {
             map.put("title", c.getTitle());
             map.put("description", c.getDescription());
             map.put("category", c.getCategory());
-            map.put("difficultyLevel", c.getDifficultyLevel());
+            map.put(KEY_DIFFICULTY_LEVEL, c.getDifficultyLevel());
             map.put("duration", c.getDuration());
             map.put("thumbnailUrl", c.getThumbnailUrl());
             map.put("basePrice", c.getBasePrice());
@@ -361,7 +365,7 @@ public class CourseController {
             return map;
         }).collect(Collectors.toList());
         Map<String, Object> response = new java.util.LinkedHashMap<>();
-        response.put("success", true);
+        response.put(KEY_SUCCESS, true);
         response.put("courses", enriched);
         response.put("pagination", Map.of(
                 "page", page,
@@ -377,7 +381,7 @@ public class CourseController {
     public ResponseEntity<?> restoreCourse(@PathVariable Long id, Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "error", "Authentication required"));
+                    .body(Map.of(KEY_SUCCESS, false, "error", "Authentication required"));
         }
         String userId = authentication.getPrincipal() != null ? authentication.getPrincipal().toString() : "";
         String userRole = authentication.getAuthorities().stream()
@@ -388,23 +392,23 @@ public class CourseController {
         boolean isAssignedTeacher = courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
         if (!isAdmin && !isAssignedTeacher) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("success", false, "error", "No permission to restore this course"));
+                    .body(Map.of(KEY_SUCCESS, false, "error", "No permission to restore this course"));
         }
         return courseRepository.findById(id).map(course -> {
             if (!"TRASHED".equals(course.getStatus())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of("success", false, "error", "Course is not in trash", "status", course.getStatus()));
+                        .body(Map.of(KEY_SUCCESS, false, "error", "Course is not in trash", "status", course.getStatus()));
             }
             course.setStatus("APPROVED");
             course.setActive(true);
             course.setDeletedAt(null);
             courseRepository.save(course);
             return ResponseEntity.ok(Map.of(
-                    "success", true,
+                    KEY_SUCCESS, true,
                     "message", "Course restored successfully",
                     "id", id));
         }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "error", "Course not found", "id", id)));
+                .body(Map.of(KEY_SUCCESS, false, "error", "Course not found", "id", id)));
     }
 
     // Student View: Full Curriculum (Modules & Content Titles)
@@ -415,7 +419,7 @@ public class CourseController {
         return courseRepository.findById(id).map(course -> {
             List<CourseModule> modules = moduleRepository.findByCourseIdOrderByOrderIndex(id);
             return ResponseEntity.ok(Map.of(
-                    "success", true,
+                    KEY_SUCCESS, true,
                     "courseTitle", course.getTitle(),
                     "modules", modules));
         }).orElse(ResponseEntity.notFound().build());
