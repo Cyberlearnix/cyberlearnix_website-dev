@@ -1,5 +1,6 @@
 package com.cyberlearnix.enrollment.service;
 
+import com.cyberlearnix.enrollment.util.HashTestUtil;
 import com.cyberlearnix.enrollment.client.CourseServiceClient;
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
 import com.cyberlearnix.shared.entity.enrollment.PaymentTransaction;
@@ -16,8 +17,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -56,24 +55,6 @@ class PaymentServiceCallbackTest {
 
     // ── Shared helpers ────────────────────────────────────────────────────────
 
-    private static String sha512(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-512");
-            md.reset();
-            md.update(input.getBytes(StandardCharsets.UTF_8));
-            byte[] bytes = md.digest();
-            StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) {
-                String h = Integer.toHexString(0xFF & b);
-                if (h.length() == 1) sb.append('0');
-                sb.append(h);
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     /**
      * Builds a params map whose hash is the CORRECT reverse hash for the given status.
      * Reverse hash format: salt|status|||||||||||email|firstname|productinfo|amount|txnid|key
@@ -81,7 +62,7 @@ class PaymentServiceCallbackTest {
     private Map<String, String> buildCallbackParams(String status) {
         String reverseHashInput = "test-salt|" + status
                 + "|||||||||||alice@test.com|Alice|Test Course|999.00|TXN-ABC|test-key";
-        String hash = sha512(reverseHashInput);
+        String hash = HashTestUtil.sha512(reverseHashInput);
         Map<String, String> params = new HashMap<>();
         params.put("status",      status);
         params.put("txnid",       "TXN-ABC");

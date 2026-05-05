@@ -7,7 +7,6 @@ import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormConfigReposit
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepository;
 import com.cyberlearnix.enrollment.client.CourseServiceClient;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,20 +33,27 @@ public class PaymentService {
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
-    @Autowired
-    private PaymentTransactionRepository transactionRepository;
+    private final PaymentTransactionRepository transactionRepository;
 
-    @Autowired
-    private EnrollmentFormResponseRepository responseRepository;
+    private final EnrollmentFormResponseRepository responseRepository;
 
-    @Autowired
-    private EnrollmentFormConfigRepository configRepository;
+    private final EnrollmentFormConfigRepository configRepository;
 
-    @Autowired
-    private CourseServiceClient courseServiceClient;
+    private final CourseServiceClient courseServiceClient;
 
-    @Autowired
-    private CouponService couponService;
+    private final CouponService couponService;
+
+    public PaymentService(PaymentTransactionRepository transactionRepository,
+                          EnrollmentFormResponseRepository responseRepository,
+                          EnrollmentFormConfigRepository configRepository,
+                          CourseServiceClient courseServiceClient,
+                          CouponService couponService) {
+        this.transactionRepository = transactionRepository;
+        this.responseRepository = responseRepository;
+        this.configRepository = configRepository;
+        this.courseServiceClient = courseServiceClient;
+        this.couponService = couponService;
+    }
 
     // ── Initiate Payment ──────────────────────────────────────────────────────
 
@@ -334,7 +340,7 @@ public class PaymentService {
             }
             return sb.toString();
         } catch (Exception e) {
-            throw new RuntimeException("Hash computation failed", e);
+            throw new IllegalStateException("Hash computation failed", e);
         }
     }
 }

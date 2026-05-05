@@ -1,5 +1,6 @@
 package com.cyberlearnix.enrollment.service;
 
+import com.cyberlearnix.enrollment.util.HashTestUtil;
 import com.cyberlearnix.enrollment.client.CourseServiceClient;
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormConfig;
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
@@ -15,8 +16,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,24 +47,6 @@ class PaymentServiceInitiateEdgeCasesTest {
         ReflectionTestUtils.setField(paymentService, "merchantSalt", "test-salt");
         ReflectionTestUtils.setField(paymentService, "payuBaseUrl",  "https://secure.payu.in");
         ReflectionTestUtils.setField(paymentService, "frontendUrl",  "http://localhost:3000");
-    }
-
-    private static String sha512(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-512");
-            md.reset();
-            md.update(input.getBytes(StandardCharsets.UTF_8));
-            byte[] bytes = md.digest();
-            StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) {
-                String h = Integer.toHexString(0xFF & b);
-                if (h.length() == 1) sb.append('0');
-                sb.append(h);
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private EnrollmentFormResponse buildResponse(String formId) {
@@ -155,7 +136,7 @@ class PaymentServiceInitiateEdgeCasesTest {
         // Independently compute expected hash with sanitized strings (pipes replaced by spaces)
         String expectedHashInput = "test-key|" + txnid + "|" + amount
                 + "|Course With Pipes|John Doe|john@test.com|||||||||||test-salt";
-        String expectedHash = sha512(expectedHashInput);
+        String expectedHash = HashTestUtil.sha512(expectedHashInput);
 
         assertThat(paymentData.get("hash")).isEqualTo(expectedHash);
         assertThat(paymentData.get("productinfo")).isEqualTo("Course With Pipes");

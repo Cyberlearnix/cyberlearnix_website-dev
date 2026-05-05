@@ -23,23 +23,35 @@ public class EnrollmentService {
     @Autowired
     private EnrollmentService self;
 
-    @Autowired
-    private EnrollmentRepository enrollmentRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
-    @Autowired
-    private EnrollmentSubmissionRepository submissionRepository;
+    private final EnrollmentSubmissionRepository submissionRepository;
 
-    @Autowired
-    private EnrollmentFormResponseRepository responseRepository;
+    private final EnrollmentFormResponseRepository responseRepository;
 
-    @Autowired
-    private EnrollmentFormConfigRepository configRepository;
+    private final EnrollmentFormConfigRepository configRepository;
 
-    @Autowired
-    private FormValidationService validationService;
+    private final FormValidationService validationService;
 
-    @Autowired
-    private com.cyberlearnix.enrollment.client.NotificationClient notificationClient;
+    private final com.cyberlearnix.enrollment.client.NotificationClient notificationClient;
+
+    private final com.cyberlearnix.enrollment.client.UserClient userClient;
+
+    public EnrollmentService(EnrollmentRepository enrollmentRepository,
+                              EnrollmentSubmissionRepository submissionRepository,
+                              EnrollmentFormResponseRepository responseRepository,
+                              EnrollmentFormConfigRepository configRepository,
+                              FormValidationService validationService,
+                              com.cyberlearnix.enrollment.client.NotificationClient notificationClient,
+                              com.cyberlearnix.enrollment.client.UserClient userClient) {
+        this.enrollmentRepository = enrollmentRepository;
+        this.submissionRepository = submissionRepository;
+        this.responseRepository = responseRepository;
+        this.configRepository = configRepository;
+        this.validationService = validationService;
+        this.notificationClient = notificationClient;
+        this.userClient = userClient;
+    }
 
     public Optional<EnrollmentFormConfig> getConfig(String formId) {
         return configRepository.findById(formId);
@@ -156,9 +168,6 @@ public class EnrollmentService {
             });
         }
     }
-
-    @Autowired
-    private com.cyberlearnix.enrollment.client.UserClient userClient;
 
     @Transactional
     public Map<String, Object> verifyPayment(Long enrollmentId, String action, String rejectionReason, String adminId, String token) {

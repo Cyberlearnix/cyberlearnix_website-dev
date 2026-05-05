@@ -38,14 +38,19 @@ public class FormPaymentService {
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    @Autowired
-    private PaymentTransactionRepository transactionRepository;
+    private final PaymentTransactionRepository transactionRepository;
 
-    @Autowired
-    private GeneralFormResponseRepository responseRepository;
+    private final GeneralFormResponseRepository responseRepository;
 
-    @Autowired
-    private GeneralFormRepository formRepository;
+    private final GeneralFormRepository formRepository;
+
+    public FormPaymentService(PaymentTransactionRepository transactionRepository,
+                               GeneralFormResponseRepository responseRepository,
+                               GeneralFormRepository formRepository) {
+        this.transactionRepository = transactionRepository;
+        this.responseRepository = responseRepository;
+        this.formRepository = formRepository;
+    }
 
     // ── Initiate Payment ──────────────────────────────────────────────────────
 
@@ -245,7 +250,7 @@ public class FormPaymentService {
             }
             return sb.toString();
         } catch (Exception e) {
-            throw new RuntimeException("Hash computation failed", e);
+            throw new IllegalStateException("Hash computation failed", e);
         }
     }
 }
