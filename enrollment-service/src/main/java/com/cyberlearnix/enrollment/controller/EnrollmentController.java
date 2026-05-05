@@ -82,7 +82,7 @@ public class EnrollmentController {
     }
 
     @PatchMapping("/progress")
-    public ResponseEntity<?> updateProgressByStudentAndCourse(
+    public ResponseEntity<Map<String, Object>> updateProgressByStudentAndCourse(
             @RequestBody Map<String, Object> body,
             @RequestHeader(value = "X-User-Id", required = false) String callerId,
             @RequestHeader(value = "X-User-Role", required = false) String callerRole) {
@@ -108,8 +108,8 @@ public class EnrollmentController {
             if (progress != null) enrollment.setProgress(progress);
             if (completedAt != null) enrollment.setCompletedAt(LocalDateTime.parse(completedAt));
             else if (progress != null && progress >= 100) enrollment.setCompletedAt(LocalDateTime.now());
-            return (ResponseEntity<?>) ResponseEntity.ok(Map.of("success", true, "enrollment", enrollmentRepository.save(enrollment)));
-        }).orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.<Map<String, Object>>ok(Map.of("success", true, "enrollment", enrollmentRepository.save(enrollment)));
+        }).orElseGet(() -> ResponseEntity.<Map<String, Object>>notFound().build());
     }
 
     @PostMapping

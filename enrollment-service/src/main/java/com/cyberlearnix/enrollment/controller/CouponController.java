@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -24,13 +25,15 @@ import java.util.Map;
 @RequestMapping("/api/enrollments/coupons")
 public class CouponController {
 
+    private static final String KEY_MESSAGE = "message";
+
     @Autowired
     private CouponService couponService;
 
     // ── Admin: create ─────────────────────────────────────────────────────────
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Object> create(@RequestBody Map<String, Object> body) {
         try {
             String code = (String) body.get("code");
             String description = (String) body.getOrDefault("description", "");
@@ -45,50 +48,50 @@ public class CouponController {
             }
 
             if (code == null || code.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Coupon code is required."));
+                return ResponseEntity.badRequest().body(Map.of(KEY_MESSAGE, "Coupon code is required."));
             }
             if (typeStr == null || value == null) {
-                return ResponseEntity.badRequest().body(Map.of("message", "discountType and discountValue are required."));
+                return ResponseEntity.badRequest().body(Map.of(KEY_MESSAGE, "discountType and discountValue are required."));
             }
 
             Coupon.DiscountType type = Coupon.DiscountType.valueOf(typeStr.toUpperCase());
             Coupon saved = couponService.createCoupon(code, description, type, value, maxUsages, expiresAt);
             return ResponseEntity.ok(saved);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of(KEY_MESSAGE, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of(KEY_MESSAGE, e.getMessage()));
         }
     }
 
     // ── Admin: list ───────────────────────────────────────────────────────────
 
     @GetMapping
-    public ResponseEntity<?> list() {
+    public ResponseEntity<List<Coupon>> list() {
         return ResponseEntity.ok(couponService.listAll());
     }
 
     // ── Admin: deactivate ─────────────────────────────────────────────────────
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deactivate(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> deactivate(@PathVariable Long id) {
         try {
             couponService.deactivate(id);
-            return ResponseEntity.ok(Map.of("message", "Coupon deactivated."));
+            return ResponseEntity.ok(Map.of(KEY_MESSAGE, "Coupon deactivated."));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of(KEY_MESSAGE, e.getMessage()));
         }
     }
 
     // ── Public: validate ──────────────────────────────────────────────────────
 
     @PostMapping("/validate")
-    public ResponseEntity<?> validate(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> validate(@RequestBody Map<String, Object> body) {
         String code = (String) body.get("code");
         double orderTotal = body.get("orderTotal") != null
                 ? ((Number) body.get("orderTotal")).doubleValue() : 0.0;
         if (code == null || code.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Coupon code is required."));
+            return ResponseEntity.badRequest().body(Map.of("valid", false, KEY_MESSAGE, "Coupon code is required."));
         }
         Map<String, Object> result = couponService.validate(code, orderTotal);
         return ResponseEntity.ok(result);

@@ -17,6 +17,9 @@ import java.util.Map;
 @RequestMapping("/api/enrollments/responses")
 public class ResponseController {
 
+    private static final String KEY_PAYMENT_REQUIRED = "paymentRequired";
+    private static final String KEY_MESSAGE = "message";
+
     @Autowired
     private EnrollmentService enrollmentService;
 
@@ -52,23 +55,23 @@ public class ResponseController {
         result.put("response", saved);
 
         configRepository.findById(saved.getFormId()).ifPresent(config -> {
-            result.put("paymentRequired", config.isPaymentEnabled());
+            result.put(KEY_PAYMENT_REQUIRED, config.isPaymentEnabled());
             if (config.isPaymentEnabled()) {
                 result.put("paymentAmount", config.getPaymentAmount());
                 result.put("paymentCurrency", config.getPaymentCurrency());
                 result.put("formResponseId", saved.getId());
-                result.put("message",
+                result.put(KEY_MESSAGE,
                         "Form submitted. Please complete payment of "
                                 + config.getPaymentCurrency() + " " + config.getPaymentAmount()
                                 + " to confirm your enrollment.");
             } else {
-                result.put("message", "Form submitted successfully.");
+                result.put(KEY_MESSAGE, "Form submitted successfully.");
             }
         });
 
-        if (!result.containsKey("paymentRequired")) {
-            result.put("paymentRequired", false);
-            result.put("message", "Form submitted successfully.");
+        if (!result.containsKey(KEY_PAYMENT_REQUIRED)) {
+            result.put(KEY_PAYMENT_REQUIRED, false);
+            result.put(KEY_MESSAGE, "Form submitted successfully.");
         }
 
         return ResponseEntity.ok(result);

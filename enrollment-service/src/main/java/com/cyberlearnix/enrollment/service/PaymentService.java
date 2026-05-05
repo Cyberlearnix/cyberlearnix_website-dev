@@ -7,7 +7,9 @@ import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormConfigReposit
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepository;
 import com.cyberlearnix.enrollment.client.CourseServiceClient;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,15 @@ public class PaymentService {
 
     private final CouponService couponService;
 
+    @Lazy
+    @Autowired
+    private PaymentService self;
+
+    private static final String STATUS_SUCCESS = "SUCCESS";
+    private static final String STATUS_FAILURE = "FAILURE";
+    private static final String KEY_HASH_VERIFIED = "hashVerified";
+    private static final String KEY_TXNID = "txnid";
+
     public PaymentService(PaymentTransactionRepository transactionRepository,
                           EnrollmentFormResponseRepository responseRepository,
                           EnrollmentFormConfigRepository configRepository,
@@ -77,17 +88,15 @@ public class PaymentService {
 
         // Resolve payment amount: use stored amount, or fall back to course's finalPrice
         Double resolvedAmount = config.getPaymentAmount();
-        if (resolvedAmount == null || resolvedAmount <= 0) {
-            if (config.getCourseId() != null) {
-                try {
-                    Map<String, Object> coursePrice = courseServiceClient.getCoursePrice(config.getCourseId());
-                    Object fp = coursePrice.get("finalPrice");
-                    if (fp != null) {
-                        resolvedAmount = ((Number) fp).doubleValue();
-                    }
-                } catch (Exception e) {
-                    // Feign call failed — cannot determine amount
+        if ((resolvedAmount == null || resolvedAmount <= 0) && config.getCourseId() != null) {
+            try {
+                Map<String, Object> coursePrice = courseServiceClient.getCoursePrice(config.getCourseId());
+                Object fp = coursePrice.get("finalPrice");
+                if (fp != null) {
+                    resolvedAmount = ((Number) fp).doubleValue();
                 }
+            } catch (Exception e) {
+                // Feign call failed — cannot determine amount
             }
         }
         if (resolvedAmount == null || resolvedAmount <= 0) {
@@ -170,7 +179,7 @@ public class PaymentService {
         // 5. Build payment data map
         Map<String, String> paymentData = new LinkedHashMap<>();
         paymentData.put("key", merchantKey);
-        paymentData.put("txnid", txnid);
+        paymentData.put(KEY_TXNID, txnid);
         paymentData.put("amount", amount);
         paymentData.put("productinfo", productInfo);
         paymentData.put("firstname", firstname);
@@ -183,7 +192,7 @@ public class PaymentService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);
-        result.put("txnid", txnid);
+        result.put(KEY_TXNID, txnid);
         result.put("paymentData", paymentData);
         return result;
     }
@@ -197,8 +206,8 @@ public class PaymentService {
     @Transactional
     public Map<String, Object> handleCallback(Map<String, String> params) {
         String status = params.getOrDefault("status", "failure").toLowerCase();
-        String txnid = params.get("txnid");
-        String payuTxnid = params.get("txnid");
+        String txnid = params.get(KEY_TXNID);
+        String payuTxnid = params.get(KEY_TXNID);
         String mihpayid = params.getOrDefault("mihpayid", "");
         String amount = params.getOrDefault("amount", "0");
         String productinfo = params.getOrDefault("productinfo", "");
@@ -235,14 +244,14 @@ public class PaymentService {
         txn.setHashVerified(hashVerified);
         txn.setCompletedAt(LocalDateTime.now());
 
-        String normalizedStatus = "success".equals(status) && hashVerified ? "SUCCESS" : "FAILURE";
+        String normalizedStatus = "success".equals(status) && hashVerified ? STATUS_SUCCESS : STATUS_FAILURE;
         txn.setStatus(normalizedStatus);
         transactionRepository.save(txn);
 
         // 3. Update form response payment status
         if (txn.getFormResponseId() != null) {
             responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                r.setPaymentStatus("SUCCESS".equals(normalizedStatus) ? "PAID" : "FAILED");
+                r.setPaymentStatus(STATUS_SUCCESS.equals(normalizedStatus) ? "PAID" : "FAILED");
                 r.setTransactionId(txnid);
                 if ("SUCCESS".equals(normalizedStatus)) {
                     r.setAmountPaid(Double.parseDouble(amount));
@@ -253,10 +262,10 @@ public class PaymentService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", normalizedStatus);
-        result.put("txnid", txnid);
+        result.put(KEY_TXNID, txnid);
         result.put("mihpayid", mihpayid);
-        result.put("hashVerified", hashVerified);
-        result.put("message", "SUCCESS".equals(normalizedStatus)
+        result.put(KEY_HASH_VERIFIED, hashVerified);
+        result.put("message", STATUS_SUCCESS.equals(normalizedStatus)
                 ? "Payment successful" : "Payment failed or hash mismatch");
         return result;
     }
@@ -270,7 +279,7 @@ public class PaymentService {
     @Transactional
     public void handleWebhook(Map<String, String> params) {
         // Delegate to same callback handler — PayU sends same fields
-        handleCallback(params);
+        self.handleCallback(params);
     }
 
     // ── Status check ─────────────────────────────────────────────────────────
@@ -279,13 +288,13 @@ public class PaymentService {
         PaymentTransaction txn = transactionRepository.findByTxnid(txnid)
                 .orElseThrow(() -> new RuntimeException("Transaction not found: " + txnid));
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("txnid", txn.getTxnid());
+        result.put(KEY_TXNID, txn.getTxnid());
         result.put("status", txn.getStatus());
         result.put("amount", txn.getAmount());
         result.put("currency", txn.getCurrency());
         result.put("mihpayid", txn.getMihpayid());
         result.put("mode", txn.getMode());
-        result.put("hashVerified", txn.isHashVerified());
+        result.put(KEY_HASH_VERIFIED, txn.isHashVerified());
         result.put("initiatedAt", txn.getInitiatedAt());
         result.put("completedAt", txn.getCompletedAt());
         result.put("formResponseId", txn.getFormResponseId());
@@ -298,11 +307,11 @@ public class PaymentService {
         Map<String, Object> result = new LinkedHashMap<>();
         if (txn.isPresent()) {
             result.put("found", true);
-            result.put("txnid", txn.get().getTxnid());
+            result.put(KEY_TXNID, txn.get().getTxnid());
             result.put("status", txn.get().getStatus());
             result.put("amount", txn.get().getAmount());
             result.put("mihpayid", txn.get().getMihpayid());
-            result.put("hashVerified", txn.get().isHashVerified());
+            result.put(KEY_HASH_VERIFIED, txn.get().isHashVerified());
         } else {
             result.put("found", false);
             result.put("status", "NOT_INITIATED");

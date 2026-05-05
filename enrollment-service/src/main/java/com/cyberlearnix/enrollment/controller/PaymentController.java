@@ -3,6 +3,8 @@ package com.cyberlearnix.enrollment.controller;
 import com.cyberlearnix.enrollment.service.PaymentService;
 import com.cyberlearnix.shared.entity.enrollment.PaymentTransaction;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +28,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/enrollments/payments")
 public class PaymentController {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
+    private static final String KEY_MESSAGE = "message";
+    private static final String KEY_SUCCESS = "success";
 
     @Autowired
     private PaymentService paymentService;
@@ -61,8 +67,8 @@ public class PaymentController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", e.getMessage()));
+                    KEY_SUCCESS, false,
+                    KEY_MESSAGE, e.getMessage()));
         }
     }
 
@@ -80,8 +86,8 @@ public class PaymentController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "Callback processing failed: " + e.getMessage()));
+                    KEY_SUCCESS, false,
+                    KEY_MESSAGE, "Callback processing failed: " + e.getMessage()));
         }
     }
 
@@ -97,8 +103,8 @@ public class PaymentController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "Callback processing failed: " + e.getMessage()));
+                    KEY_SUCCESS, false,
+                    KEY_MESSAGE, "Callback processing failed: " + e.getMessage()));
         }
     }
 
@@ -115,7 +121,7 @@ public class PaymentController {
             return ResponseEntity.ok(Map.of("status", "OK"));
         } catch (Exception e) {
             // Log but still return 200 to avoid PayU retrying
-            System.err.println("[PayU Webhook] Error: " + e.getMessage());
+            log.error("[PayU Webhook] Error: {}", e.getMessage(), e);
             return ResponseEntity.ok(Map.of("status", "OK", "note", e.getMessage()));
         }
     }
@@ -152,7 +158,7 @@ public class PaymentController {
     /**
      * @deprecated Use POST /api/enrollments/payments/initiate instead.
      */
-    @Deprecated
+    @Deprecated(since = "1.0", forRemoval = true)
     @PostMapping("/payu-payment")
     public ResponseEntity<Map<String, Object>> initiatePaymentLegacy(@RequestBody Map<String, Object> payload) {
         return initiatePayment(payload);
