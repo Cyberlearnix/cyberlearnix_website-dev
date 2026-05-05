@@ -78,9 +78,8 @@ class PaymentServiceTxnidTest {
 
         String txnid = (String) result.get("txnid");
         // UUID-derived format: TXN-<16 uppercase hex chars>
-        assertThat(txnid).matches("TXN-[0-9A-F]{16}");
-        // Old timestamp format was 13 consecutive decimal digits — must not match
-        assertThat(txnid).doesNotMatch("TXN-\\d{13}");
+        assertThat(txnid).matches("TXN-[0-9A-F]{16}")
+                             .doesNotMatch("TXN-\\d{13}");
     }
 
     // Guarantees: two consecutive calls to initiatePayment produce distinct txnids (no collision)

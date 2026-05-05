@@ -25,13 +25,13 @@ class FormValidationServiceTest {
     }
 
     @Test
-    void validate_doesNothing_whenFieldsJsonIsNull() throws Exception {
+    void validate_doesNothing_whenFieldsJsonIsNull() {
         assertThatCode(() -> service.validateResponse(null, "{\"x\":\"1\"}"))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    void validate_doesNothing_whenFieldsJsonIsEmpty() throws Exception {
+    void validate_doesNothing_whenFieldsJsonIsEmpty() {
         assertThatCode(() -> service.validateResponse("", "{\"x\":\"1\"}"))
                 .doesNotThrowAnyException();
     }

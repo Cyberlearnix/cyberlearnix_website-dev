@@ -104,7 +104,8 @@ class PageServiceTest {
     void updatePage_throws_whenPageNotFound() {
         when(pageRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> pageService.updatePage(99L, new PageCreateDTO()))
+        PageCreateDTO dto = new PageCreateDTO();
+        assertThatThrownBy(() -> pageService.updatePage(99L, dto))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("not found");
     }

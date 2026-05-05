@@ -69,7 +69,7 @@ class AuthServiceTest {
         Map<String, Object> result = authService.register("new@example.com", "password123", "student");
 
         assertThat(result).containsKey("id").containsKey("email").containsKey("role");
-        assertThat(result.get("email")).isEqualTo("new@example.com");
+        assertThat(result).containsEntry("email", "new@example.com");
         verify(userRepository).save(any(User.class));
         verify(userProfileRepository).save(any(UserProfile.class));
     }

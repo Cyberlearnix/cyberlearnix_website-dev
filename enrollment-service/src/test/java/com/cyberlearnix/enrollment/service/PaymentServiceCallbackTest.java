@@ -103,8 +103,8 @@ class PaymentServiceCallbackTest {
 
         Map<String, Object> result = paymentService.handleCallback(params);
 
-        assertThat(result.get("status")).isEqualTo("SUCCESS");
-        assertThat(result.get("hashVerified")).isEqualTo(true);
+        assertThat(result).containsEntry("status", "SUCCESS");
+        assertThat(result).containsEntry("hashVerified", true);
     }
 
     // Guarantees: when status="failure" (with correct failure hash), result.status is FAILURE
@@ -116,7 +116,7 @@ class PaymentServiceCallbackTest {
 
         Map<String, Object> result = paymentService.handleCallback(params);
 
-        assertThat(result.get("status")).isEqualTo("FAILURE");
+        assertThat(result).containsEntry("status", "FAILURE");
     }
 
     // Guarantees: when status="success" but hash is tampered, result.status is FAILURE and hashVerified is false
@@ -129,8 +129,8 @@ class PaymentServiceCallbackTest {
 
         Map<String, Object> result = paymentService.handleCallback(params);
 
-        assertThat(result.get("status")).isEqualTo("FAILURE");
-        assertThat(result.get("hashVerified")).isEqualTo(false);
+        assertThat(result).containsEntry("status", "FAILURE");
+        assertThat(result).containsEntry("hashVerified", false);
     }
 
     // Guarantees: when the txnid is absent from DB, a new PaymentTransaction is created and saved with txnid from params
@@ -186,10 +186,10 @@ class PaymentServiceCallbackTest {
 
         Map<String, Object> result = paymentService.getPaymentStatus("TXN-ABC");
 
-        assertThat(result.get("txnid")).isEqualTo("TXN-ABC");
-        assertThat(result.get("status")).isEqualTo("SUCCESS");
-        assertThat(result.get("amount")).isEqualTo(999.0);
-        assertThat(result.get("hashVerified")).isEqualTo(true);
+        assertThat(result).containsEntry("txnid", "TXN-ABC");
+        assertThat(result).containsEntry("status", "SUCCESS");
+        assertThat(result).containsEntry("amount", 999.0);
+        assertThat(result).containsEntry("hashVerified", true);
     }
 
     // Guarantees: getPaymentStatus throws RuntimeException when txnid is not found in the DB
@@ -213,8 +213,8 @@ class PaymentServiceCallbackTest {
 
         Map<String, Object> result = paymentService.getStatusByResponseId(42L);
 
-        assertThat(result.get("found")).isEqualTo(true);
-        assertThat(result.get("status")).isEqualTo("SUCCESS");
+        assertThat(result).containsEntry("found", true);
+        assertThat(result).containsEntry("status", "SUCCESS");
     }
 
     // Guarantees: getStatusByResponseId returns found=false and status=NOT_INITIATED when no transaction exists for the responseId
@@ -225,7 +225,24 @@ class PaymentServiceCallbackTest {
 
         Map<String, Object> result = paymentService.getStatusByResponseId(99L);
 
-        assertThat(result.get("found")).isEqualTo(false);
-        assertThat(result.get("status")).isEqualTo("NOT_INITIATED");
+        assertThat(result).containsEntry("found", false);
+        assertThat(result).containsEntry("status", "NOT_INITIATED");
+    }
+
+    // Guarantees: getStatusByResponseId includes mihpayid in the result when the transaction has a non-null mihpayid
+    @Test
+    void getStatusByResponseId_includesMihpayid_whenTransactionHasMihpayid() {
+        PaymentTransaction txn = new PaymentTransaction();
+        txn.setTxnid("TXN-DEF");
+        txn.setStatus("SUCCESS");
+        txn.setAmount(500.0);
+        txn.setMihpayid("MIHPAY999");
+        when(transactionRepository.findTopByFormResponseIdOrderByInitiatedAtDesc(55L))
+                .thenReturn(Optional.of(txn));
+
+        Map<String, Object> result = paymentService.getStatusByResponseId(55L);
+
+        assertThat(result).containsEntry("found", true);
+        assertThat(result).containsEntry("mihpayid", "MIHPAY999");
     }
 }

@@ -156,4 +156,27 @@ class FormPaymentControllerTest {
     // SEC: GET /api/forms/payments/status/{txnid} carries @PreAuthorize("hasRole('ADMIN')")
     // This constraint is NOT enforced by standalone MockMvc (no security filter chain).
     // Authorisation correctness must be covered by a Spring Security integration test.
+
+    // Guarantees: GET /api/forms/payments/status/{txnid} returns 200 with payment data when txnid is found
+    @Test
+    void getPaymentStatus_returns200_whenFound() throws Exception {
+        when(paymentService.getPaymentStatus("FTXN-CTRL-001"))
+                .thenReturn(Map.of("txnid", "FTXN-CTRL-001", "status", "SUCCESS"));
+
+        mockMvc.perform(get("/api/forms/payments/status/FTXN-CTRL-001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.txnid").value("FTXN-CTRL-001"))
+                .andExpect(jsonPath("$.status").value("SUCCESS"));
+    }
+
+    // Guarantees: GET /api/forms/payments/status/{txnid} returns 400 with error field when txnid is not found
+    @Test
+    void getPaymentStatus_returns400_whenNotFound() throws Exception {
+        when(paymentService.getPaymentStatus("MISSING"))
+                .thenThrow(new RuntimeException("Transaction not found"));
+
+        mockMvc.perform(get("/api/forms/payments/status/MISSING"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
 }

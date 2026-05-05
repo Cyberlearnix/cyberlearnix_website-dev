@@ -1,6 +1,5 @@
 package com.cyberlearnix.enrollment.exception;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -40,7 +39,6 @@ class GlobalExceptionHandlerTest {
     }
 
     private MockMvc mockMvc;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
@@ -65,8 +63,8 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isInternalServerError())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(body).doesNotContain("prod.internal");
-        assertThat(body).doesNotContain("hunter2");
+        assertThat(body).doesNotContain("prod.internal")
+                .doesNotContain("hunter2");
     }
 
     // Guarantees: validation errors (400) still carry the real descriptive message for the client

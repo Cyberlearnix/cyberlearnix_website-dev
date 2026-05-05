@@ -106,7 +106,7 @@ class FormPaymentServiceTest {
         Map<String, Object> result = formPaymentService.initiatePayment(
                 1L, "Alice", "alice@test.com", "9876543210");
 
-        assertThat(result.get("success")).isEqualTo(true);
+        assertThat(result).containsEntry("success", true);
         assertThat((String) result.get("txnid")).startsWith("FTXN");
 
         @SuppressWarnings("unchecked")
@@ -182,8 +182,8 @@ class FormPaymentServiceTest {
 
         Map<String, Object> result = formPaymentService.handleCallback(params);
 
-        assertThat(result.get("status")).isEqualTo("SUCCESS");
-        assertThat(result.get("hashVerified")).isEqualTo(true);
+        assertThat(result).containsEntry("status", "SUCCESS");
+        assertThat(result).containsEntry("hashVerified", true);
     }
 
     // Guarantees: when the hash does not match, result.status is FAILURE and hashVerified is false even if status param is "success"
@@ -198,8 +198,8 @@ class FormPaymentServiceTest {
 
         Map<String, Object> result = formPaymentService.handleCallback(params);
 
-        assertThat(result.get("status")).isEqualTo("FAILURE");
-        assertThat(result.get("hashVerified")).isEqualTo(false);
+        assertThat(result).containsEntry("status", "FAILURE");
+        assertThat(result).containsEntry("hashVerified", false);
     }
 
     // Guarantees: when txnid is not found in DB, a new PaymentTransaction is created and saved with txnid from params
@@ -240,10 +240,10 @@ class FormPaymentServiceTest {
 
         Map<String, Object> result = formPaymentService.getFormPaymentInfo("form-info");
 
-        assertThat(result.get("paymentEnabled")).isEqualTo(true);
-        assertThat(result.get("totalAmount")).isEqualTo(999.0);
-        assertThat(result.get("gstPercent")).isEqualTo(18);
-        assertThat(result.get("gstAmount")).isEqualTo(179.82);
+        assertThat(result).containsEntry("paymentEnabled", true);
+        assertThat(result).containsEntry("totalAmount", 999.0);
+        assertThat(result).containsEntry("gstPercent", 18);
+        assertThat(result).containsEntry("gstAmount", 179.82);
     }
 
     // Guarantees: getFormPaymentInfo throws RuntimeException when the form does not exist
@@ -278,10 +278,10 @@ class FormPaymentServiceTest {
 
         Map<String, Object> result = formPaymentService.getPaymentStatus("FTXN-STATUS-001");
 
-        assertThat(result.get("studentName")).isEqualTo("Alice");
-        assertThat(result.get("studentEmail")).isEqualTo("alice@test.com");
-        assertThat(result.get("submissionData")).isEqualTo("{\"name\":\"Alice\"}");
-        assertThat(result.get("paymentStatus")).isEqualTo("PAID");
+        assertThat(result).containsEntry("studentName", "Alice");
+        assertThat(result).containsEntry("studentEmail", "alice@test.com");
+        assertThat(result).containsEntry("submissionData", "{\"name\":\"Alice\"}");
+        assertThat(result).containsEntry("paymentStatus", "PAID");
     }
 
     // Guarantees: getPaymentStatus throws RuntimeException when the txnid is not found
@@ -291,5 +291,23 @@ class FormPaymentServiceTest {
 
         assertThrows(RuntimeException.class,
                 () -> formPaymentService.getPaymentStatus("GHOST"));
+    }
+
+    // Guarantees: getPaymentStatus returns basic txn fields without querying responseRepository
+    // when formResponseId is null (the ifPresent branch is not entered)
+    @Test
+    void getPaymentStatus_returnsBasicFields_whenFormResponseIdIsNull() {
+        PaymentTransaction txn = new PaymentTransaction();
+        txn.setTxnid("FTXN-NULL-001");
+        txn.setStatus("PENDING");
+        txn.setAmount(500.0);
+        // formResponseId is not set → null
+        when(transactionRepository.findByTxnid("FTXN-NULL-001")).thenReturn(Optional.of(txn));
+
+        Map<String, Object> result = formPaymentService.getPaymentStatus("FTXN-NULL-001");
+
+        assertThat(result).containsEntry("txnid", "FTXN-NULL-001");
+        assertThat(result).containsEntry("status", "PENDING");
+        assertThat(result).doesNotContainKey("submissionData");
     }
 }

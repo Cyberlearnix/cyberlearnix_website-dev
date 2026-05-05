@@ -156,7 +156,7 @@ class PaymentServiceInitiateEdgeCasesTest {
 
         @SuppressWarnings("unchecked")
         Map<String, String> paymentData = (Map<String, String>) result.get("paymentData");
-        assertThat(paymentData.get("amount")).isEqualTo("800.00");
+        assertThat(paymentData).containsEntry("amount", "800.00");
     }
 
     // Guarantees: form-level PERCENTAGE discount reduces the amount by the configured percentage when no coupon is supplied
@@ -175,7 +175,7 @@ class PaymentServiceInitiateEdgeCasesTest {
 
         @SuppressWarnings("unchecked")
         Map<String, String> paymentData = (Map<String, String>) result.get("paymentData");
-        assertThat(paymentData.get("amount")).isEqualTo("900.00");
+        assertThat(paymentData).containsEntry("amount", "900.00");
     }
 
     // Guarantees: form-level FLAT discount subtracts a fixed amount from the price when no coupon is supplied
