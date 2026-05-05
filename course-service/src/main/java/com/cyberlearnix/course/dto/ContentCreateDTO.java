@@ -28,9 +28,6 @@ public class ContentCreateDTO {
     private String caption;
     private String altText;
 
-    // TEXT / rich-text type: JSON array of content blocks.
-    // Each block: {"type":"HEADING"|"SUBHEADING"|"PARAGRAPH"|"BULLET"|"IMAGE"|"VIDEO",
-    //              "level":1, "text":"...", "url":"...", "caption":"...", "items":["..."]}
     private String contentBlocks;
     
     private String quizId;

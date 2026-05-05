@@ -27,6 +27,7 @@ public class MaterialUploadController {
 
     private static final String AUTH_REQUIRED = "Authentication required";
     private static final String KEY_ERROR = "error";
+    private static final String KEY_SUCCESS = "success";
 
     @Autowired
     private CloudinaryService cloudinaryService;
@@ -39,7 +40,7 @@ public class MaterialUploadController {
      * Returns: { "success": true, "url": "https://res.cloudinary.com/..." }
      */
     @PostMapping(value = "/upload/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadThumbnail(
+    public ResponseEntity<Map<String, Object>> uploadThumbnail(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
@@ -61,11 +62,11 @@ public class MaterialUploadController {
 
         try {
             String url = cloudinaryService.uploadImage(file, "cyberlearnix/thumbnails");
-            return ResponseEntity.ok(Map.of("success", true, "url", url, "folder", "thumbnails"));
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url, "folder", "thumbnails"));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, KEY_ERROR, "Thumbnail upload failed: " + msg));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Thumbnail upload failed: " + msg));
         }
     }
 
@@ -80,7 +81,7 @@ public class MaterialUploadController {
      * so the URL clearly shows it belongs to a chapter/sub-chapter, not a course thumbnail.
      */
     @PostMapping(value = "/upload/module-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadModuleImage(
+    public ResponseEntity<Map<String, Object>> uploadModuleImage(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
@@ -100,11 +101,11 @@ public class MaterialUploadController {
 
         try {
             String url = cloudinaryService.uploadImage(file, "cyberlearnix/modules");
-            return ResponseEntity.ok(Map.of("success", true, "url", url, "folder", "modules"));
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url, "folder", "modules"));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, KEY_ERROR, "Module image upload failed: " + msg));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Module image upload failed: " + msg));
         }
     }
 
@@ -116,7 +117,7 @@ public class MaterialUploadController {
      * Returns: { "success": true, "url": "https://res.cloudinary.com/...", "duration": 120 }
      */
     @PostMapping(value = "/upload/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadVideo(
+    public ResponseEntity<Map<String, Object>> uploadVideo(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
@@ -143,11 +144,11 @@ public class MaterialUploadController {
 
         try {
             String url = cloudinaryService.uploadVideo(file, "cyberlearnix/lectures");
-            return ResponseEntity.ok(Map.of("success", true, "url", url));
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, KEY_ERROR, "Video upload failed: " + msg));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Video upload failed: " + msg));
         }
     }
 
@@ -159,7 +160,7 @@ public class MaterialUploadController {
      * Returns: { "success": true, "url": "https://res.cloudinary.com/..." }
      */
     @PostMapping(value = "/upload/document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadDocument(
+    public ResponseEntity<Map<String, Object>> uploadDocument(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
@@ -179,11 +180,11 @@ public class MaterialUploadController {
 
         try {
             String url = cloudinaryService.uploadDocument(file, "cyberlearnix/attachments");
-            return ResponseEntity.ok(Map.of("success", true, "url", url));
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, KEY_ERROR, "Document upload failed: " + msg));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Document upload failed: " + msg));
         }
     }
 
@@ -192,7 +193,7 @@ public class MaterialUploadController {
      * POST /api/materials/upload/banner
      */
     @PostMapping(value = "/upload/banner", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadBanner(
+    public ResponseEntity<Map<String, Object>> uploadBanner(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
@@ -211,11 +212,11 @@ public class MaterialUploadController {
 
         try {
             String url = cloudinaryService.uploadImage(file, "cyberlearnix/banners");
-            return ResponseEntity.ok(Map.of("success", true, "url", url));
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, KEY_ERROR, "Banner upload failed: " + msg));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Banner upload failed: " + msg));
         }
     }
 }
