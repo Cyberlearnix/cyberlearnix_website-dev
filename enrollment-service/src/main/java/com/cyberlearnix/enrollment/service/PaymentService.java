@@ -238,8 +238,9 @@ public class PaymentService {
             responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
                 r.setPaymentStatus("SUCCESS".equals(normalizedStatus) ? "PAID" : "FAILED");
                 r.setTransactionId(txnid);
-                r.setAmountPaid("SUCCESS".equals(normalizedStatus)
-                        ? Double.parseDouble(amount) : r.getAmountPaid());
+                if ("SUCCESS".equals(normalizedStatus)) {
+                    r.setAmountPaid(Double.parseDouble(amount));
+                }
                 responseRepository.save(r);
             });
         }
