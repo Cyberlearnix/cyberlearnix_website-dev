@@ -91,9 +91,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     });
         }
 
-        log.debug("[GW] No Bearer token — forwarding without auth headers");
-        // No token — let downstream service enforce its own security
-        return chain.filter(sanitizedExchange);
+        log.debug("[GW] No Bearer token on protected path {} {} — rejecting with 401", method, path);
+        // Defense-in-depth: reject unauthenticated requests at the gateway rather than
+        // forwarding them without identity headers and relying solely on downstream auth.
+        sanitizedExchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+        return sanitizedExchange.getResponse().setComplete();
     }
 
     private boolean isPublicPath(String path, String method) {
@@ -105,8 +107,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (path.equals("/api/enrollments/payments/initiate")) return true;
             if (path.equals("/api/enrollments/payments/webhook")) return true;
             if (path.equals("/api/enrollments/payu-payment")) return true;
-            if (path.endsWith("/responses") || path.endsWith("/responses/check")) return true;
-            return false;
+            return path.endsWith("/responses") || path.endsWith("/responses/check");
         }
 
         // PUT/PATCH/DELETE always require auth
@@ -130,9 +131,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Form Service & Enrollment Service Public Endpoints
         if (path.startsWith("/api/forms/") || path.startsWith("/api/enrollments/")) {
-            // WHite-list specific public enrollment paths
-            if (path.startsWith("/api/enrollments/forms/") || 
-                path.equals("/api/enrollments/responses") || 
+            // White-list specific public enrollment paths
+            // NOTE: GET /api/enrollments/responses is intentionally NOT public — it returns
+            // all student PII and payment data and requires ADMIN role.
+            if (path.startsWith("/api/enrollments/forms/") ||
                 path.equals("/api/enrollments/responses/check")) {
                 return true;
             }

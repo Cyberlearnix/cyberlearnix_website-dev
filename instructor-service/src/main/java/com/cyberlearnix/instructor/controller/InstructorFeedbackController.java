@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,7 +36,11 @@ public class InstructorFeedbackController {
         String instructorId = authentication.getName();
 
         // Fetch enrollments for the courses managed by the instructor
-        List<Map<String, Object>> enrollments = enrollmentServiceClient.getEnrollments(null, courseId, auth);
+        Map<String, Object> enrollmentsResp = enrollmentServiceClient.getEnrollments(null, courseId, auth);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> enrollments = enrollmentsResp.containsKey("enrollments")
+                ? (List<Map<String, Object>>) enrollmentsResp.get("enrollments")
+                : Collections.emptyList();
 
         // Filter feedback entries that have a rating field (future: dedicated reviews endpoint)
         List<Map<String, Object>> feedbackList = enrollments.stream()

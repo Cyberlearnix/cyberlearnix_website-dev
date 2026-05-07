@@ -2,6 +2,7 @@ package com.cyberlearnix.notification.service;
 
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,9 @@ public class NotificationService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Value("${app.student-portal-url:http://localhost:8080/student/}")
+    private String studentPortalUrl;
 
     public void sendEmail(String to, String subject, String htmlContent) throws Exception {
         MimeMessage message = mailSender.createMimeMessage();
@@ -81,14 +85,14 @@ public class NotificationService {
                 +
                 "<div style='background: #f8fafc; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; margin: 25px 0;'>"
                 +
-                "<p style='margin: 0 0 10px 0;'><strong>Login Portal:</strong> <a href=\"https://cyberlearnix.com/signin\">cyberlearnix.com/signin</a></p>"
+                "<p style='margin: 0 0 10px 0;'><strong>Login Portal:</strong> <a href=\"" + studentPortalUrl + "\">" + studentPortalUrl + "</a></p>"
                 +
                 "<p style='margin: 0 0 10px 0;'><strong>Username:</strong> " + (String) data.get("studentEmail") + "</p>" +
                 "<p style='margin: 0;'><strong>Temporary Password:</strong> <code style='background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-weight: bold;'>"
                 + (String) data.get("temporaryPassword") + "</code></p>" +
                 "</div>" +
                 "<div style='text-align: center; margin: 30px 0;'>" +
-                "    <a href=\"https://cyberlearnix.com/signin\" style=\"background: #0057FF; color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block;\">Access Learning Portal</a>"
+                "    <a href=\"" + studentPortalUrl + "\" style=\"background: #0057FF; color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block;\">Access Learning Portal</a>"
                 +
                 "</div>" +
                 "<p style='font-size: 14px; color: #718096;'><em>Note: You will be prompted to set a permanent password after your first login.</em></p>";
@@ -102,11 +106,14 @@ public class NotificationService {
                 "<p>Your account has been created for the course: <strong>" + (String) data.get("courseTitle") + "</strong>.</p>" +
                 "<p>You can now log in using the following credentials:</p>" +
                 "<div style='background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin: 20px 0;'>" +
-                "<p><strong>Login URL:</strong> <a href=\"https://cyberlearnix.com/login\">cyberlearnix.com/login</a></p>" +
+                "<p><strong>Login URL:</strong> <a href=\"" + studentPortalUrl + "\">" + studentPortalUrl + "</a></p>" +
                 "<p><strong>Email:</strong> " + (String) data.get("email") + "</p>" +
                 "<p><strong>Temporary Password:</strong> <code style='background: #eee; padding: 4px; border-radius: 4px;'>" + (String) data.get("password") + "</code></p>" +
                 "</div>" +
-                "<p>Please change your password after your first login.</p>";
+                "<p>Please change your password after your first login.</p>" +
+                "<div style='text-align: center; margin: 25px 0;'>" +
+                "    <a href=\"" + studentPortalUrl + "\" style=\"background: #0057FF; color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block;\">Go to Student Portal</a>" +
+                "</div>";
 
         sendEmail((String) data.get("email"), subject, wrapInTemplate("Credentials Issued", content));
     }
@@ -133,7 +140,7 @@ public class NotificationService {
                 "<p>We have successfully verified your payment for <strong>" + (String) data.get("courseName")
                 + "</strong>. You now have full access to your course materials.</p>" +
                 "<div style='text-align: center; margin: 30px 0;'>" +
-                "    <a href=\"https://cyberlearnix.com/signin\" style=\"background: #0057FF; color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block;\">Go to Dashboard</a>"
+                "    <a href=\"" + studentPortalUrl + "\" style=\"background: #0057FF; color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block;\">Go to Student Portal</a>"
                 +
                 "</div>";
 

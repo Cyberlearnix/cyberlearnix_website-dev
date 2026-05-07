@@ -76,7 +76,7 @@ spring:
         - id: course-service
           uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
-            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**, /api/teacher/**
+            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**, /api/teacher/**, /api/certificates, /api/certificates/**
         - id: course-service-suggestions
           uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
@@ -100,6 +100,11 @@ spring:
               args:
                 regexp: /api/manage-enrollment-responses
                 replacement: /api/enrollments/responses
+
+        - id: student-dashboard
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
+          predicates:
+            - Path=/api/student/**
 
         - id: enrollment-service
           uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
@@ -143,6 +148,11 @@ spring:
               args:
                 regexp: /api/cms/forms/(?<formId>.*)/submit
                 replacement: /api/forms/${formId}/responses
+
+        - id: student-portal
+          uri: ${CMS_SERVICE_URL:http://127.0.0.1:8089}
+          predicates:
+            - Path=/student/**
 
         # Admin Service
         - id: admin-service

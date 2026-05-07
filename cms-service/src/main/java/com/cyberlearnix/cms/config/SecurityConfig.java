@@ -31,6 +31,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/cms/pages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cms/media/**").permitAll()
                         .requestMatchers("/api/cms/**").hasRole("ADMIN")
+                        .requestMatchers("/student/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtTokenFilter(jwtSecret), UsernamePasswordAuthenticationFilter.class);
 

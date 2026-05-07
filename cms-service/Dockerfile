@@ -1,27 +1,11 @@
-# Build stage
-FROM gradle:8.14-jdk21 AS build
-WORKDIR /app
-
-# Copy gradle files
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
-
-# Copy source code
-COPY shared-lib shared-lib
-COPY cms-service cms-service
-
-# Build the cms-service
-RUN gradle :cms-service:bootJar --no-daemon
-
-# Run stage
+# Run stage — JAR pre-built locally via ./gradlew bootJar
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 # curl is required for HEALTHCHECK probes
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=build /app/cms-service/build/libs/*.jar app.jar
+COPY cms-service/build/libs/ /tmp/jars/
+RUN find /tmp/jars -name "*.jar" ! -name "*plain*" -exec cp {} /app/app.jar \; && rm -rf /tmp/jars
 
 EXPOSE 8089
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

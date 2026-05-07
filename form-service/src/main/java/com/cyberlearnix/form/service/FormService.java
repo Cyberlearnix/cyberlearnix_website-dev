@@ -9,6 +9,8 @@ import com.cyberlearnix.shared.repository.form.GeneralFormResponseRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class FormService {
+
+    private static final Logger log = LoggerFactory.getLogger(FormService.class);
 
     private final GeneralFormRepository formRepository;
     private final GeneralFormResponseRepository responseRepository;
@@ -201,7 +205,7 @@ public class FormService {
                 double totalScore = calculateQuizScore(form, response);
                 response.setScore(totalScore);
             } catch (Exception e) {
-                System.err.println("Error calculating quiz score: " + e.getMessage());
+                log.warn("Error calculating quiz score: {}", e.getMessage());
             }
         }
         
@@ -209,18 +213,21 @@ public class FormService {
 
         // Send confirmation email if user email is provided
         if (response.getUserEmail() != null && !response.getUserEmail().isEmpty()) {
-            try {
-                Map<String, Object> data = new HashMap<>();
-                data.put("recipientEmail", response.getUserEmail());
-                data.put("formTitle", form.getTitle());
-                data.put("responses", response.getSubmissionData());
-                
-                notificationClient.sendNotification("send-form-confirmation", Map.of("data", data));
-            } catch (Exception e) {
-                System.err.println("Failed to send confirmation email: " + e.getMessage());
-            }
+            sendFormConfirmationEmail(response.getUserEmail(), form.getTitle(), response.getSubmissionData());
         }
         return mapToSubmissionResponseDTO(savedResponse);
+    }
+
+    private void sendFormConfirmationEmail(String userEmail, String formTitle, String submissionData) {
+        try {
+            Map<String, Object> data = new java.util.HashMap<>();
+            data.put("recipientEmail", userEmail);
+            data.put("formTitle", formTitle);
+            data.put("responses", submissionData);
+            notificationClient.sendNotification("send-form-confirmation", Map.of("data", data));
+        } catch (Exception e) {
+            log.warn("Failed to send confirmation email: {}", e.getMessage());
+        }
     }
 
     public boolean hasAlreadyResponded(String formId, String email) {
@@ -230,7 +237,7 @@ public class FormService {
     public List<SubmissionResponseDTO> getSubmissionResponses(String formId) {
         return responseRepository.findAllByFormIdAndDeletedAtIsNull(formId).stream()
                 .map(this::mapToSubmissionResponseDTO)
-                .collect(java.util.stream.Collectors.toList());
+                .toList();
     }
 
     private SubmissionResponseDTO mapToSubmissionResponseDTO(GeneralFormResponse entity) {

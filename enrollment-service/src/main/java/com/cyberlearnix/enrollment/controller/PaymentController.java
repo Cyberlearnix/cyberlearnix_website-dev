@@ -85,9 +85,10 @@ public class PaymentController {
             Map<String, Object> result = paymentService.handleCallback(params);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            log.error("[PayU] Success callback processing error: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
                     KEY_SUCCESS, false,
-                    KEY_MESSAGE, "Callback processing failed: " + e.getMessage()));
+                    KEY_MESSAGE, "Callback processing error"));
         }
     }
 
@@ -102,9 +103,10 @@ public class PaymentController {
             Map<String, Object> result = paymentService.handleCallback(params);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            log.error("[PayU] Failure callback processing error: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
                     KEY_SUCCESS, false,
-                    KEY_MESSAGE, "Callback processing failed: " + e.getMessage()));
+                    KEY_MESSAGE, "Callback processing error"));
         }
     }
 

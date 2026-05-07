@@ -15,4 +15,7 @@ public interface CourseServiceClient {
 
     @GetMapping("/api/courses/{id}/price")
     java.util.Map<String, Object> getCoursePrice(@PathVariable("id") Long id);
+
+    @GetMapping("/api/courses/{id}")
+    java.util.Map<String, Object> getCourseInfo(@PathVariable("id") Long id);
 }

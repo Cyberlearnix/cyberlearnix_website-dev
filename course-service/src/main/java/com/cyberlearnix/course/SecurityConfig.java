@@ -12,6 +12,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 
 import com.cyberlearnix.shared.security.JwtTokenFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -52,10 +53,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/courses/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/banners", "/api/banners/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/promos", "/api/promos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/partners", "/api/partners/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/updates", "/api/updates/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/suggestions", "/api/suggestions/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/certificates", "/api/certificates/**").permitAll()
                         .requestMatchers("/api/courses/*/price").permitAll()
-                        .requestMatchers("/api/courses").authenticated()
-                        .requestMatchers("/api/courses/{id}").authenticated()
-                        .requestMatchers("/api/courses/*/curriculum").authenticated()
                         .requestMatchers("/api/courses/progress/**").authenticated()
                         .requestMatchers("/api/course-management/**").authenticated()
                         .requestMatchers("/api/materials/upload/**").authenticated()

@@ -40,6 +40,21 @@
 - BUG-001 has no compensation if enrollment `save()` fails after `registerUser()` succeeds.
 - SEC-004 logger receives unsanitized exception messages; log injection risk at Loki layer.
 
+### 2026-05-05 — Comprehensive Payment API Tests
+
+**Files created:**
+- enrollment-service: `PaymentServiceCallbackTest` (10 tests) — callback hash verification, webhook delegation, status queries
+- enrollment-service: `PaymentServiceInitiateEdgeCasesTest` (10 tests) — disabled form, missing config, pipe sanitization, coupon/discount, phone normalization
+- enrollment-service: `PaymentControllerTest` (9 tests) — all 7 endpoints: initiate, callbacks, webhook (always-200), status, response-status, SEC-003 note on getByForm
+- form-service: `FormPaymentServiceTest` (13 tests) — initiate, callback, webhook via self, status, form payment info
+- form-service: `FormPaymentControllerTest` (6 tests) — all endpoints, status injection on callbacks
+- admin-service: `PaymentManagementControllerTest` (7 tests) — orders CRUD, refund, status filter, missing-field validation
+
+**Gaps flagged:**
+- `FormPaymentService.initiatePayment` uses `System.currentTimeMillis()` for txnid — same BUG-002 collision risk as enrollment-service had. Should be migrated to UUID-based pattern.
+- `FormPaymentService.initiatePayment` does NOT sanitize productInfo (form.getTitle()) for pipe chars before hash computation — potential hash corruption bug. Enrollment-service has this fix; form-service does not.
+- `@PreAuthorize("hasRole('ADMIN')")` on `GET /form/{formId}` (enrollment-service) and `GET /status/{txnid}` (form-service) is not exercised by standalone MockMvc — needs Spring Security integration test.
+
 ### 2026-05-05 — API Test Run (all services)
 - **All backend services (8080–8091) are DOWN.** Frontend (5173) is the only thing serving traffic.
 - **Root cause:** Docker daemon is not running. The entire backend stack (Spring Boot services, Redis) depends on Docker Compose. Without it, nothing starts.

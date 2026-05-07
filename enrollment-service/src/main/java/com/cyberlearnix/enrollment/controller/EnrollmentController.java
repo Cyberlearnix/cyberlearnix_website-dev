@@ -135,9 +135,20 @@ public class EnrollmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", true, "enrollment", saved));
     }
 
+    // SEC-IDOR: Restrict update to admin/teacher roles, or to the enrollment owner (student updating their own record).
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateProgress(@PathVariable Long id, @RequestBody ProgressUpdateRequest progressRequest) {
+    public ResponseEntity<?> updateProgress(@PathVariable Long id,
+            @RequestBody ProgressUpdateRequest progressRequest,
+            @RequestHeader(value = "X-User-Id", required = false) String callerId,
+            @RequestHeader(value = "X-User-Role", required = false) String callerRole) {
         return enrollmentRepository.findById(id).map(enrollment -> {
+            boolean isAdmin = ROLE_ADMIN.equals(callerRole);
+            boolean isTeacher = "teacher".equals(callerRole) || "dual".equals(callerRole);
+            boolean isOwner = callerId != null && callerId.equals(enrollment.getStudentId());
+            if (!isAdmin && !isTeacher && !isOwner) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Access denied: you can only update your own enrollment"));
+            }
             if (progressRequest.getProgress() != null)
                 enrollment.setProgress(progressRequest.getProgress());
             if (progressRequest.getCompletedAt() != null)

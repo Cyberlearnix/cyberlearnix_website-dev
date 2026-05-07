@@ -11,6 +11,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -19,13 +21,17 @@ public class SecurityConfig {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:5174}")
+    private String corsAllowedOrigins;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        java.util.List<String> origins = Arrays.asList(corsAllowedOrigins.split(","));
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(java.util.List.of("*"));
+                    corsConfig.setAllowedOrigins(origins);
                     corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(java.util.List.of("*"));
                     return corsConfig;
@@ -39,6 +45,8 @@ public class SecurityConfig {
                         // Public: form config lookup (embed on website without login)
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/config").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/forms/**").permitAll()
+                        // Public: student receipt download after PayU redirect (no JWT available)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/responses/*/receipt").permitAll()
                         // Public: duplicate-response check before submitting
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/responses/check").permitAll()
                         // Public: submit enrollment form response

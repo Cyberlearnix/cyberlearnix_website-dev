@@ -9,8 +9,10 @@ import com.cyberlearnix.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +33,49 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserResponseDTO>> getAllUsersRoot(
+            @RequestParam(required = false) String role) {
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getCurrentUserProfile(Authentication authentication) {
+        String userId = authentication.getName();
+        return userProfileRepository.findById(userId)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateCurrentUserProfile(Authentication authentication,
+            @RequestBody Map<String, Object> updates) {
+        String userId = authentication.getName();
+        return userProfileRepository.findById(userId)
+                .<ResponseEntity<?>>map(profile -> {
+                    // Support both camelCase and snake_case field names from frontend
+                    String fullName = updates.containsKey("fullName") ? (String) updates.get("fullName") : (String) updates.get("full_name");
+                    if (fullName != null) profile.setFullName(fullName);
+                    
+                    String phone = updates.containsKey("phone") ? (String) updates.get("phone") : (String) updates.get("phone_number");
+                    if (phone != null) profile.setPhone(phone);
+                    
+                    String photoUrl = updates.containsKey("photoUrl") ? (String) updates.get("photoUrl") : (String) updates.get("avatar_url");
+                    if (photoUrl != null) profile.setPhotoUrl(photoUrl);
+                    
+                    String dateOfBirth = updates.containsKey("dateOfBirth") ? (String) updates.get("dateOfBirth") : (String) updates.get("date_of_birth");
+                    if (dateOfBirth != null) profile.setDateOfBirth(dateOfBirth);
+                    if (updates.containsKey("bio") && updates.get("bio") != null)
+                        profile.setBio((String) updates.get("bio"));
+                    if (updates.containsKey("location") && updates.get("location") != null)
+                    profile.setUpdatedAt(LocalDateTime.now());
+                    profile.setIsProfileComplete(true);
+                    return ResponseEntity.ok(userProfileRepository.save(profile));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{userId}/profile")

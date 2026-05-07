@@ -4,6 +4,7 @@ import com.cyberlearnix.shared.entity.enrollment.Coupon;
 import com.cyberlearnix.enrollment.service.CouponService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -32,6 +33,7 @@ public class CouponController {
 
     // ── Admin: create ─────────────────────────────────────────────────────────
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Object> create(@RequestBody Map<String, Object> body) {
         try {
@@ -66,6 +68,7 @@ public class CouponController {
 
     // ── Admin: list ───────────────────────────────────────────────────────────
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<Coupon>> list() {
         return ResponseEntity.ok(couponService.listAll());
@@ -73,6 +76,7 @@ public class CouponController {
 
     // ── Admin: deactivate ─────────────────────────────────────────────────────
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deactivate(@PathVariable Long id) {
         try {

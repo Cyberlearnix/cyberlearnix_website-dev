@@ -28,6 +28,11 @@ services:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} --no-auth-warning ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -69,7 +74,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:5174}
       - USER_SERVICE_URL=http://user-service:8081
       - COURSE_SERVICE_URL=http://course-service:8082
       - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
@@ -81,25 +86,25 @@ services:
       - INSTRUCTOR_SERVICE_URL=http://instructor-service:8091
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
       user-service:
-        condition: service_started
+        condition: service_healthy
       course-service:
-        condition: service_started
+        condition: service_healthy
       enrollment-service:
-        condition: service_started
+        condition: service_healthy
       notification-service:
-        condition: service_started
+        condition: service_healthy
       shop-service:
-        condition: service_started
+        condition: service_healthy
       form-service:
-        condition: service_started
+        condition: service_healthy
       admin-service:
-        condition: service_started
+        condition: service_healthy
       cms-service:
-        condition: service_started
+        condition: service_healthy
       instructor-service:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -163,6 +168,8 @@ services:
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
       - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
+      - USER_SERVICE_URL=http://user-service:8081
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
     depends_on:
       postgres:
         condition: service_healthy
@@ -192,11 +199,15 @@ services:
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URL=http://user-service:8081
+      - COURSE_SERVICE_URL=http://course-service:8082
       - NOTIFICATION_SERVICE_URL=http://notification-service:8084
       - PAYU_MERCHANT_KEY=${PAYU_MERCHANT_KEY:-}
       - PAYU_SALT=${PAYU_SALT:-}
       - PAYU_BASE_URL=${PAYU_BASE_URL:-https://secure.payu.in}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+      - PAYU_WEBHOOK_ALLOWED_IPS=${PAYU_WEBHOOK_ALLOWED_IPS:-}
     depends_on:
       postgres:
         condition: service_healthy

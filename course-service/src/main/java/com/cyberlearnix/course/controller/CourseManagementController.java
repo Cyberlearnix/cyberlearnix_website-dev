@@ -29,6 +29,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +83,7 @@ public class CourseManagementController {
     private UserServiceClient userServiceClient;
 
     // Course CRUD Operations
+    @Transactional
     @PostMapping("/courses")
     public ResponseEntity<?> createCourse(@RequestBody CourseCreateDTO courseDTO,
             @RequestHeader("X-User-Id") String userId,

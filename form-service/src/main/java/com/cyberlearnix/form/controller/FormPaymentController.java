@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/forms/payments")
 public class FormPaymentController {
 
+    private static final String KEY_STATUS = "status";
+
     @Autowired
     private FormPaymentService paymentService;
 
@@ -45,7 +47,7 @@ public class FormPaymentController {
     public ResponseEntity<Map<String, Object>> callbackSuccess(@RequestParam MultiValueMap<String, String> params) {
         try {
             Map<String, String> flat = params.toSingleValueMap();
-            flat.put("status", "success");
+            flat.put(KEY_STATUS, "success");
             Map<String, Object> result = paymentService.handleCallback(flat);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -61,7 +63,7 @@ public class FormPaymentController {
     public ResponseEntity<Map<String, Object>> callbackFailure(@RequestParam MultiValueMap<String, String> params) {
         try {
             Map<String, String> flat = params.toSingleValueMap();
-            flat.put("status", "failure");
+            flat.put(KEY_STATUS, "failure");
             Map<String, Object> result = paymentService.handleCallback(flat);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -77,9 +79,9 @@ public class FormPaymentController {
     public ResponseEntity<Map<String, Object>> webhook(@RequestParam MultiValueMap<String, String> params) {
         try {
             paymentService.handleWebhook(params.toSingleValueMap());
-            return ResponseEntity.ok(Map.of("status", "received"));
+            return ResponseEntity.ok(Map.of(KEY_STATUS, "received"));
         } catch (Exception e) {
-            return ResponseEntity.ok(Map.of("status", "error", "message", e.getMessage()));
+            return ResponseEntity.ok(Map.of(KEY_STATUS, "error", "message", e.getMessage()));
         }
     }
 

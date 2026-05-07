@@ -68,8 +68,8 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Boolean isActive,
-            @RequestHeader(value = "X-User-Id", required = true) String userId,
-            @RequestHeader(value = "X-User-Role", required = true) String userRole) {
+            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "") String userId,
+            @RequestHeader(value = "X-User-Role", required = false, defaultValue = "") String userRole) {
 
         if (id != null) {
             return courseRepository.findById(id)
@@ -409,6 +409,28 @@ public class CourseController {
                     "id", id));
         }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of(KEY_SUCCESS, false, "error", "Course not found", "id", id)));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getCourseById(@PathVariable Long id) {
+        return courseRepository.findById(id)
+                .map(c -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("id", c.getId());
+                    map.put("title", c.getTitle());
+                    map.put("description", c.getDescription());
+                    map.put("category", c.getCategory());
+                    map.put(KEY_DIFFICULTY_LEVEL, c.getDifficultyLevel());
+                    map.put("duration", c.getDuration());
+                    map.put("thumbnailUrl", c.getThumbnailUrl());
+                    map.put("basePrice", c.getBasePrice());
+                    map.put("finalPrice", c.getFinalPrice());
+                    map.put("isActive", c.getActive());
+                    map.put("status", c.getStatus());
+                    map.put("createdAt", c.getCreatedAt());
+                    return (ResponseEntity<?>) ResponseEntity.ok(map);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // Student View: Full Curriculum (Modules & Content Titles)
