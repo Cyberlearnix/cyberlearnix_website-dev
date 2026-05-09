@@ -69,6 +69,8 @@ appConfig:
   CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://cyberlearnix.com,https://apis.cyberlearnix.com"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+  # JVM heap size optimization - limit to 80Mi to keep total memory under 128Mi
+  JAVA_OPTS: "-Xms64m -Xmx96m -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
 
 # ── Ingress — NGINX Ingress Controller (installed by k3s-setup.sh) ─────────
 ingress:
