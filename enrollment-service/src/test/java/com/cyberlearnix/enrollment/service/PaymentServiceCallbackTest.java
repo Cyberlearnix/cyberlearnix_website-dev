@@ -51,8 +51,7 @@ class PaymentServiceCallbackTest {
         ReflectionTestUtils.setField(paymentService, "merchantSalt", "test-salt");
         ReflectionTestUtils.setField(paymentService, "payuBaseUrl",  "https://secure.payu.in");
         ReflectionTestUtils.setField(paymentService, "frontendUrl",  "http://localhost:3000");
-        // handleWebhook delegates to self.handleCallback — inject real instance so it works without Spring context
-        ReflectionTestUtils.setField(paymentService, "self", paymentService);
+        ReflectionTestUtils.setField(paymentService, "backendUrl",  "http://localhost:8083");
     }
 
     // ── Shared helpers ────────────────────────────────────────────────────────

@@ -90,9 +90,9 @@ class PaymentControllerTest {
 
     // ── POST /api/enrollments/payments/callback/success ───────────────────────
 
-    // Guarantees: the success callback endpoint returns 200 and delegates to the service without modification
+    // Guarantees: the success callback endpoint returns 302 redirect and delegates to the service
     @Test
-    void callbackSuccess_returns200_withStatus() throws Exception {
+    void callbackSuccess_returns302_redirect_withStatus() throws Exception {
         when(paymentService.handleCallback(any()))
                 .thenReturn(Map.of("status", "SUCCESS", "txnid", "TXN1"));
 
@@ -100,14 +100,14 @@ class PaymentControllerTest {
                         .param("txnid",   "TXN1")
                         .param("status",  "success")
                         .param("hash",    "abc123"))
-                .andExpect(status().isOk());
+                .andExpect(status().is3xxRedirection());
     }
 
     // ── POST /api/enrollments/payments/callback/failure ───────────────────────
 
-    // Guarantees: the failure callback endpoint returns 200 and delegates to the service without modification
+    // Guarantees: the failure callback endpoint returns 302 redirect and delegates to the service
     @Test
-    void callbackFailure_returns200_withStatus() throws Exception {
+    void callbackFailure_returns302_redirect_withStatus() throws Exception {
         when(paymentService.handleCallback(any()))
                 .thenReturn(Map.of("status", "FAILURE", "txnid", "TXN1"));
 
@@ -115,7 +115,7 @@ class PaymentControllerTest {
                         .param("txnid",  "TXN1")
                         .param("status", "failure")
                         .param("hash",   "abc123"))
-                .andExpect(status().isOk());
+                .andExpect(status().is3xxRedirection());
     }
 
     // ── POST /api/enrollments/payments/webhook ────────────────────────────────
