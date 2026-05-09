@@ -69,8 +69,8 @@ appConfig:
   CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://cyberlearnix.com,https://apis.cyberlearnix.com"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-  # JVM heap size optimization - limit to 80Mi to keep total memory under 128Mi
-  JAVA_OPTS: "-Xms64m -Xmx96m -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+  # JVM heap size optimization - limit to 64Mi to keep total memory under 100Mi
+  JAVA_OPTS: "-Xms32m -Xmx64m -XX:MaxMetaspaceSize=48m -XX:CompressedClassSpaceSize=24m -XX:MaxDirectMemorySize=32m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+UseStringDeduplication -XX:StringDeduplicationAgeThreshold=3"
 
 # ── Ingress — NGINX Ingress Controller (installed by k3s-setup.sh) ─────────
 ingress:
@@ -112,11 +112,11 @@ services:
       pathType: Prefix
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -132,11 +132,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -152,11 +152,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -172,11 +172,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -191,11 +191,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "96Mi"
-        cpu: "25m"
+        memory: "48Mi"
+        cpu: "20m"
       limits:
-        memory: "192Mi"
-        cpu: "100m"
+        memory: "72Mi"
+        cpu: "80m"
     hpa:
       enabled: false
     pdb:
@@ -211,11 +211,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -231,11 +231,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -251,11 +251,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -271,11 +271,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
@@ -291,11 +291,11 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        memory: "64Mi"
+        cpu: "25m"
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "96Mi"
+        cpu: "100m"
     hpa:
       enabled: false
     pdb:
