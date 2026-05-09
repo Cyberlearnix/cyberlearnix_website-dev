@@ -6,10 +6,16 @@ import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepositor
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +44,9 @@ public class PaymentController {
 
     @Autowired
     private PaymentTransactionRepository transactionRepository;
+
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
 
     // ── 1. Initiate ───────────────────────────────────────────────────────────
 
@@ -80,10 +89,10 @@ public class PaymentController {
      * Redirects to the frontend with status parameters.
      */
     @PostMapping("/callback/success")
-    public ResponseEntity<Map<String, Object>> paymentSuccess(@RequestParam Map<String, String> params) {
+    public ResponseEntity<?> paymentSuccess(@RequestParam Map<String, String> params) {
         try {
             Map<String, Object> result = paymentService.handleCallback(params);
-            return ResponseEntity.ok(result);
+            return redirectToFrontend(result);
         } catch (Exception e) {
             log.error("[PayU] Success callback processing error: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
@@ -98,10 +107,10 @@ public class PaymentController {
      * PayU redirects the student's browser here after a FAILED/CANCELLED payment.
      */
     @PostMapping("/callback/failure")
-    public ResponseEntity<Map<String, Object>> paymentFailure(@RequestParam Map<String, String> params) {
+    public ResponseEntity<?> paymentFailure(@RequestParam Map<String, String> params) {
         try {
             Map<String, Object> result = paymentService.handleCallback(params);
-            return ResponseEntity.ok(result);
+            return redirectToFrontend(result);
         } catch (Exception e) {
             log.error("[PayU] Failure callback processing error: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
@@ -164,6 +173,27 @@ public class PaymentController {
     @PostMapping("/payu-payment")
     public ResponseEntity<Map<String, Object>> initiatePaymentLegacy(@RequestBody Map<String, Object> payload) {
         return initiatePayment(payload);
+    }
+
+    private ResponseEntity<Void> redirectToFrontend(Map<String, Object> result) {
+        String status = String.valueOf(result.getOrDefault("status", "FAILURE")).toLowerCase();
+        String formId = encode(String.valueOf(result.getOrDefault("formId", "")));
+        String txnid = encode(String.valueOf(result.getOrDefault("txnid", "")));
+        String responseId = encode(String.valueOf(result.getOrDefault("responseId", "")));
+        String email = encode(String.valueOf(result.getOrDefault("email", "")));
+        String redirectUrl = frontendUrl + "/enroll-form.html?status=" + status
+                + "&formId=" + formId
+                + "&txnid=" + txnid
+                + "&responseId=" + responseId
+                + "&email=" + email;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(URI.create(redirectUrl));
+        return new ResponseEntity<>(headers, HttpStatus.SEE_OTHER);
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 }
 

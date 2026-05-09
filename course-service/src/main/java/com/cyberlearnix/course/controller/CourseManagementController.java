@@ -301,7 +301,7 @@ public class CourseManagementController {
 
             ModuleContent savedContent = persistContent(content);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of("success", true, "content", savedContent));
+                    .body(Map.of("success", true, "content", toContentResponse(savedContent)));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -460,7 +460,7 @@ public class CourseManagementController {
                 savedContent = contentRepository.save(content);
             }
 
-            return ResponseEntity.ok(Map.of("success", true, "content", savedContent));
+            return ResponseEntity.ok(Map.of("success", true, "content", toContentResponse(savedContent)));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -483,8 +483,8 @@ public class CourseManagementController {
 
         Map<String, Object> response = Map.of(
                 "success", true,
-                "course", course.get(),
-                "modules", modules);
+                "course", toCourseResponse(course.get()),
+                "modules", modules.stream().map(this::toModuleResponse).collect(Collectors.toList()));
 
         return ResponseEntity.ok(response);
     }
@@ -572,7 +572,8 @@ public class CourseManagementController {
 
         return moduleRepository.findById(moduleId).map(module -> {
             List<ModuleContent> contents = contentRepository.findByModuleIdOrderByOrderIndex(moduleId);
-            return ResponseEntity.ok(Map.of("success", true, "moduleTitle", module.getTitle(), "contents", contents));
+            return ResponseEntity.ok(Map.of("success", true, "moduleTitle", module.getTitle(), "contents",
+                    contents.stream().map(this::toContentResponse).collect(Collectors.toList())));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -826,5 +827,108 @@ public class CourseManagementController {
             return quizRepository.save((QuizContent) content);
         }
         return contentRepository.save(content);
+    }
+
+    private Map<String, Object> toCourseResponse(Course course) {
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("id", course.getId());
+        response.put("title", course.getTitle());
+        response.put("description", course.getDescription());
+        response.put("category", course.getCategory());
+        response.put("difficultyLevel", course.getDifficultyLevel());
+        response.put("duration", course.getDuration());
+        response.put("contentUrl", course.getContentUrl());
+        response.put("thumbnailUrl", course.getThumbnailUrl());
+        response.put("basePrice", course.getBasePrice());
+        response.put("gstPercent", course.getGstPercent());
+        response.put("finalPrice", course.getFinalPrice());
+        response.put("isActive", course.getActive());
+        response.put("createdBy", course.getCreatedBy());
+        response.put("createdAt", course.getCreatedAt());
+        response.put("updatedAt", course.getUpdatedAt());
+        response.put("status", course.getStatus());
+        response.put("deletedAt", course.getDeletedAt());
+        return response;
+    }
+
+    private Map<String, Object> toModuleResponse(CourseModule module) {
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("id", module.getId());
+        response.put("title", module.getTitle());
+        response.put("description", module.getDescription());
+        response.put("imageUrl", module.getImageUrl());
+        response.put("orderIndex", module.getOrderIndex());
+        response.put("isActive", module.getActive());
+        response.put("createdBy", module.getCreatedBy());
+        response.put("createdAt", module.getCreatedAt());
+        response.put("updatedAt", module.getUpdatedAt());
+        if (module.getCourse() != null) {
+            response.put("courseId", module.getCourse().getId());
+        }
+        if (module.getParentModule() != null) {
+            response.put("parentModuleId", module.getParentModule().getId());
+        }
+        response.put("contents", contentRepository.findByModuleIdOrderByOrderIndex(module.getId())
+                .stream().map(this::toContentResponse).collect(Collectors.toList()));
+        response.put("subModules", moduleRepository.findByParentModuleId(module.getId())
+                .stream().map(this::toModuleResponse).collect(Collectors.toList()));
+        return response;
+    }
+
+    private Map<String, Object> toContentResponse(ModuleContent content) {
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("id", content.getId());
+        response.put("title", content.getTitle());
+        response.put("description", content.getDescription());
+        response.put("contentType", content.getContentType());
+        response.put("orderIndex", content.getOrderIndex());
+        response.put("isActive", content.getActive());
+        response.put("createdBy", content.getCreatedBy());
+        response.put("createdAt", content.getCreatedAt());
+        response.put("updatedAt", content.getUpdatedAt());
+        response.put("status", content.getStatus());
+        if (content.getModule() != null) {
+            response.put("moduleId", content.getModule().getId());
+        }
+
+        if (content instanceof LectureContent lecture) {
+            response.put("videoUrl", lecture.getVideoUrl());
+            response.put("imageUrl", lecture.getImageUrl());
+            response.put("contentText", lecture.getContentText());
+            response.put("contentBlocks", lecture.getContentBlocks());
+            response.put("durationMinutes", lecture.getDurationMinutes());
+            response.put("isPreview", lecture.getIsPreview());
+            response.put("attachmentUrl", lecture.getAttachmentUrl());
+            response.put("interactiveUrl", lecture.getInteractiveUrl());
+        } else if (content instanceof LabContent lab) {
+            response.put("labType", lab.getLabType());
+            response.put("instructions", lab.getInstructions());
+            response.put("environmentConfig", lab.getEnvironmentConfig());
+            response.put("durationMinutes", lab.getDurationMinutes());
+            response.put("difficultyLevel", lab.getDifficultyLevel());
+            response.put("prerequisites", lab.getPrerequisites());
+            response.put("learningObjectives", lab.getLearningObjectives());
+            response.put("hasSolution", lab.getHasSolution());
+            response.put("solutionGuide", lab.getSolutionGuide());
+        } else if (content instanceof AssignmentContent assignment) {
+            response.put("assignmentType", assignment.getAssignmentType());
+            response.put("instructions", assignment.getInstructions());
+            response.put("requirements", assignment.getRequirements());
+            response.put("submissionFormat", assignment.getSubmissionFormat());
+            response.put("maxScore", assignment.getMaxScore());
+            response.put("dueDate", assignment.getDueDate());
+            response.put("lateSubmissionAllowed", assignment.getLateSubmissionAllowed());
+            response.put("latePenaltyPercent", assignment.getLatePenaltyPercent());
+            response.put("rubric", assignment.getRubric());
+            response.put("autoGrade", assignment.getAutoGrade());
+            response.put("plagiarismCheck", assignment.getPlagiarismCheck());
+        } else if (content instanceof QuizContent quiz) {
+            response.put("quizId", quiz.getQuizId());
+            response.put("timeLimitMinutes", quiz.getTimeLimitMinutes());
+            response.put("passingScore", quiz.getPassingScore());
+            response.put("maxAttempts", quiz.getMaxAttempts());
+        }
+
+        return response;
     }
 }

@@ -68,9 +68,13 @@ public class UserController {
                     
                     String dateOfBirth = updates.containsKey("dateOfBirth") ? (String) updates.get("dateOfBirth") : (String) updates.get("date_of_birth");
                     if (dateOfBirth != null) profile.setDateOfBirth(dateOfBirth);
+                    Object age = updates.get("age");
+                    if (age instanceof Number) profile.setAge(((Number) age).intValue());
+                    else if (age instanceof String && !((String) age).isBlank()) profile.setAge(Integer.parseInt((String) age));
                     if (updates.containsKey("bio") && updates.get("bio") != null)
                         profile.setBio((String) updates.get("bio"));
                     if (updates.containsKey("location") && updates.get("location") != null)
+                        profile.setLocation((String) updates.get("location"));
                     profile.setUpdatedAt(LocalDateTime.now());
                     profile.setIsProfileComplete(true);
                     return ResponseEntity.ok(userProfileRepository.save(profile));

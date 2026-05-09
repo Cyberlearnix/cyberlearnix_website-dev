@@ -22,12 +22,23 @@ public class CertificateController {
     private CertificateTemplateRepository templateRepository;
 
     @GetMapping
-    public ResponseEntity<List<Certificate>> getAllCertificates() {
+    public ResponseEntity<List<Certificate>> getAllCertificates(@RequestParam(required = false) String studentId) {
+        if (studentId != null) {
+            return ResponseEntity.ok(certificateRepository.findByStudentId(studentId));
+        }
         return ResponseEntity.ok(certificateRepository.findAll());
     }
 
     @PostMapping
     public ResponseEntity<Certificate> issueCertificate(@RequestBody Certificate certificate) {
+        // Generate unique certificate ID if not provided
+        if (certificate.getCertificateId() == null || certificate.getCertificateId().isEmpty()) {
+            certificate.setCertificateId("CERT-" + System.currentTimeMillis() + "-" + certificate.getStudentId());
+        }
+        // Set issued date if not provided
+        if (certificate.getIssuedAt() == null) {
+            certificate.setIssuedAt(java.time.LocalDateTime.now());
+        }
         return ResponseEntity.ok(certificateRepository.save(certificate));
     }
 

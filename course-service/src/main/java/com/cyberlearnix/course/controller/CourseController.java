@@ -438,13 +438,105 @@ public class CourseController {
     public ResponseEntity<?> getCourseCurriculum(@PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = true) String userId,
             @RequestHeader(value = "X-User-Role", required = true) String userRole) {
+        // Verify student is enrolled (skip for admins and teachers assigned to the course)
+        boolean isAdmin = "admin".equals(userRole);
+        boolean isAssignedTeacher = courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
+        boolean isEnrolled = false;
+        if (!isAdmin && !isAssignedTeacher) {
+            try {
+                isEnrolled = enrollmentServiceClient.isEnrolled(userId, id);
+            } catch (Exception ignored) {
+                // enrollment-service unavailable — deny access
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of(KEY_SUCCESS, false, "error", "Unable to verify enrollment"));
+            }
+            if (!isEnrolled) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of(KEY_SUCCESS, false, "error", "You are not enrolled in this course"));
+            }
+        }
+
         return courseRepository.findById(id).map(course -> {
             List<CourseModule> modules = moduleRepository.findByCourseIdOrderByOrderIndex(id);
+            List<Map<String, Object>> moduleMaps = modules.stream().map(this::toModuleResponse).collect(Collectors.toList());
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
+                    "courseId", course.getId(),
                     "courseTitle", course.getTitle(),
-                    "modules", modules));
+                    "modules", moduleMaps));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    private Map<String, Object> toModuleResponse(CourseModule module) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", module.getId());
+        map.put("title", module.getTitle());
+        map.put("description", module.getDescription());
+        map.put("orderIndex", module.getOrderIndex());
+        map.put("parentModuleId", module.getParentModule() != null ? module.getParentModule().getId() : null);
+        map.put("courseId", module.getCourse() != null ? module.getCourse().getId() : null);
+        map.put("createdAt", module.getCreatedAt());
+        map.put("updatedAt", module.getUpdatedAt());
+
+        // Fetch content for this module
+        List<ModuleContent> contents = contentRepository.findByModuleIdOrderByOrderIndex(module.getId());
+        List<Map<String, Object>> contentMaps = contents.stream().map(this::toContentResponse).collect(Collectors.toList());
+        map.put("contents", contentMaps);
+
+        return map;
+    }
+
+    private Map<String, Object> toContentResponse(ModuleContent content) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", content.getId());
+        map.put("title", content.getTitle());
+        map.put("description", content.getDescription());
+        map.put("contentType", content.getContentType());
+        map.put("orderIndex", content.getOrderIndex());
+        map.put("moduleId", content.getModule() != null ? content.getModule().getId() : null);
+        map.put("createdAt", content.getCreatedAt());
+        map.put("updatedAt", content.getUpdatedAt());
+
+        // Add type-specific fields
+        if (content instanceof LectureContent) {
+            LectureContent lect = (LectureContent) content;
+            map.put("videoUrl", lect.getVideoUrl());
+            map.put("imageUrl", lect.getImageUrl());
+            map.put("contentText", lect.getContentText());
+            map.put("contentBlocks", lect.getContentBlocks());
+            map.put("durationMinutes", lect.getDurationMinutes());
+            map.put("isPreview", lect.getIsPreview());
+            map.put("attachmentUrl", lect.getAttachmentUrl());
+        } else if (content instanceof LabContent) {
+            LabContent lab = (LabContent) content;
+            map.put("labType", lab.getLabType());
+            map.put("instructions", lab.getInstructions());
+            map.put("environmentConfig", lab.getEnvironmentConfig());
+            map.put("durationMinutes", lab.getDurationMinutes());
+            map.put("difficultyLevel", lab.getDifficultyLevel());
+            map.put("prerequisites", lab.getPrerequisites());
+            map.put("solutionGuide", lab.getSolutionGuide());
+        } else if (content instanceof AssignmentContent) {
+            AssignmentContent ass = (AssignmentContent) content;
+            map.put("assignmentType", ass.getAssignmentType());
+            map.put("instructions", ass.getInstructions());
+            map.put("requirements", ass.getRequirements());
+            map.put("maxScore", ass.getMaxScore());
+            map.put("dueDate", ass.getDueDate());
+            map.put("lateSubmissionAllowed", ass.getLateSubmissionAllowed());
+            map.put("latePenaltyPercent", ass.getLatePenaltyPercent());
+            map.put("rubric", ass.getRubric());
+            map.put("plagiarismCheck", ass.getPlagiarismCheck());
+        } else if (content instanceof QuizContent) {
+            QuizContent quiz = (QuizContent) content;
+            map.put("quizId", quiz.getQuizId());
+            map.put("timeLimitMinutes", quiz.getTimeLimitMinutes());
+            map.put("passingScore", quiz.getPassingScore());
+            map.put("maxAttempts", quiz.getMaxAttempts());
+            // Don't include questions here to avoid lazy loading issues
+        }
+
+        return map;
     }
 
     /**

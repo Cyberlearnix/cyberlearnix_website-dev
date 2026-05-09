@@ -38,6 +38,9 @@ public class PaymentService {
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
+    @Value("${app.backend.url:http://localhost:8083}")
+    private String backendUrl;
+
     private final PaymentTransactionRepository transactionRepository;
 
     private final EnrollmentFormResponseRepository responseRepository;
@@ -175,11 +178,8 @@ public class PaymentService {
         transactionRepository.save(txn);
 
         // 3. Build callback URLs (browser redirects — must be reachable by the student's browser)
-        String encodedEmail = java.net.URLEncoder.encode(email, StandardCharsets.UTF_8);
-        String surl = frontendUrl + "/enroll-form.html?status=success&formId=" + response.getFormId()
-                + "&txnid=" + txnid + "&email=" + encodedEmail + "&responseId=" + formResponseId;
-        String furl = frontendUrl + "/enroll-form.html?status=failure&formId=" + response.getFormId()
-                + "&txnid=" + txnid + "&email=" + encodedEmail + "&responseId=" + formResponseId;
+        String surl = backendUrl + "/api/enrollments/payments/callback/success";
+        String furl = backendUrl + "/api/enrollments/payments/callback/failure";
 
         // 4. Generate PayU hash
         // Format: key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5||||||SALT

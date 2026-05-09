@@ -81,6 +81,12 @@ public class EnrollmentController {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
+    @GetMapping("/check")
+    public ResponseEntity<Boolean> checkEnrollment(@RequestParam String studentId, @RequestParam Long courseId) {
+        boolean isEnrolled = enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId).isPresent();
+        return ResponseEntity.ok(isEnrolled);
+    }
+
     @PatchMapping("/progress")
     public ResponseEntity<Map<String, Object>> updateProgressByStudentAndCourse(
             @RequestBody Map<String, Object> body,
@@ -149,10 +155,32 @@ public class EnrollmentController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Access denied: you can only update your own enrollment"));
             }
-            if (progressRequest.getProgress() != null)
+            
+            Integer oldProgress = enrollment.getProgress();
+            if (progressRequest.getProgress() != null) {
                 enrollment.setProgress(progressRequest.getProgress());
+                
+                // Auto-issue certificate when progress reaches 100%
+                if (oldProgress == null || oldProgress < 100 && progressRequest.getProgress() >= 100) {
+                    try {
+                        // Fetch course title from course service
+                        java.util.Map<String, Object> courseInfo = courseServiceClient.getCourseInfo(enrollment.getCourseId());
+                        String courseTitle = courseInfo != null ? (String) courseInfo.get("title") : "Course";
+                        
+                        com.cyberlearnix.shared.entity.course.Certificate certificate = new com.cyberlearnix.shared.entity.course.Certificate();
+                        certificate.setStudentId(enrollment.getStudentId());
+                        certificate.setCourseId(enrollment.getCourseId());
+                        certificate.setCourseTitle(courseTitle);
+                        certificate.setType(com.cyberlearnix.shared.entity.course.Certificate.CertificateType.CERTIFICATE);
+                        courseServiceClient.issueCertificate(certificate);
+                    } catch (Exception e) {
+                        // Log error but don't fail the progress update
+                        System.err.println("Failed to issue certificate: " + e.getMessage());
+                    }
+                }
+            }
             if (progressRequest.getCompletedAt() != null)
-                enrollment.setCompletedAt(LocalDateTime.parse(progressRequest.getCompletedAt()));
+                enrollment.setCompletedAt(java.time.OffsetDateTime.parse(progressRequest.getCompletedAt()).toLocalDateTime());
             return ResponseEntity.ok(Map.of("success", true, "enrollment", enrollmentRepository.save(enrollment)));
         }).orElse(ResponseEntity.notFound().build());
     }

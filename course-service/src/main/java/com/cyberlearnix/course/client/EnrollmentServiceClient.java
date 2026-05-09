@@ -14,6 +14,11 @@ public interface EnrollmentServiceClient {
             @RequestParam(required = false) String studentId,
             @RequestParam(required = false) Long courseId);
 
+    @GetMapping("/api/enrollments/check")
+    Boolean isEnrolled(
+            @RequestParam String studentId,
+            @RequestParam Long courseId);
+
     @PatchMapping("/api/enrollments/progress")
     void updateProgress(@RequestBody Map<String, Object> progressUpdate);
 }
