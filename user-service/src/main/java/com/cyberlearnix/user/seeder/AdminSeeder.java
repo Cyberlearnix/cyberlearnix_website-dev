@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.entity.user.UserProfile;
 import com.cyberlearnix.shared.repository.user.UserProfileRepository;
 import com.cyberlearnix.shared.repository.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ import java.util.Optional;
  * Seeds the default admin user on startup if not already present.
  */
 @Component
+@ConditionalOnProperty(name = "admin.seeder.enabled", havingValue = "true", matchIfMissing = true)
 public class AdminSeeder implements CommandLineRunner {
 
     @Autowired
