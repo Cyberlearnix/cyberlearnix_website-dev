@@ -23,12 +23,14 @@ spec:
         target:
           type: Utilization
           averageUtilization: {{ $svc.hpa.targetCPUUtilizationPercentage | default 70 }}
+  {{- if $svc.hpa.targetMemoryUtilizationPercentage }}
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
-          averageUtilization: 80
+          averageUtilization: {{ $svc.hpa.targetMemoryUtilizationPercentage }}
+  {{- end }}
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 60

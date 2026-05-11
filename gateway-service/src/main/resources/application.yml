@@ -109,7 +109,7 @@ spring:
         - id: enrollment-service
           uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
           predicates:
-            - Path=/api/enrollments/**, /api/payments/**, /api/payu-payment
+            - Path=/api/enrollments, /api/enrollments/**, /api/payments/**, /api/payu-payment
 
         # Others
         - id: notification-service

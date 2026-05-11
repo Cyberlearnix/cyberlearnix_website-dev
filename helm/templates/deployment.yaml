@@ -11,7 +11,7 @@ metadata:
     deployment.kubernetes.io/revision: "1"
 spec:
   replicas: {{ $svc.replicas | default 1 }}
-  revisionHistoryLimit: 10
+  revisionHistoryLimit: 2
   progressDeadlineSeconds: 600
   selector:
     matchLabels:
@@ -85,6 +85,12 @@ spec:
             - name: SPRING_APPLICATION_NAME
               value: {{ $name | quote }}
             {{- if $svc.dbRequired }}
+            - name: DB_HOST
+              value: {{ $.Values.appConfig.DB_HOST | quote }}
+            - name: DB_PORT
+              value: {{ $.Values.appConfig.DB_PORT | quote }}
+            - name: DB_USER
+              value: {{ $.Values.appConfig.DB_USER | quote }}
             - name: DB_NAME
               value: {{ $svc.dbName | quote }}
             - name: DB_PASS

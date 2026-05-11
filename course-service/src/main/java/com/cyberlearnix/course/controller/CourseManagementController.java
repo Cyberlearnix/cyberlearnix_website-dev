@@ -870,8 +870,12 @@ public class CourseManagementController {
         response.put("createdBy", module.getCreatedBy());
         response.put("createdAt", module.getCreatedAt());
         response.put("updatedAt", module.getUpdatedAt());
-        // Don't access lazy-loaded course and parentModule directly
-        // These will be populated separately if needed
+        if (module.getCourseId() != null) {
+            response.put("courseId", module.getCourseId());
+        }
+        if (module.getParentModuleId() != null) {
+            response.put("parentModuleId", module.getParentModuleId());
+        }
         response.put("contents", contentRepository.findByModuleIdOrderByOrderIndex(module.getId())
                 .stream().map(this::toContentResponse).collect(Collectors.toList()));
         response.put("subModules", moduleRepository.findByParentModuleId(module.getId())
@@ -891,8 +895,8 @@ public class CourseManagementController {
         response.put("createdAt", content.getCreatedAt());
         response.put("updatedAt", content.getUpdatedAt());
         response.put("status", content.getStatus());
-        if (content.getModule() != null) {
-            response.put("moduleId", content.getModule().getId());
+        if (content.getModuleId() != null) {
+            response.put("moduleId", content.getModuleId());
         }
 
         if (content instanceof LectureContent lecture) {
