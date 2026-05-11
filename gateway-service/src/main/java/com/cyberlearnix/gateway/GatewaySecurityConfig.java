@@ -1,5 +1,6 @@
 package com.cyberlearnix.gateway;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -10,11 +11,13 @@ import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebFluxSecurity
 public class GatewaySecurityConfig {
+
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:5174}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -30,14 +33,8 @@ public class GatewaySecurityConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
         
-        // Allowed origins
-        corsConfig.setAllowedOrigins(Arrays.asList(
-            "https://lms.cyberlearnix.com",
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "http://localhost:5174",
-            "http://145.223.22.177"
-        ));
+        // Allowed origins — configured via CORS_ALLOWED_ORIGINS env var (Spring relaxed binding)
+        corsConfig.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         
         // Allowed methods
         corsConfig.setAllowedMethods(Arrays.asList(
