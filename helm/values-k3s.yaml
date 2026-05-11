@@ -100,9 +100,10 @@ postgres:
 resourceQuota:
   enabled: true
   hard:
-    pods: "30"
+    pods: "40"
     requestsCpu: "6"
-    requestsMemory: "8Gi"
+    # 10 services × 3 max replicas × 384Mi + infra (postgres/redis) = ~12Gi
+    requestsMemory: "12Gi"
     # 20 CPUs: 10 services × up to ~500m + HPA surge (up to 3 replicas × 10 svcs) + rolling update headroom
     limitsCpu: "20"
     limitsMemory: "16Gi"
@@ -126,17 +127,17 @@ services:
       pathType: Prefix
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
+      # no targetMemoryUtilizationPercentage — JVM heap is constant, not load-driven
     pdb:
       minAvailable: 1
 
@@ -150,17 +151,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -174,17 +174,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -198,17 +197,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -221,17 +219,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "192Mi"
+        memory: "320Mi"
         cpu: "75m"
       limits:
-        memory: "384Mi"
+        memory: "640Mi"
         cpu: "400m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -245,17 +242,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -269,17 +265,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -293,17 +288,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -317,17 +311,16 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
 
@@ -341,16 +334,15 @@ services:
       enabled: false
     resources:
       requests:
-        memory: "256Mi"
+        memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "512Mi"
+        memory: "768Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
     pdb:
       minAvailable: 1
