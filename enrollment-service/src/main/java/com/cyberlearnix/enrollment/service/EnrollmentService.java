@@ -194,11 +194,10 @@ public class EnrollmentService {
             responseRepository.save(r);
 
             if ("VERIFIED".equals(status)) {
-                // Determine courseId from form config
                 EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
-                Long courseId = (config != null) ? config.getCourseId() : null;
+                // Collect all courses linked to this enrollment form (multi-course support)
+                List<Long> courseIdsToEnroll = (config != null) ? config.getEffectiveCourseIds() : List.of();
 
-                // 1. Create Student Account
                 String tempPassword = "Welcome@" + java.util.UUID.randomUUID().toString().substring(0, 8);
                 try {
                     Map<String, Object> regReq = Map.of(
@@ -206,22 +205,27 @@ public class EnrollmentService {
                             "password", tempPassword,
                             "role", "student"
                     );
-                    // BUG-001: Capture the returned user record to get the real UUID
                     Map<String, Object> createdUser = userClient.registerUser(token, regReq);
                     String studentUuid = (createdUser != null && createdUser.get("id") != null)
                             ? (String) createdUser.get("id")
                             : null;
 
-                    // 2. Enroll Student in Course
-                    if (courseId != null) {
+                    // Enroll student in ALL courses linked to this form
+                    if (!courseIdsToEnroll.isEmpty()) {
                         if (studentUuid != null) {
-                            self.bulkAssign(studentUuid, List.of(courseId));
+                            // Store the created user ID on the response for reference
+                            r.setCreatedUserId(studentUuid);
+                            responseRepository.save(r);
+                            self.bulkAssign(studentUuid, courseIdsToEnroll);
+                            System.out.println("Enrolled student " + r.getStudentEmail()
+                                    + " in " + courseIdsToEnroll.size() + " course(s): " + courseIdsToEnroll);
                         } else {
                             System.err.println("Warning: registerUser did not return an id — skipping enrollment for " + r.getStudentEmail());
                         }
+                    } else {
+                        System.err.println("Warning: No courses linked to form " + r.getFormId() + " — skipping course enrollment for " + r.getStudentEmail());
                     }
 
-                    // 3. Send Credentials Notification
                     notificationClient.sendNotification("send-account-credentials", Map.of(
                             "email", r.getStudentEmail(),
                             "password", tempPassword,
@@ -230,7 +234,6 @@ public class EnrollmentService {
 
                 } catch (Exception e) {
                     System.err.println("Failed to automate student setup: " + e.getMessage());
-                    // We don't fail the verification transaction, but maybe log it
                 }
             }
 

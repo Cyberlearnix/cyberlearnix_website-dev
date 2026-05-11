@@ -466,6 +466,7 @@ public class CourseManagementController {
 
     // Get course with all modules and content
     @GetMapping("/courses/{id}/full")
+    @Transactional
     public ResponseEntity<?> getCourseWithContent(@PathVariable Long id,
             @RequestHeader("X-User-Id") String userId,
             @RequestHeader("X-User-Role") String userRole) {
@@ -581,6 +582,7 @@ public class CourseManagementController {
 
     // GET /courses/{courseId}/modules — top-level chapters + their sub-modules
     @GetMapping("/courses/{courseId}/modules")
+    @Transactional
     public ResponseEntity<?> getCourseModules(@PathVariable Long courseId,
             @RequestHeader("X-User-Role") String userRole) {
 
@@ -805,6 +807,12 @@ public class CourseManagementController {
             txt.setContentText(contentDTO.getContentText());
             txt.setContentBlocks(contentDTO.getContentBlocks());
             return txt;
+        } else if ("ARTICLE".equals(type)) {
+            LectureContent article = new LectureContent();
+            article.setContentText(contentDTO.getContentText());
+            article.setContentBlocks(contentDTO.getContentBlocks());
+            article.setAttachmentUrl(contentDTO.getAttachmentUrl());
+            return article;
         } else if ("QUIZ".equals(type) || "EXAM".equals(type)) {
             QuizContent quiz = new QuizContent();
             quiz.setQuizId(contentDTO.getQuizId());
@@ -862,12 +870,8 @@ public class CourseManagementController {
         response.put("createdBy", module.getCreatedBy());
         response.put("createdAt", module.getCreatedAt());
         response.put("updatedAt", module.getUpdatedAt());
-        if (module.getCourse() != null) {
-            response.put("courseId", module.getCourse().getId());
-        }
-        if (module.getParentModule() != null) {
-            response.put("parentModuleId", module.getParentModule().getId());
-        }
+        // Don't access lazy-loaded course and parentModule directly
+        // These will be populated separately if needed
         response.put("contents", contentRepository.findByModuleIdOrderByOrderIndex(module.getId())
                 .stream().map(this::toContentResponse).collect(Collectors.toList()));
         response.put("subModules", moduleRepository.findByParentModuleId(module.getId())

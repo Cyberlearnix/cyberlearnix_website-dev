@@ -13,8 +13,9 @@ public class CourseModule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "course_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"modules"})
     private Course course;
 
     // Self-referencing: null = top-level chapter, set = sub-chapter

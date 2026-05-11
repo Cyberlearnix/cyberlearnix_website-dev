@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "courses")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"modules", "courseModules"})
 public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
