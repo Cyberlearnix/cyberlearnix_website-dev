@@ -101,10 +101,10 @@ resourceQuota:
   enabled: true
   hard:
     pods: "30"
-    requestsCpu: "4"
+    requestsCpu: "6"
     requestsMemory: "8Gi"
-    # 12 CPUs: 10 services × up to ~500m each + 2 CPUs headroom for rolling updates
-    limitsCpu: "12"
+    # 20 CPUs: 10 services × up to ~500m + HPA surge (up to 3 replicas × 10 svcs) + rolling update headroom
+    limitsCpu: "20"
     limitsMemory: "16Gi"
     pvcs: "10"
 
