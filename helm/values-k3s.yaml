@@ -31,10 +31,10 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
-  gateway-service:  fae779da7486d4968e5df787e96a931166dee9c5
+  gateway-service:   bc09c8b013e24acbaeee2f2a7e2e1fbbdd0be03d
   user-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
   course-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
-  enrollment-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
+  enrollment-service:  bc09c8b013e24acbaeee2f2a7e2e1fbbdd0be03d
   notification-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
   shop-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
   form-service: 43a4afbfd5d1d19475fdd6f6e9355a7c5ad237ca
