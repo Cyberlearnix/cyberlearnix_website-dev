@@ -36,7 +36,6 @@ public class PaymentService {
     private String payuBaseUrl;
 
     @Value("${app.frontend.url:http://localhost:5173}")
-    @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
     @Value("${app.backend.url:http://localhost:8083}")
@@ -251,14 +250,6 @@ public class PaymentService {
             log.warn("[PayU Callback] Hash mismatch for txnid={}. reverseInput=[{}]", txnid, reverseHashString);
         }
 
-        // 1. Verify reverse hash
-        // Formula: sha512(salt|status||||||udf1|email|firstname|productinfo|amount|txnid|key)
-        // PayU reverse hash uses: salt|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
-        String udf1 = params.getOrDefault("udf1", "");
-        String reverseHashString = merchantSalt + "|" + status + "||||||" + udf1 + "|" + email + "|"
-                + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
-        String computedHash = sha512(reverseHashString);
-        boolean hashVerified = computedHash.equalsIgnoreCase(receivedHash);
 
         // 2. Load and update transaction
         Optional<PaymentTransaction> txnOpt = transactionRepository.findByTxnid(txnid);
@@ -330,33 +321,6 @@ public class PaymentService {
         result.put("formId", txn.getFormId() != null ? txn.getFormId() : "");
         result.put("responseId", txn.getFormResponseId() != null ? String.valueOf(txn.getFormResponseId()) : "");
         result.put("email", txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
-        String normalizedStatus = "success".equals(status) && hashVerified ? STATUS_SUCCESS : STATUS_FAILURE;
-        txn.setStatus(normalizedStatus);
-        transactionRepository.save(txn);
-
-        // 3. Update form response payment status
-        if (txn.getFormResponseId() != null) {
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                r.setPaymentStatus(STATUS_SUCCESS.equals(normalizedStatus) ? "PAID" : "FAILED");
-                // SEC: Only persist payment details when hash is verified and payment succeeded.
-                // Setting transactionId on a tampered/failed callback would be a security risk.
-                if (STATUS_SUCCESS.equals(normalizedStatus)) {
-                    r.setTransactionId(txnid);
-                    r.setMihpayid(mihpayid);
-                    r.setPaymentMode(resolvePaymentMode(mode));
-                    r.setAmountPaid(Double.parseDouble(amount));
-                }
-                responseRepository.save(r);
-            });
-        }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", normalizedStatus);
-        result.put(KEY_TXNID, txnid);
-        result.put("mihpayid", mihpayid);
-        result.put(KEY_HASH_VERIFIED, hashVerified);
-        result.put("message", STATUS_SUCCESS.equals(normalizedStatus)
-                ? "Payment successful" : "Payment failed or hash mismatch");
         return result;
     }
 
