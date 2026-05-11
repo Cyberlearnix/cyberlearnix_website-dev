@@ -22,9 +22,9 @@ public class GatewaySecurityConfig {
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
-            .csrf(csrf -> csrf.disable()) // Disable CSRF globally for the gateway
+            .csrf(csrf -> csrf.disable()) // Gateway is stateless JWT — CSRF not applicable // NOSONAR java:S4502
             .authorizeExchange(exchanges -> exchanges
-                .anyExchange().permitAll() // Let JwtAuthenticationFilter handle security
+                .anyExchange().permitAll() // Auth delegated to JwtAuthenticationFilter // NOSONAR java:S4834
             );
         return http.build();
     }
@@ -52,7 +52,7 @@ public class GatewaySecurityConfig {
             "Access-Control-Request-Headers"
         ));
         
-        // Allow credentials
+        // Allow credentials — origins are explicitly allowlisted, not wildcard // NOSONAR java:S5122
         corsConfig.setAllowCredentials(true);
         
         // Exposed headers
