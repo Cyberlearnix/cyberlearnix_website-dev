@@ -297,10 +297,18 @@ public class PaymentService {
                     responseRepository.save(r);
                 }
             });
+        } else if (txn.getFormResponseId() != null && !payuSaysSuccess) {
+            // Payment failed — mark form response as FAILED
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                if (!"PAID".equals(r.getPaymentStatus())) {
+                    r.setPaymentStatus("FAILED");
+                    responseRepository.save(r);
+                }
+            });
         }
 
-        // For the redirect: use PayU's raw status (not hash-dependent) for correct UX
-        String redirectStatus = payuSaysSuccess ? STATUS_SUCCESS : STATUS_FAILURE;
+        // Status returned in the response reflects both PayU outcome and hash verification
+        String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", redirectStatus);
