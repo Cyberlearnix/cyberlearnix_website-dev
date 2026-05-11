@@ -1,3 +1,4 @@
+// enrollment-service — Spring Boot microservice
 plugins {
     id 'org.springframework.boot'
 }
