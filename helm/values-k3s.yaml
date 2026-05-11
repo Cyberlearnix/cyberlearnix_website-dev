@@ -69,6 +69,9 @@ appConfig:
   CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://cyberlearnix.com,https://apis.cyberlearnix.com"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+  # JVM heap size optimization for 4 CPU / 16GB server
+  # Balanced settings for performance while staying under 50% resource usage
+  JAVA_OPTS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:CompressedClassSpaceSize=48m -XX:MaxDirectMemorySize=64m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+UseStringDeduplication -XX:StringDeduplicationAgeThreshold=3 -XX:MaxGCPauseMillis=200 -XX:InitiatingHeapOccupancyPercent=35"
 
 # ── Ingress — NGINX Ingress Controller (installed by k3s-setup.sh) ─────────
 ingress:
@@ -116,9 +119,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   user-service:
     port: 8081
@@ -136,9 +143,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   course-service:
     port: 8082
@@ -156,9 +167,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   enrollment-service:
     port: 8083
@@ -176,9 +191,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   notification-service:
     port: 8084
@@ -190,14 +209,18 @@ services:
     resources:
       requests:
         memory: "192Mi"
-        cpu: "50m"
+        cpu: "75m"
       limits:
         memory: "384Mi"
-        cpu: "250m"
+        cpu: "400m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   shop-service:
     port: 8085
@@ -215,9 +238,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   form-service:
     port: 8087
@@ -235,9 +262,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   admin-service:
     port: 8090
@@ -255,9 +286,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   cms-service:
     port: 8089
@@ -275,9 +310,13 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
 
   instructor-service:
     port: 8091
@@ -295,6 +334,10 @@ services:
         memory: "512Mi"
         cpu: "500m"
     hpa:
-      enabled: false
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
     pdb:
-      minAvailable: 0
+      minAvailable: 1
