@@ -88,6 +88,7 @@ ingress:
 # ── External access host ──────────────────────────────────────────────────────
 hosts:
   api: "apis.cyberlearnix.com"
+  lms: "lms.cyberlearnix.com"
 
 # ── PostgreSQL (deployed as k8s StatefulSet) ──────────────────────────────────
 postgres:
