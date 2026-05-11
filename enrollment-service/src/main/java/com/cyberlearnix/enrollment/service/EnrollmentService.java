@@ -225,13 +225,6 @@ public class EnrollmentService {
                         }
                     } else {
                         System.err.println("Warning: No courses linked to form " + r.getFormId() + " — skipping course enrollment for " + r.getStudentEmail());
-                    // 2. Enroll Student in Course
-                    if (courseId != null) {
-                        if (studentUuid != null) {
-                            self.bulkAssign(studentUuid, List.of(courseId));
-                        } else {
-                            System.err.println("Warning: registerUser did not return an id — skipping enrollment for " + r.getStudentEmail());
-                        }
                     }
 
                     notificationClient.sendNotification("send-account-credentials", Map.of(

@@ -396,8 +396,6 @@ public class PaymentService {
 
         // 2. Verify hash: SALT|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
         String hashString = merchantSalt + "|" + status + "|" + udf5 + "|" + udf4 + "|" + udf3 + "|" + udf2 + "|" + udf1 + "|" + email + "|"
-        // 2. Verify hash
-        String hashString = merchantSalt + "|" + status + "||||||" + udf1 + "|" + email + "|"
                 + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
         String calculatedHash = sha512(hashString);
         boolean hashVerified = calculatedHash.equalsIgnoreCase(receivedHash);
