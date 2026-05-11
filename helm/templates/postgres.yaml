@@ -12,7 +12,7 @@ metadata:
 spec:
   serviceName: postgres
   replicas: 1
-  revisionHistoryLimit: 10
+  revisionHistoryLimit: 2
   podManagementPolicy: OrderedReady
   updateStrategy:
     type: RollingUpdate
