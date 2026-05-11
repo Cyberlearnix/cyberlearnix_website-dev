@@ -97,22 +97,34 @@ jobs:
   unit-test:
     name: Unit tests – ${{ matrix.service }}
     needs: detect
-    if: needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJson(needs.detect.outputs.matrix) }}
+        service:
+          - gateway-service
+          - user-service
+          - course-service
+          - enrollment-service
+          - notification-service
+          - shop-service
+          - form-service
+          - admin-service
+          - cms-service
+          - instructor-service
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
+        if: contains(fromJson(needs.detect.outputs.matrix), matrix.service)
 
       - uses: actions/setup-java@v4
+        if: contains(fromJson(needs.detect.outputs.matrix), matrix.service)
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: gradle
 
       - name: Run unit tests – ${{ matrix.service }}
+        if: contains(fromJson(needs.detect.outputs.matrix), matrix.service)
         env:
           JWT_SECRET: ci-test-secret-not-for-production
           DB_PASS: ci-test-pass
@@ -125,7 +137,7 @@ jobs:
 
       - name: Publish test report
         uses: mikepenz/action-junit-report@v4
-        if: always()
+        if: always() && contains(fromJson(needs.detect.outputs.matrix), matrix.service)
         with:
           report_paths: '${{ matrix.service }}/build/test-results/test/*.xml'
           check_name: 'Unit Tests – ${{ matrix.service }}'
