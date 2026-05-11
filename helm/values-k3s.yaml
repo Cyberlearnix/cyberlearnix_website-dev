@@ -96,6 +96,18 @@ postgres:
   user: postgres
   storage: 10Gi
 
+# ── ResourceQuota — managed by Helm so ArgoCD keeps it in sync ───────────────
+resourceQuota:
+  enabled: true
+  hard:
+    pods: "30"
+    requestsCpu: "4"
+    requestsMemory: "8Gi"
+    # 12 CPUs: 10 services × up to ~500m each + 2 CPUs headroom for rolling updates
+    limitsCpu: "12"
+    limitsMemory: "16Gi"
+    pvcs: "10"
+
 # ── Redis (deployed as k8s Deployment) ───────────────────────────────────────
 redis:
   enabled: true
