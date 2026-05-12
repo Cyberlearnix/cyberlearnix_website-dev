@@ -176,7 +176,7 @@ public class AdminStatsController {
                     if (info.get("difficulty") != null) difficulty = info.get("difficulty").toString();
                     Object pub = info.get("isPublished");
                     if (pub == null) pub = info.get("published");
-                    if (pub instanceof Boolean) isPublished = (Boolean) pub;
+                    if (pub instanceof Boolean b) isPublished = b;
                 }
             } catch (Exception e) {
                 log.warn("Could not fetch course info for id={}: {}", courseId, e.getMessage());
@@ -229,7 +229,7 @@ public class AdminStatsController {
     // ─── helper ───────────────────────────────────────────────────────────────
     private double toDouble(Object val) {
         if (val == null) return 0.0;
-        if (val instanceof BigDecimal) return ((BigDecimal) val).doubleValue();
+        if (val instanceof BigDecimal bd) return bd.doubleValue();
         if (val instanceof Number) return ((Number) val).doubleValue();
         try { return Double.parseDouble(val.toString()); } catch (Exception e) { return 0.0; }
     }

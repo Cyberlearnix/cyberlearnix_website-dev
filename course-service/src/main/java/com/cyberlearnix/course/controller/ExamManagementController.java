@@ -31,6 +31,8 @@ public class ExamManagementController {
     private final QuestionRepository questionRepository;
     private final ExamAttemptRepository attemptRepository;
 
+    private static final String KEY_ANSWERS = "answers";
+
     // ─── Exam CRUD ────────────────────────────────────────────────────────────
 
     @GetMapping("/exams")
@@ -128,7 +130,7 @@ public class ExamManagementController {
 
     @PutMapping("/exams/attempts/{attemptId}/answers")
     public ResponseEntity<Void> saveAnswers(@PathVariable Long attemptId, @RequestBody Map<String, Object> body) {
-        String answersJson = body.containsKey("answers") ? body.get("answers").toString() : "{}";
+        String answersJson = body.containsKey(KEY_ANSWERS) ? body.get(KEY_ANSWERS).toString() : "{}";
         examService.saveAnswers(attemptId, answersJson);
         return ResponseEntity.noContent().build();
     }
@@ -136,7 +138,7 @@ public class ExamManagementController {
     @PostMapping("/exams/attempts/{attemptId}/submit")
     public ResponseEntity<Map<String, Object>> submitAttempt(@PathVariable Long attemptId,
             @RequestBody Map<String, Object> body) {
-        String answersJson = body.containsKey("answers") ? body.get("answers").toString() : "{}";
+        String answersJson = body.containsKey(KEY_ANSWERS) ? body.get(KEY_ANSWERS).toString() : "{}";
         return ResponseEntity.ok(examService.submitAttempt(attemptId, answersJson));
     }
 

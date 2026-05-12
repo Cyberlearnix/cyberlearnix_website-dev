@@ -65,7 +65,6 @@ public class ExamAttempt {
     private Integer remainingSeconds;
 
     // ─── Answers ──────────────────────────────────────────────────────────────
-    // JSON map: { "questionId": { "answer": ..., "answeredAt": "ISO", "flagged": bool } }
 
     @Column(columnDefinition = "TEXT")
     private String answers;

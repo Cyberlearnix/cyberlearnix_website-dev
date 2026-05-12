@@ -68,6 +68,8 @@ public class PaymentService {
     private static final String STATUS_FAILURE = "FAILURE";
     private static final String KEY_HASH_VERIFIED = "hashVerified";
     private static final String KEY_TXNID = "txnid";
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_EMAIL = "email";
 
     public PaymentService(PaymentTransactionRepository transactionRepository,
                           EnrollmentFormResponseRepository responseRepository,
@@ -195,7 +197,7 @@ public class PaymentService {
         paymentData.put("amount", amount);
         paymentData.put("productinfo", productInfo);
         paymentData.put("firstname", firstname);
-        paymentData.put("email", email);
+        paymentData.put(KEY_EMAIL, email);
         paymentData.put("phone", phone);
         paymentData.put("surl", surl);
         paymentData.put("furl", furl);
@@ -217,14 +219,14 @@ public class PaymentService {
      */
     @Transactional
     public Map<String, Object> handleCallback(Map<String, String> params) {
-        String status = params.getOrDefault("status", "failure").toLowerCase();
+        String status = params.getOrDefault(KEY_STATUS, "failure").toLowerCase();
         String txnid = params.get(KEY_TXNID);
         String payuTxnid = params.get(KEY_TXNID);
         String mihpayid = params.getOrDefault("mihpayid", "");
         String amount = params.getOrDefault("amount", "0");
         String productinfo = params.getOrDefault("productinfo", "");
         String firstname = params.getOrDefault("firstname", "");
-        String email = params.getOrDefault("email", "");
+        String email = params.getOrDefault(KEY_EMAIL, "");
         String receivedHash = params.getOrDefault("hash", "");
         String mode = params.getOrDefault("mode", "");
         String bankRefNum = params.getOrDefault("bank_ref_num", "");
@@ -313,14 +315,14 @@ public class PaymentService {
         String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", redirectStatus);
+        result.put(KEY_STATUS, redirectStatus);
         result.put(KEY_TXNID, txnid);
         result.put("mihpayid", mihpayid);
         result.put(KEY_HASH_VERIFIED, hashVerified);
         result.put("message", payuSaysSuccess ? "Payment successful" : "Payment failed");
         result.put("formId", txn.getFormId() != null ? txn.getFormId() : "");
         result.put("responseId", txn.getFormResponseId() != null ? String.valueOf(txn.getFormResponseId()) : "");
-        result.put("email", txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
+        result.put(KEY_EMAIL, txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
         return result;
     }
 
@@ -334,12 +336,12 @@ public class PaymentService {
     @Transactional
     public void handleWebhook(Map<String, String> params) {
         String txnid     = params.getOrDefault("txnid", "");
-        String status    = params.getOrDefault("status", "").toLowerCase();
+        String status    = params.getOrDefault(KEY_STATUS, "").toLowerCase();
         String mihpayid  = params.getOrDefault("mihpayid", "");
         String amount    = params.getOrDefault("amount", "0");
         String productinfo = params.getOrDefault("productinfo", "");
         String firstname = params.getOrDefault("firstname", "");
-        String email     = params.getOrDefault("email", "");
+        String email     = params.getOrDefault(KEY_EMAIL, "");
         String mode      = params.getOrDefault("mode", "");
         String bankRefNum = params.getOrDefault("bank_ref_num", "");
         String errorMsg  = params.getOrDefault("error_Message", "");
@@ -487,7 +489,7 @@ public class PaymentService {
             // Register or find student, then enroll
             String tempPassword = "Welcome@" + UUID.randomUUID().toString().substring(0, 8);
             Map<String, Object> regReq = Map.of(
-                    "email", txn.getStudentEmail(),
+                    KEY_EMAIL, txn.getStudentEmail(),
                     "password", tempPassword,
                     "role", "student");
             // Use an internal service token — empty string uses default internal auth
@@ -517,7 +519,7 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Transaction not found: " + txnid));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put(KEY_TXNID, txn.getTxnid());
-        result.put("status", txn.getStatus());
+        result.put(KEY_STATUS, txn.getStatus());
         result.put("amount", txn.getAmount());
         result.put("currency", txn.getCurrency());
         result.put("mihpayid", txn.getMihpayid());
@@ -536,13 +538,13 @@ public class PaymentService {
         if (txn.isPresent()) {
             result.put("found", true);
             result.put(KEY_TXNID, txn.get().getTxnid());
-            result.put("status", txn.get().getStatus());
+            result.put(KEY_STATUS, txn.get().getStatus());
             result.put("amount", txn.get().getAmount());
             result.put("mihpayid", txn.get().getMihpayid());
             result.put(KEY_HASH_VERIFIED, txn.get().isHashVerified());
         } else {
             result.put("found", false);
-            result.put("status", "NOT_INITIATED");
+            result.put(KEY_STATUS, "NOT_INITIATED");
         }
         return result;
     }

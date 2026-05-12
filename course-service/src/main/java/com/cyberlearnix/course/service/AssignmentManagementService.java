@@ -6,7 +6,6 @@ import com.cyberlearnix.shared.repository.course.AssignmentContentRepository;
 import com.cyberlearnix.shared.repository.course.AssignmentSubmissionRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,13 +15,19 @@ import java.util.*;
 @Service
 public class AssignmentManagementService {
 
-    @Autowired
-    private AssignmentContentRepository assignmentContentRepository;
+    private final AssignmentContentRepository assignmentContentRepository;
+    private final AssignmentSubmissionRepository submissionRepository;
 
-    @Autowired
-    private AssignmentSubmissionRepository submissionRepository;
+    private static final String KEY_SUCCESS = "success";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public AssignmentManagementService(
+            AssignmentContentRepository assignmentContentRepository,
+            AssignmentSubmissionRepository submissionRepository) {
+        this.assignmentContentRepository = assignmentContentRepository;
+        this.submissionRepository = submissionRepository;
+    }
 
     // ─── Submit assignment ────────────────────────────────────────────────────
 
@@ -88,7 +93,6 @@ public class AssignmentManagementService {
 
     // ─── Auto-grading ─────────────────────────────────────────────────────────
 
-    @Transactional
     protected void autoGrade(AssignmentSubmission submission, AssignmentContent content, Map<String, Object> request) {
         try {
             Map<String, Object> meta = parseMeta(content.getAssignmentMetadata());
@@ -131,7 +135,7 @@ public class AssignmentManagementService {
         try {
             String[] cmd = buildCommand(language, code, stdin);
             if (cmd == null) {
-                result.put("success", false);
+                result.put(KEY_SUCCESS, false);
                 result.put("stderr", "Language not supported: " + language);
                 return result;
             }
@@ -152,25 +156,25 @@ public class AssignmentManagementService {
 
             if (!finished) {
                 process.destroyForcibly();
-                result.put("success", false);
+                result.put(KEY_SUCCESS, false);
                 result.put("stderr", "Time limit exceeded (" + timeout + "s)");
                 return result;
             }
 
             String stdout = new String(process.getInputStream().readAllBytes());
             String stderr = new String(process.getErrorStream().readAllBytes());
-            result.put("success", process.exitValue() == 0);
+            result.put(KEY_SUCCESS, process.exitValue() == 0);
             result.put("stdout", stdout);
             result.put("stderr", stderr);
             result.put("exitCode", process.exitValue());
         } catch (Exception e) {
-            result.put("success", false);
+            result.put(KEY_SUCCESS, false);
             result.put("stderr", "Execution error: " + e.getMessage());
         }
         return result;
     }
 
-    private String[] buildCommand(String language, String code, String stdin) throws Exception {
+    private String[] buildCommand(String language, String code, String stdin) {
         // NOTE: In production, use Docker isolation. This is a restricted dev sandbox.
         return switch (language != null ? language.toLowerCase() : "") {
             case "python"     -> new String[]{"python3", "-c", code};

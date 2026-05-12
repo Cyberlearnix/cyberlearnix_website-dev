@@ -108,7 +108,7 @@ public class AssignmentManagementController {
      */
     @GetMapping("/submissions/{submissionId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> getSubmission(
+    public ResponseEntity<Object> getSubmission(
             @PathVariable Long submissionId,
             @RequestHeader("X-User-Id") String requesterId,
             @RequestHeader("X-User-Role") String role) {
@@ -117,8 +117,8 @@ public class AssignmentManagementController {
                         || "ADMIN".equalsIgnoreCase(role)
                         || "INSTRUCTOR".equalsIgnoreCase(role)
                         || "TEACHER".equalsIgnoreCase(role))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+                .map(s -> ResponseEntity.<Object>ok(s))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).<Object>build());
     }
 
     // ─── Grading ──────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ public class AssignmentManagementController {
      */
     @GetMapping("/{contentId}/analytics")
     @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR','TEACHER')")
-    public ResponseEntity<?> getAnalytics(@PathVariable Long contentId) {
+    public ResponseEntity<Object> getAnalytics(@PathVariable Long contentId) {
         try {
             return ResponseEntity.ok(assignmentManagementService.getAnalytics(contentId));
         } catch (IllegalArgumentException e) {
