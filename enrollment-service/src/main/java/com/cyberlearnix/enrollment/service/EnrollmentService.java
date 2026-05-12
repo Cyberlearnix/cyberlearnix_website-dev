@@ -205,6 +205,7 @@ public class EnrollmentService {
                             "password", tempPassword,
                             "role", "student"
                     );
+                    // BUG-001: Capture the returned user record to get the real UUID
                     Map<String, Object> createdUser = userClient.registerUser(token, regReq);
                     String studentUuid = (createdUser != null && createdUser.get("id") != null)
                             ? (String) createdUser.get("id")
@@ -224,6 +225,13 @@ public class EnrollmentService {
                         }
                     } else {
                         System.err.println("Warning: No courses linked to form " + r.getFormId() + " — skipping course enrollment for " + r.getStudentEmail());
+                    // 2. Enroll Student in Course
+                    if (courseId != null) {
+                        if (studentUuid != null) {
+                            self.bulkAssign(studentUuid, List.of(courseId));
+                        } else {
+                            System.err.println("Warning: registerUser did not return an id — skipping enrollment for " + r.getStudentEmail());
+                        }
                     }
 
                     notificationClient.sendNotification("send-account-credentials", Map.of(

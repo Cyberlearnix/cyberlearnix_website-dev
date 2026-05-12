@@ -64,6 +64,7 @@ class PaymentServiceCallbackTest {
     private Map<String, String> buildCallbackParams(String status) {
         String reverseHashInput = "test-salt|" + status
                 + "||||||alice@test.com|Alice|Test Course|999.00|TXN-ABC|test-key";
+                + "|||||||alice@test.com|Alice|Test Course|999.00|TXN-ABC|test-key";
         String hash = HashTestUtil.sha512(reverseHashInput);
         Map<String, String> params = new HashMap<>();
         params.put("status",      status);

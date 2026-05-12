@@ -7,6 +7,7 @@ public class ContentCreateDTO {
     private String title;
     private String description;
     private String contentType; // LAB, ASSIGNMENT, LECTURE, VIDEO, IMAGE, TEXT, ARTICLE, QUIZ, EXAM
+    private String contentType; // LAB, ASSIGNMENT, LECTURE, VIDEO, IMAGE, TEXT, QUIZ, EXAM
     private Integer orderIndex;
     
     // Additional fields for specific types

@@ -99,6 +99,11 @@ public class ResponseController {
                     if (primaryCourseId != null) {
                         try {
                             java.util.Map<String, Object> courseInfo = courseServiceClient.getCourseInfo(primaryCourseId);
+                    coursePrice = config.getPaymentAmount();
+                    // Fetch the real course name from course-service
+                    if (courseId != null) {
+                        try {
+                            java.util.Map<String, Object> courseInfo = courseServiceClient.getCourseInfo(courseId);
                             if (courseInfo != null && courseInfo.get("title") != null) {
                                 courseTitle = courseInfo.get("title").toString();
                             }
