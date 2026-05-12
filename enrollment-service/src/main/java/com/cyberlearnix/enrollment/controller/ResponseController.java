@@ -10,7 +10,6 @@ import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepos
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentSubmissionRepository;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -32,23 +31,27 @@ public class ResponseController {
     private static final String KEY_MESSAGE = "message";
     private static final String KEY_STUDENT_DATA = "studentData";
 
-    @Autowired
-    private EnrollmentService enrollmentService;
+    private final EnrollmentService enrollmentService;
+    private final CourseServiceClient courseServiceClient;
+    private final EnrollmentSubmissionRepository submissionRepository;
+    private final EnrollmentFormResponseRepository responseRepository;
+    private final EnrollmentFormConfigRepository configRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
-    @Autowired
-    private CourseServiceClient courseServiceClient;
-
-    @Autowired
-    private EnrollmentSubmissionRepository submissionRepository;
-
-    @Autowired
-    private EnrollmentFormResponseRepository responseRepository;
-
-    @Autowired
-    private EnrollmentFormConfigRepository configRepository;
-
-    @Autowired
-    private PaymentTransactionRepository paymentTransactionRepository;
+    public ResponseController(
+            EnrollmentService enrollmentService,
+            CourseServiceClient courseServiceClient,
+            EnrollmentSubmissionRepository submissionRepository,
+            EnrollmentFormResponseRepository responseRepository,
+            EnrollmentFormConfigRepository configRepository,
+            PaymentTransactionRepository paymentTransactionRepository) {
+        this.enrollmentService = enrollmentService;
+        this.courseServiceClient = courseServiceClient;
+        this.submissionRepository = submissionRepository;
+        this.responseRepository = responseRepository;
+        this.configRepository = configRepository;
+        this.paymentTransactionRepository = paymentTransactionRepository;
+    }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")

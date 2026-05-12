@@ -1,6 +1,5 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.entity.course.AssignmentContent;
 import com.cyberlearnix.shared.entity.course.AssignmentSubmission;
 import com.cyberlearnix.shared.repository.course.AssignmentContentRepository;
 import com.cyberlearnix.shared.repository.course.AssignmentSubmissionRepository;
@@ -27,6 +26,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/assignments")
 public class AssignmentManagementController {
+
+    private static final String KEY_ERROR = "error";
 
     private final AssignmentManagementService assignmentManagementService;
 
@@ -61,11 +62,11 @@ public class AssignmentManagementController {
                     contentId, request, studentId, studentName);
             return ResponseEntity.ok(submission);
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(KEY_ERROR, e.getMessage()));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Submission failed: " + e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(KEY_ERROR, "Submission failed: " + e.getMessage()));
         }
     }
 
@@ -143,7 +144,7 @@ public class AssignmentManagementController {
             AssignmentSubmission graded = assignmentManagementService.gradeSubmission(submissionId, request, graderId);
             return ResponseEntity.ok(graded);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -159,7 +160,7 @@ public class AssignmentManagementController {
         try {
             return ResponseEntity.ok(assignmentManagementService.getAnalytics(contentId));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -176,12 +177,12 @@ public class AssignmentManagementController {
             @RequestParam("file") MultipartFile file,
             @RequestHeader("X-User-Id") String userId) {
         if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Empty file"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Empty file"));
         }
         // Validate file type and size (max 50MB)
         long maxBytes = 50L * 1024 * 1024;
         if (file.getSize() > maxBytes) {
-            return ResponseEntity.badRequest().body(Map.of("error", "File exceeds 50MB limit"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "File exceeds 50MB limit"));
         }
         // Validate content type — only allow safe submission formats
         String ct = file.getContentType() != null ? file.getContentType().toLowerCase() : "";
@@ -198,7 +199,7 @@ public class AssignmentManagementController {
                 || ct.contains("javascript")
                 || ct.contains("octet-stream");
         if (!safe) {
-            return ResponseEntity.badRequest().body(Map.of("error", "File type not allowed: " + ct));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "File type not allowed: " + ct));
         }
         // In production, integrate with Cloudinary SDK or S3 here.
         // For now, return a placeholder indicating success for the dev environment.

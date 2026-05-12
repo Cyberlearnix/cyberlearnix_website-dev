@@ -49,6 +49,12 @@ public class ExamManagementService {
     private static final String FIELD_STARTER_CODE = "starterCode";
     private static final String FIELD_TIME_LIMIT_SECONDS = "timeLimitSeconds";
     private static final String FIELD_IMAGE_URL = "imageUrl";
+    private static final String FIELD_SUBTITLE = "subtitle";
+    private static final String FIELD_INSTRUCTIONS = "instructions";
+    private static final String FIELD_DURATION_MINUTES = "durationMinutes";
+    private static final String FIELD_EXAM_TYPE = "examType";
+    private static final String FIELD_MARKS = "marks";
+    private static final String FIELD_QUESTIONS = "questions";
 
     // ─── Exam CRUD ────────────────────────────────────────────────────────────
 
@@ -69,7 +75,7 @@ public class ExamManagementService {
         buildExamFromPayload(exam, payload);
         Exam saved = examRepository.save(exam);
         // Replace questions if provided
-        if (payload.containsKey("questions")) {
+        if (payload.containsKey(FIELD_QUESTIONS)) {
             questionRepository.deleteByExamId(id);
             saveQuestionsFromPayload(id, payload);
         }
@@ -142,14 +148,14 @@ public class ExamManagementService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", exam.getId());
         result.put(FIELD_TITLE, exam.getTitle());
-        result.put("subtitle", exam.getSubtitle());
-        result.put("instructions", exam.getInstructions());
-        result.put("durationMinutes", exam.getDurationMinutes());
+        result.put(FIELD_SUBTITLE, exam.getSubtitle());
+        result.put(FIELD_INSTRUCTIONS, exam.getInstructions());
+        result.put(FIELD_DURATION_MINUTES, exam.getDurationMinutes());
         result.put(FIELD_TOTAL_MARKS, exam.getTotalMarks());
         result.put(FIELD_PASSING_MARKS, exam.getPassingMarks());
         result.put(FIELD_MAX_ATTEMPTS, exam.getMaxAttempts());
         result.put("questionCount", exam.getQuestionCount());
-        result.put("examType", exam.getExamType());
+        result.put(FIELD_EXAM_TYPE, exam.getExamType());
         result.put(FIELD_NEGATIVE_MARKING, exam.getNegativeMarking());
         result.put(FIELD_NEGATIVE_MARK_VALUE, exam.getNegativeMarkValue());
         result.put(FIELD_TAB_SWITCH_DETECTION, exam.getTabSwitchDetection());
@@ -200,7 +206,7 @@ public class ExamManagementService {
         result.put("id", saved.getId());
         result.put("examId", examId);
         result.put("remainingSeconds", saved.getRemainingSeconds());
-        result.put("questions", questionsForStudent);
+        result.put(FIELD_QUESTIONS, questionsForStudent);
         return result;
     }
 
@@ -253,7 +259,7 @@ public class ExamManagementService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("attemptId", saved.getId());
         result.put("score", saved.getScore());
-        result.put("totalMarks", saved.getTotalMarks());
+        result.put(FIELD_TOTAL_MARKS, saved.getTotalMarks());
         result.put("percentage", saved.getPercentage());
         result.put("passed", saved.getPassed());
         result.put("status", saved.getStatus());
@@ -446,18 +452,18 @@ public class ExamManagementService {
     }
 
     private void applyExamBasicFields(Exam exam, Map<String, Object> p) {
-        if (p.containsKey(FIELD_TITLE))           exam.setTitle((String) p.get(FIELD_TITLE));
-        if (p.containsKey("subtitle"))            exam.setSubtitle((String) p.get("subtitle"));
-        if (p.containsKey("description"))         exam.setDescription((String) p.get("description"));
-        if (p.containsKey("instructions"))        exam.setInstructions((String) p.get("instructions"));
-        if (p.containsKey("courseId"))            exam.setCourseId(toLong(p.get("courseId")));
-        if (p.containsKey("subChapterId"))        exam.setSubChapterId(toLong(p.get("subChapterId")));
-        if (p.containsKey("examType"))            exam.setExamType((String) p.get("examType"));
-        if (p.containsKey(FIELD_DIFFICULTY))      exam.setDifficulty((String) p.get(FIELD_DIFFICULTY));
-        if (p.containsKey("durationMinutes"))     exam.setDurationMinutes(toInt(p.get("durationMinutes")));
-        if (p.containsKey("thumbnailUrl"))        exam.setThumbnailUrl((String) p.get("thumbnailUrl"));
-        if (p.containsKey("tags"))                exam.setTags(p.get("tags") != null ? p.get("tags").toString() : null);
-        if (p.containsKey("status"))              exam.setStatus((String) p.get("status"));
+        if (p.containsKey(FIELD_TITLE))              exam.setTitle((String) p.get(FIELD_TITLE));
+        if (p.containsKey(FIELD_SUBTITLE))            exam.setSubtitle((String) p.get(FIELD_SUBTITLE));
+        if (p.containsKey("description"))            exam.setDescription((String) p.get("description"));
+        if (p.containsKey(FIELD_INSTRUCTIONS))        exam.setInstructions((String) p.get(FIELD_INSTRUCTIONS));
+        if (p.containsKey("courseId"))               exam.setCourseId(toLong(p.get("courseId")));
+        if (p.containsKey("subChapterId"))           exam.setSubChapterId(toLong(p.get("subChapterId")));
+        if (p.containsKey(FIELD_EXAM_TYPE))           exam.setExamType((String) p.get(FIELD_EXAM_TYPE));
+        if (p.containsKey(FIELD_DIFFICULTY))          exam.setDifficulty((String) p.get(FIELD_DIFFICULTY));
+        if (p.containsKey(FIELD_DURATION_MINUTES))    exam.setDurationMinutes(toInt(p.get(FIELD_DURATION_MINUTES)));
+        if (p.containsKey("thumbnailUrl"))           exam.setThumbnailUrl((String) p.get("thumbnailUrl"));
+        if (p.containsKey("tags"))                   exam.setTags(p.get("tags") != null ? p.get("tags").toString() : null);
+        if (p.containsKey("status"))                 exam.setStatus((String) p.get("status"));
     }
 
     private void applyExamScoringFields(Exam exam, Map<String, Object> p) {
@@ -486,7 +492,7 @@ public class ExamManagementService {
 
     @SuppressWarnings("unchecked")
     private void saveQuestionsFromPayload(Long examId, Map<String, Object> payload) {
-        Object qs = payload.get("questions");
+        Object qs = payload.get(FIELD_QUESTIONS);
         if (!(qs instanceof List)) return;
         List<Map<String, Object>> questionList = (List<Map<String, Object>>) qs;
         for (int i = 0; i < questionList.size(); i++) {
@@ -511,7 +517,7 @@ public class ExamManagementService {
         if (p.containsKey(FIELD_OPTIONS))        q.setOptions(toJsonString(p.get(FIELD_OPTIONS)));
         if (p.containsKey("correctAnswer"))      q.setCorrectAnswer(toJsonString(p.get("correctAnswer")));
         if (p.containsKey("explanation"))        q.setExplanation((String) p.get("explanation"));
-        if (p.containsKey("marks"))              q.setMarks(toDouble(p.get("marks")));
+        if (p.containsKey(FIELD_MARKS))          q.setMarks(toDouble(p.get(FIELD_MARKS)));
         if (p.containsKey(FIELD_NEGATIVE_MARKS)) q.setNegativeMarks(toDouble(p.get(FIELD_NEGATIVE_MARKS)));
         if (p.containsKey(FIELD_DIFFICULTY))     q.setDifficulty((String) p.get(FIELD_DIFFICULTY));
         if (p.containsKey(FIELD_ORDER_INDEX))    q.setOrderIndex(toInt(p.get(FIELD_ORDER_INDEX)));
@@ -536,7 +542,7 @@ public class ExamManagementService {
         m.put(FIELD_QUESTION_TYPE, q.getQuestionType());
         m.put(FIELD_QUESTION_TEXT, q.getQuestionText());
         m.put(FIELD_OPTIONS, q.getOptions());
-        m.put("marks", q.getMarks());
+        m.put(FIELD_MARKS, q.getMarks());
         m.put(FIELD_NEGATIVE_MARKS, q.getNegativeMarks());
         m.put(FIELD_DIFFICULTY, q.getDifficulty());
         m.put(FIELD_ORDER_INDEX, q.getOrderIndex());

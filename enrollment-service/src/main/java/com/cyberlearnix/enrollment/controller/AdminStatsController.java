@@ -21,6 +21,7 @@ public class AdminStatsController {
 
     private static final Logger log = LoggerFactory.getLogger(AdminStatsController.class);
     private static final String KEY_TOTAL_ENROLLED = "totalEnrolled";
+    private static final String KEY_TOTAL_ENROLLMENTS = "totalEnrollments";
 
     private final EnrollmentFormResponseRepository responseRepository;
     private final EnrollmentFormConfigRepository configRepository;
@@ -46,7 +47,7 @@ public class AdminStatsController {
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalRevenue", rawRevenue != null ? rawRevenue : 0.0);
         stats.put("paidOrders", responseRepository.countPaidOrders());
-        stats.put("totalEnrollments", enrollmentRepository.count());
+        stats.put(KEY_TOTAL_ENROLLMENTS, enrollmentRepository.count());
         return ResponseEntity.ok(stats);
     }
 
@@ -90,7 +91,7 @@ public class AdminStatsController {
         result.put("totalRevenue", totalRevenue != null ? totalRevenue : 0.0);
         result.put("totalDiscounts", totalDiscounts);
         result.put("totalListPrice", totalListPrice);
-        result.put("totalEnrollments", totalEnrollments);
+        result.put(KEY_TOTAL_ENROLLMENTS, totalEnrollments);
         result.put("paidOrders", paidOrders);
         result.put("freeEnrollments", totalEnrollments - paidOrders);
         result.put("discountedEnrollments", couponRows.stream().mapToLong(r -> ((Number) r[1]).longValue()).sum());
@@ -212,7 +213,7 @@ public class AdminStatsController {
                 .count();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalStudents", totalStudents);
-        result.put("totalEnrollments", totalEnrollments);
+        result.put(KEY_TOTAL_ENROLLMENTS, totalEnrollments);
         return ResponseEntity.ok(result);
     }
 

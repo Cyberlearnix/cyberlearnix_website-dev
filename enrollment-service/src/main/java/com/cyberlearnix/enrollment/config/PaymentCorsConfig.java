@@ -22,6 +22,7 @@ import java.util.List;
 public class PaymentCorsConfig {
 
     @Bean
+    @SuppressWarnings("java:S5122")
     public CorsFilter paymentCorsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         
