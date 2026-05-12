@@ -64,6 +64,7 @@ public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final String KEY_SUCCESS_VAL = "success";
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String STATUS_FAILURE = "FAILURE";
     private static final String KEY_HASH_VERIFIED = "hashVerified";
@@ -205,7 +206,7 @@ public class PaymentService {
         paymentData.put("action", payuBaseUrl + "/_payment");
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
+        result.put(KEY_SUCCESS_VAL, true);
         result.put(KEY_TXNID, txnid);
         result.put("paymentData", paymentData);
         return result;

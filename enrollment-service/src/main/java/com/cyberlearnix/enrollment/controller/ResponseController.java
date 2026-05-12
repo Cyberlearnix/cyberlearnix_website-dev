@@ -11,6 +11,8 @@ import com.cyberlearnix.shared.repository.enrollment.EnrollmentSubmissionReposit
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -24,8 +26,11 @@ import java.util.Map;
 @RequestMapping("/api/enrollments/responses")
 public class ResponseController {
 
+    private static final Logger log = LoggerFactory.getLogger(ResponseController.class);
+
     private static final String KEY_PAYMENT_REQUIRED = "paymentRequired";
     private static final String KEY_MESSAGE = "message";
+    private static final String KEY_STUDENT_DATA = "studentData";
 
     @Autowired
     private EnrollmentService enrollmentService;
@@ -160,7 +165,7 @@ public class ResponseController {
         item.put("formId", r.getFormId());
         item.put("studentEmail", r.getStudentEmail());
         item.put("studentName", studentName);
-        item.put("studentData", r.getStudentData());
+        item.put(KEY_STUDENT_DATA, r.getStudentData());
         item.put("courseTitle", cd.courseTitle);
         item.put("courseId", cd.courseId);
         item.put("courseIds", cd.courseIds);
@@ -248,7 +253,7 @@ public class ResponseController {
         receipt.put("studentEmail", r.getStudentEmail());
         receipt.put("submittedAt", r.getCreatedAt());
         receipt.put("reviewedAt", r.getReviewedAt());
-        receipt.put("studentData", studentData);
+        receipt.put(KEY_STUDENT_DATA, studentData);
 
         return ResponseEntity.ok(receipt);
     }
@@ -333,7 +338,7 @@ public class ResponseController {
             EnrollmentFormResponse r = new EnrollmentFormResponse();
             r.setFormId((String) data.get("formId"));
             try {
-                r.setStudentData(mapper.writeValueAsString(data.get("studentData")));
+                r.setStudentData(mapper.writeValueAsString(data.get(KEY_STUDENT_DATA)));
             } catch (Exception e) {
                 r.setStudentData("{}");
             }
@@ -363,7 +368,7 @@ public class ResponseController {
             try {
                 enrollmentService.notifyAdminOfPayment(saved);
             } catch (Exception e) {
-                System.err.println("Failed to notify admin: " + e.getMessage());
+                log.error("Failed to notify admin: {}", e.getMessage());
             }
 
             return ResponseEntity.ok(saved);
@@ -376,17 +381,14 @@ public class ResponseController {
         return responseRepository.findById(id).map(r -> {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             try {
-                if (payload.containsKey("studentData")) {
-                    r.setStudentData(mapper.writeValueAsString(payload.get("studentData")));
+                if (payload.containsKey(KEY_STUDENT_DATA)) {
+                    r.setStudentData(mapper.writeValueAsString(payload.get(KEY_STUDENT_DATA)));
                 }
                 if (payload.containsKey("paymentStatus")) {
                     r.setPaymentStatus((String) payload.get("paymentStatus"));
                 }
                 if (payload.containsKey("transactionId")) {
                     r.setTransactionId((String) payload.get("transactionId"));
-                }
-                if (payload.containsKey("paymentTxnid")) {
-                    r.setTransactionId((String) payload.get("paymentTxnid"));
                 }
             } catch (Exception e) {
                 return ResponseEntity.status(500).<EnrollmentFormResponse>build();
@@ -401,8 +403,8 @@ public class ResponseController {
         return responseRepository.findByTransactionId(txnid).map(r -> {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             try {
-                if (payload.containsKey("studentData")) {
-                    r.setStudentData(mapper.writeValueAsString(payload.get("studentData")));
+                if (payload.containsKey(KEY_STUDENT_DATA)) {
+                    r.setStudentData(mapper.writeValueAsString(payload.get(KEY_STUDENT_DATA)));
                 }
                 if (payload.containsKey("paymentStatus")) {
                     r.setPaymentStatus((String) payload.get("paymentStatus"));

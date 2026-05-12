@@ -19,6 +19,8 @@ public class AssignmentManagementService {
     private final AssignmentSubmissionRepository submissionRepository;
 
     private static final String KEY_SUCCESS = "success";
+    private static final String KEY_SCORE = "score";
+    private static final String KEY_STDERR = "stderr";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -101,7 +103,7 @@ public class AssignmentManagementService {
 
             if ("QUIZ".equals(subType)) {
                 // Score is already computed on frontend and passed as quizDetail
-                Object quizScore = request.get("score");
+                Object quizScore = request.get(KEY_SCORE);
                 if (quizScore instanceof Number n) score = n.intValue();
             } else if ("LAB_PRACTICAL".equals(subType)) {
                 // Score completed steps
@@ -136,7 +138,7 @@ public class AssignmentManagementService {
             String[] cmd = buildCommand(language, code, stdin);
             if (cmd == null) {
                 result.put(KEY_SUCCESS, false);
-                result.put("stderr", "Language not supported: " + language);
+                result.put(KEY_STDERR, "Language not supported: " + language);
                 return result;
             }
 
@@ -157,7 +159,7 @@ public class AssignmentManagementService {
             if (!finished) {
                 process.destroyForcibly();
                 result.put(KEY_SUCCESS, false);
-                result.put("stderr", "Time limit exceeded (" + timeout + "s)");
+                result.put(KEY_STDERR, "Time limit exceeded (" + timeout + "s)");
                 return result;
             }
 
@@ -165,11 +167,15 @@ public class AssignmentManagementService {
             String stderr = new String(process.getErrorStream().readAllBytes());
             result.put(KEY_SUCCESS, process.exitValue() == 0);
             result.put("stdout", stdout);
-            result.put("stderr", stderr);
+            result.put(KEY_STDERR, stderr);
             result.put("exitCode", process.exitValue());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            result.put(KEY_SUCCESS, false);
+            result.put(KEY_STDERR, "Execution interrupted");
         } catch (Exception e) {
             result.put(KEY_SUCCESS, false);
-            result.put("stderr", "Execution error: " + e.getMessage());
+            result.put(KEY_STDERR, "Execution error: " + e.getMessage());
         }
         return result;
     }
@@ -214,7 +220,8 @@ public class AssignmentManagementService {
     /** Simple word-frequency cosine similarity (0-100). */
     private int cosineSimilarity(String a, String b) {
         if (a == null || b == null || a.isEmpty() || b.isEmpty()) return 0;
-        Map<String, Integer> freqA = wordFreq(a), freqB = wordFreq(b);
+        Map<String, Integer> freqA = wordFreq(a);
+        Map<String, Integer> freqB = wordFreq(b);
         Set<String> vocab = new HashSet<>(freqA.keySet());
         vocab.addAll(freqB.keySet());
 
@@ -245,7 +252,7 @@ public class AssignmentManagementService {
         AssignmentSubmission sub = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException("Submission not found: " + submissionId));
 
-        if (request.get("score") instanceof Number n) sub.setScore(n.intValue());
+        if (request.get(KEY_SCORE) instanceof Number n) sub.setScore(n.intValue());
         sub.setFeedback(getString(request, "feedback"));
         sub.setInternalNote(getString(request, "internalNote"));
         sub.setGradedBy(graderId);
@@ -275,7 +282,7 @@ public class AssignmentManagementService {
         Double avg = submissionRepository.findAvgScoreByContentId(contentId);
         List<Integer> scores = submissionRepository.findScoresByContentId(contentId);
         List<Map<String, Object>> dist = scores.stream()
-                .map(s -> Map.<String, Object>of("score", s)).toList();
+                .map(s -> Map.<String, Object>of(KEY_SCORE, s)).toList();
 
         Map<String, Object> analytics = new HashMap<>();
         analytics.put("totalSubmissions", total);
@@ -300,7 +307,8 @@ public class AssignmentManagementService {
         Object v = src.get(key);
         if (v == null) return;
         try {
-            setter.accept(v instanceof String s ? s : objectMapper.writeValueAsString(v));
+            String serialized = v instanceof String s ? s : objectMapper.writeValueAsString(v);
+            setter.accept(serialized);
         } catch (Exception ignored) {}
     }
 

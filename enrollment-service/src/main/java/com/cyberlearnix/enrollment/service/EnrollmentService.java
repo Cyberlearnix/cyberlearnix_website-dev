@@ -6,6 +6,8 @@ import com.cyberlearnix.shared.entity.enrollment.EnrollmentFormResponse;
 import com.cyberlearnix.shared.entity.enrollment.EnrollmentSubmission;
 import com.cyberlearnix.shared.repository.enrollment.*;
 import com.cyberlearnix.shared.repository.form.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,8 @@ import java.util.Optional;
 
 @Service
 public class EnrollmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(EnrollmentService.class);
 
     @Lazy
     @Autowired
@@ -134,7 +138,7 @@ public class EnrollmentService {
             
             notificationClient.sendNotification("send-form-confirmation", Map.of("data", data));
         } catch (Exception e) {
-            System.err.println("Failed to send confirmation email: " + e.getMessage());
+            log.error("Failed to send confirmation email: {}", e.getMessage());
         }
 
         return saved;
@@ -218,13 +222,14 @@ public class EnrollmentService {
                             r.setCreatedUserId(studentUuid);
                             responseRepository.save(r);
                             self.bulkAssign(studentUuid, courseIdsToEnroll);
-                            System.out.println("Enrolled student " + r.getStudentEmail()
-                                    + " in " + courseIdsToEnroll.size() + " course(s): " + courseIdsToEnroll);
+                            log.info("Enrolled student {} in {} course(s): {}",
+                                    r.getStudentEmail(), courseIdsToEnroll.size(), courseIdsToEnroll);
                         } else {
-                            System.err.println("Warning: registerUser did not return an id — skipping enrollment for " + r.getStudentEmail());
+                            log.warn("registerUser did not return an id — skipping enrollment for {}", r.getStudentEmail());
                         }
                     } else {
-                        System.err.println("Warning: No courses linked to form " + r.getFormId() + " — skipping course enrollment for " + r.getStudentEmail());
+                        log.warn("No courses linked to form {} — skipping course enrollment for {}",
+                                r.getFormId(), r.getStudentEmail());
                     }
 
                     notificationClient.sendNotification("send-account-credentials", Map.of(
@@ -234,7 +239,7 @@ public class EnrollmentService {
                     ));
 
                 } catch (Exception e) {
-                    System.err.println("Failed to automate student setup: " + e.getMessage());
+                    log.error("Failed to automate student setup: {}", e.getMessage());
                 }
             }
 

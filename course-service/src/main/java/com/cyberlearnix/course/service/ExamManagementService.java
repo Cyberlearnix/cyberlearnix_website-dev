@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +30,25 @@ public class ExamManagementService {
     private static final String FIELD_LANGUAGE = "language";
     private static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
     private static final String STATUS_GRADED = "GRADED";
+    private static final String MSG_EXAM_NOT_FOUND = "Exam not found: ";
+    private static final String MSG_ATTEMPT_NOT_FOUND = "Attempt not found: ";
+    private static final String FIELD_TOTAL_MARKS = "totalMarks";
+    private static final String FIELD_PASSING_MARKS = "passingMarks";
+    private static final String FIELD_MAX_ATTEMPTS = "maxAttempts";
+    private static final String FIELD_BROWSER_LOCKDOWN = "browserLockdown";
+    private static final String FIELD_WEBCAM_PROCTORING = "webcamProctoring";
+    private static final String FIELD_TAB_SWITCH_DETECTION = "tabSwitchDetection";
+    private static final String FIELD_COPY_PASTE_BLOCKED = "copyPasteBlocked";
+    private static final String FIELD_MAX_VIOLATIONS = "maxViolations";
+    private static final String FIELD_NEGATIVE_MARK_VALUE = "negativeMarkValue";
+    private static final String FIELD_DIFFICULTY = "difficulty";
+    private static final String FIELD_QUESTION_TYPE = "questionType";
+    private static final String FIELD_QUESTION_TEXT = "questionText";
+    private static final String FIELD_OPTIONS = "options";
+    private static final String FIELD_ORDER_INDEX = "orderIndex";
+    private static final String FIELD_STARTER_CODE = "starterCode";
+    private static final String FIELD_TIME_LIMIT_SECONDS = "timeLimitSeconds";
+    private static final String FIELD_IMAGE_URL = "imageUrl";
 
     // ─── Exam CRUD ────────────────────────────────────────────────────────────
 
@@ -47,7 +65,7 @@ public class ExamManagementService {
     @Transactional
     public Exam updateExam(Long id, Map<String, Object> payload, String userId) {
         Exam exam = examRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Exam not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_EXAM_NOT_FOUND + id));
         buildExamFromPayload(exam, payload);
         Exam saved = examRepository.save(exam);
         // Replace questions if provided
@@ -61,7 +79,7 @@ public class ExamManagementService {
     @Transactional
     public Exam publishExam(Long id) {
         Exam exam = examRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Exam not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_EXAM_NOT_FOUND + id));
         exam.setStatus("PUBLISHED");
         return examRepository.save(exam);
     }
@@ -69,7 +87,7 @@ public class ExamManagementService {
     @Transactional
     public Exam cloneExam(Long id, String userId) {
         Exam original = examRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Exam not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_EXAM_NOT_FOUND + id));
         Exam clone = new Exam();
         clone.setTitle(original.getTitle() + " (Copy)");
         clone.setSubtitle(original.getSubtitle());
@@ -119,7 +137,7 @@ public class ExamManagementService {
 
     public Map<String, Object> getExamForStudent(Long id) {
         Exam exam = examRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Exam not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_EXAM_NOT_FOUND + id));
         // Return exam without correct answers
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", exam.getId());
@@ -127,18 +145,18 @@ public class ExamManagementService {
         result.put("subtitle", exam.getSubtitle());
         result.put("instructions", exam.getInstructions());
         result.put("durationMinutes", exam.getDurationMinutes());
-        result.put("totalMarks", exam.getTotalMarks());
-        result.put("passingMarks", exam.getPassingMarks());
-        result.put("maxAttempts", exam.getMaxAttempts());
+        result.put(FIELD_TOTAL_MARKS, exam.getTotalMarks());
+        result.put(FIELD_PASSING_MARKS, exam.getPassingMarks());
+        result.put(FIELD_MAX_ATTEMPTS, exam.getMaxAttempts());
         result.put("questionCount", exam.getQuestionCount());
         result.put("examType", exam.getExamType());
         result.put(FIELD_NEGATIVE_MARKING, exam.getNegativeMarking());
-        result.put("negativeMarkValue", exam.getNegativeMarkValue());
-        result.put("tabSwitchDetection", exam.getTabSwitchDetection());
-        result.put("webcamProctoring", exam.getWebcamProctoring());
-        result.put("browserLockdown", exam.getBrowserLockdown());
-        result.put("copyPasteBlocked", exam.getCopyPasteBlocked());
-        result.put("maxViolations", exam.getMaxViolations());
+        result.put(FIELD_NEGATIVE_MARK_VALUE, exam.getNegativeMarkValue());
+        result.put(FIELD_TAB_SWITCH_DETECTION, exam.getTabSwitchDetection());
+        result.put(FIELD_WEBCAM_PROCTORING, exam.getWebcamProctoring());
+        result.put(FIELD_BROWSER_LOCKDOWN, exam.getBrowserLockdown());
+        result.put(FIELD_COPY_PASTE_BLOCKED, exam.getCopyPasteBlocked());
+        result.put(FIELD_MAX_VIOLATIONS, exam.getMaxViolations());
         return result;
     }
 
@@ -147,11 +165,11 @@ public class ExamManagementService {
     @Transactional
     public Map<String, Object> startAttempt(Long examId, String studentId, String studentName, String ipAddress) {
         Exam exam = examRepository.findById(examId)
-                .orElseThrow(() -> new RuntimeException("Exam not found: " + examId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_EXAM_NOT_FOUND + examId));
 
         long attemptCount = attemptRepository.countByExamIdAndStudentId(examId, studentId);
         if (attemptCount >= exam.getMaxAttempts()) {
-            throw new RuntimeException("Maximum attempts (" + exam.getMaxAttempts() + ") reached for this exam");
+            throw new IllegalStateException("Maximum attempts (" + exam.getMaxAttempts() + ") reached for this exam");
         }
 
         ExamAttempt attempt = ExamAttempt.builder()
@@ -176,7 +194,7 @@ public class ExamManagementService {
         }
         List<Map<String, Object>> questionsForStudent = questions.stream()
                 .map(this::stripCorrectAnswer)
-                .collect(Collectors.toList());
+                .toList();
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", saved.getId());
@@ -189,9 +207,9 @@ public class ExamManagementService {
     @Transactional
     public ExamAttempt saveAnswers(Long attemptId, String answersJson) {
         ExamAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_ATTEMPT_NOT_FOUND + attemptId));
         if (!STATUS_IN_PROGRESS.equals(attempt.getStatus())) {
-            throw new RuntimeException("Attempt is not in progress");
+            throw new IllegalStateException("Attempt is not in progress");
         }
         attempt.setAnswers(answersJson);
         return attemptRepository.save(attempt);
@@ -200,9 +218,9 @@ public class ExamManagementService {
     @Transactional
     public Map<String, Object> submitAttempt(Long attemptId, String answersJson) {
         ExamAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_ATTEMPT_NOT_FOUND + attemptId));
         if (!STATUS_IN_PROGRESS.equals(attempt.getStatus())) {
-            throw new RuntimeException("Attempt is not in progress");
+            throw new IllegalStateException("Attempt is not in progress");
         }
 
         attempt.setAnswers(answersJson);
@@ -245,7 +263,7 @@ public class ExamManagementService {
     @Transactional
     public ExamAttempt gradeAttempt(Long attemptId, Map<String, Object> questionScores, String feedback, String graderId) {
         ExamAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_ATTEMPT_NOT_FOUND + attemptId));
         attempt.setQuestionScores(questionScores.toString());
         attempt.setFeedback(feedback);
         attempt.setGradedBy(graderId);
@@ -283,13 +301,13 @@ public class ExamManagementService {
             m.put("connected", true); // WebSocket would track this in real impl
             m.put("answeredCount", countAnswered(a.getAnswers()));
             return m;
-        }).collect(Collectors.toList());
+        }).toList();
     }
 
     @Transactional
     public void warnStudent(Long attemptId, String message) {
         ExamAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_ATTEMPT_NOT_FOUND + attemptId));
         log.info("Warning sent to student {} for attempt {}: {}", attempt.getStudentId(), attemptId, message);
         // In production: push via WebSocket / notification service
     }
@@ -297,7 +315,7 @@ public class ExamManagementService {
     @Transactional
     public ExamAttempt extendTime(Long attemptId, int minutes) {
         ExamAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_ATTEMPT_NOT_FOUND + attemptId));
         int current = attempt.getRemainingSeconds() != null ? attempt.getRemainingSeconds() : 0;
         attempt.setRemainingSeconds(current + minutes * 60);
         return attemptRepository.save(attempt);
@@ -306,7 +324,7 @@ public class ExamManagementService {
     @Transactional
     public ExamAttempt terminateAttempt(Long attemptId, String reason) {
         ExamAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_ATTEMPT_NOT_FOUND + attemptId));
         attempt.setStatus("TERMINATED");
         attempt.setSubmittedAt(LocalDateTime.now());
         attempt.setFeedback("Terminated by instructor: " + reason);
@@ -317,11 +335,11 @@ public class ExamManagementService {
 
     public Map<String, Object> getExamAnalytics(Long examId) {
         Exam exam = examRepository.findById(examId)
-                .orElseThrow(() -> new RuntimeException("Exam not found: " + examId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_EXAM_NOT_FOUND + examId));
         List<ExamAttempt> allAttempts = attemptRepository.findByExamId(examId);
         List<ExamAttempt> graded = allAttempts.stream()
                 .filter(a -> "SUBMITTED".equals(a.getStatus()) || STATUS_GRADED.equals(a.getStatus()))
-                .collect(Collectors.toList());
+                .toList();
 
         long passed = graded.stream().filter(a -> Boolean.TRUE.equals(a.getPassed())).count();
         OptionalDouble avgPct = graded.stream()
@@ -357,7 +375,7 @@ public class ExamManagementService {
         return attemptRepository.findByExamId(examId).stream()
                 .filter(a -> "SUBMITTED".equals(a.getStatus()) || STATUS_GRADED.equals(a.getStatus()))
                 .sorted(Comparator.comparing(ExamAttempt::getPercentage, Comparator.nullsLast(Comparator.reverseOrder())))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ─── Code execution (sandbox stub) ───────────────────────────────────────
@@ -388,7 +406,7 @@ public class ExamManagementService {
     @Transactional
     public Question addQuestionToExam(Long examId, Map<String, Object> payload) {
         examRepository.findById(examId)
-                .orElseThrow(() -> new RuntimeException("Exam not found: " + examId));
+                .orElseThrow(() -> new IllegalArgumentException(MSG_EXAM_NOT_FOUND + examId));
         Question q = buildQuestionFromPayload(null, payload);
         q.setExamId(examId);
         Question saved = questionRepository.save(q);
@@ -401,7 +419,7 @@ public class ExamManagementService {
     @Transactional
     public Question updateQuestion(Long questionId, Map<String, Object> payload) {
         Question existing = questionRepository.findById(questionId)
-                .orElseThrow(() -> new RuntimeException("Question not found: " + questionId));
+                .orElseThrow(() -> new IllegalArgumentException("Question not found: " + questionId));
         buildQuestionFromPayload(existing, payload);
         return questionRepository.save(existing);
     }
@@ -409,7 +427,7 @@ public class ExamManagementService {
     @Transactional
     public void deleteQuestion(Long questionId) {
         Question q = questionRepository.findById(questionId)
-                .orElseThrow(() -> new RuntimeException("Question not found: " + questionId));
+                .orElseThrow(() -> new IllegalArgumentException("Question not found: " + questionId));
         questionRepository.delete(q);
         if (q.getExamId() != null) {
             long count = questionRepository.countByExamId(q.getExamId());
@@ -421,37 +439,49 @@ public class ExamManagementService {
 
     @SuppressWarnings("unchecked")
     private Exam buildExamFromPayload(Exam exam, Map<String, Object> p) {
-        if (p.containsKey(FIELD_TITLE))               exam.setTitle((String) p.get(FIELD_TITLE));
+        applyExamBasicFields(exam, p);
+        applyExamScoringFields(exam, p);
+        applyExamSecurityFields(exam, p);
+        return exam;
+    }
+
+    private void applyExamBasicFields(Exam exam, Map<String, Object> p) {
+        if (p.containsKey(FIELD_TITLE))           exam.setTitle((String) p.get(FIELD_TITLE));
         if (p.containsKey("subtitle"))            exam.setSubtitle((String) p.get("subtitle"));
         if (p.containsKey("description"))         exam.setDescription((String) p.get("description"));
         if (p.containsKey("instructions"))        exam.setInstructions((String) p.get("instructions"));
         if (p.containsKey("courseId"))            exam.setCourseId(toLong(p.get("courseId")));
         if (p.containsKey("subChapterId"))        exam.setSubChapterId(toLong(p.get("subChapterId")));
         if (p.containsKey("examType"))            exam.setExamType((String) p.get("examType"));
-        if (p.containsKey("difficulty"))          exam.setDifficulty((String) p.get("difficulty"));
+        if (p.containsKey(FIELD_DIFFICULTY))      exam.setDifficulty((String) p.get(FIELD_DIFFICULTY));
         if (p.containsKey("durationMinutes"))     exam.setDurationMinutes(toInt(p.get("durationMinutes")));
-        if (p.containsKey("totalMarks"))          exam.setTotalMarks(toInt(p.get("totalMarks")));
-        if (p.containsKey("passingMarks"))        exam.setPassingMarks(toInt(p.get("passingMarks")));
-        if (p.containsKey("maxAttempts"))         exam.setMaxAttempts(toInt(p.get("maxAttempts")));
-        if (p.containsKey("randomizeQuestions"))  exam.setRandomizeQuestions(toBool(p.get("randomizeQuestions")));
-        if (p.containsKey("randomizeOptions"))    exam.setRandomizeOptions(toBool(p.get("randomizeOptions")));
-        if (p.containsKey("showResultsImmediately")) exam.setShowResultsImmediately(toBool(p.get("showResultsImmediately")));
-        if (p.containsKey(FIELD_NEGATIVE_MARKING))     exam.setNegativeMarking(toBool(p.get(FIELD_NEGATIVE_MARKING)));
-        if (p.containsKey("negativeMarkValue"))   exam.setNegativeMarkValue(toDouble(p.get("negativeMarkValue")));
-        if (p.containsKey("browserLockdown"))     exam.setBrowserLockdown(toBool(p.get("browserLockdown")));
-        if (p.containsKey("webcamProctoring"))    exam.setWebcamProctoring(toBool(p.get("webcamProctoring")));
-        if (p.containsKey("tabSwitchDetection"))  exam.setTabSwitchDetection(toBool(p.get("tabSwitchDetection")));
-        if (p.containsKey("aiMonitoring"))        exam.setAiMonitoring(toBool(p.get("aiMonitoring")));
-        if (p.containsKey("maxViolations"))       exam.setMaxViolations(toInt(p.get("maxViolations")));
-        if (p.containsKey("copyPasteBlocked"))    exam.setCopyPasteBlocked(toBool(p.get("copyPasteBlocked")));
-        if (p.containsKey("rightClickDisabled"))  exam.setRightClickDisabled(toBool(p.get("rightClickDisabled")));
-        if (p.containsKey("fullscreenEnforced"))  exam.setFullscreenEnforced(toBool(p.get("fullscreenEnforced")));
-        if (p.containsKey("ipLogging"))           exam.setIpLogging(toBool(p.get("ipLogging")));
-        if (p.containsKey("sessionMonitoring"))   exam.setSessionMonitoring(toBool(p.get("sessionMonitoring")));
         if (p.containsKey("thumbnailUrl"))        exam.setThumbnailUrl((String) p.get("thumbnailUrl"));
         if (p.containsKey("tags"))                exam.setTags(p.get("tags") != null ? p.get("tags").toString() : null);
         if (p.containsKey("status"))              exam.setStatus((String) p.get("status"));
-        return exam;
+    }
+
+    private void applyExamScoringFields(Exam exam, Map<String, Object> p) {
+        if (p.containsKey(FIELD_TOTAL_MARKS))           exam.setTotalMarks(toInt(p.get(FIELD_TOTAL_MARKS)));
+        if (p.containsKey(FIELD_PASSING_MARKS))         exam.setPassingMarks(toInt(p.get(FIELD_PASSING_MARKS)));
+        if (p.containsKey(FIELD_MAX_ATTEMPTS))          exam.setMaxAttempts(toInt(p.get(FIELD_MAX_ATTEMPTS)));
+        if (p.containsKey("randomizeQuestions"))        exam.setRandomizeQuestions(toBool(p.get("randomizeQuestions")));
+        if (p.containsKey("randomizeOptions"))          exam.setRandomizeOptions(toBool(p.get("randomizeOptions")));
+        if (p.containsKey("showResultsImmediately"))    exam.setShowResultsImmediately(toBool(p.get("showResultsImmediately")));
+        if (p.containsKey(FIELD_NEGATIVE_MARKING))      exam.setNegativeMarking(toBool(p.get(FIELD_NEGATIVE_MARKING)));
+        if (p.containsKey(FIELD_NEGATIVE_MARK_VALUE))   exam.setNegativeMarkValue(toDouble(p.get(FIELD_NEGATIVE_MARK_VALUE)));
+    }
+
+    private void applyExamSecurityFields(Exam exam, Map<String, Object> p) {
+        if (p.containsKey(FIELD_BROWSER_LOCKDOWN))      exam.setBrowserLockdown(toBool(p.get(FIELD_BROWSER_LOCKDOWN)));
+        if (p.containsKey(FIELD_WEBCAM_PROCTORING))     exam.setWebcamProctoring(toBool(p.get(FIELD_WEBCAM_PROCTORING)));
+        if (p.containsKey(FIELD_TAB_SWITCH_DETECTION))  exam.setTabSwitchDetection(toBool(p.get(FIELD_TAB_SWITCH_DETECTION)));
+        if (p.containsKey("aiMonitoring"))               exam.setAiMonitoring(toBool(p.get("aiMonitoring")));
+        if (p.containsKey(FIELD_MAX_VIOLATIONS))         exam.setMaxViolations(toInt(p.get(FIELD_MAX_VIOLATIONS)));
+        if (p.containsKey(FIELD_COPY_PASTE_BLOCKED))     exam.setCopyPasteBlocked(toBool(p.get(FIELD_COPY_PASTE_BLOCKED)));
+        if (p.containsKey("rightClickDisabled"))         exam.setRightClickDisabled(toBool(p.get("rightClickDisabled")));
+        if (p.containsKey("fullscreenEnforced"))         exam.setFullscreenEnforced(toBool(p.get("fullscreenEnforced")));
+        if (p.containsKey("ipLogging"))                  exam.setIpLogging(toBool(p.get("ipLogging")));
+        if (p.containsKey("sessionMonitoring"))          exam.setSessionMonitoring(toBool(p.get("sessionMonitoring")));
     }
 
     @SuppressWarnings("unchecked")
@@ -476,47 +506,48 @@ public class ExamManagementService {
     }
 
     private void applyQuestionAnswerFields(Question q, Map<String, Object> p) {
-        if (p.containsKey("questionType"))      q.setQuestionType((String) p.get("questionType"));
-        if (p.containsKey("questionText"))      q.setQuestionText((String) p.get("questionText"));
-        if (p.containsKey("options"))           q.setOptions(toJsonString(p.get("options")));
-        if (p.containsKey("correctAnswer"))     q.setCorrectAnswer(toJsonString(p.get("correctAnswer")));
-        if (p.containsKey("explanation"))       q.setExplanation((String) p.get("explanation"));
-        if (p.containsKey("marks"))             q.setMarks(toDouble(p.get("marks")));
+        if (p.containsKey(FIELD_QUESTION_TYPE))  q.setQuestionType((String) p.get(FIELD_QUESTION_TYPE));
+        if (p.containsKey(FIELD_QUESTION_TEXT))  q.setQuestionText((String) p.get(FIELD_QUESTION_TEXT));
+        if (p.containsKey(FIELD_OPTIONS))        q.setOptions(toJsonString(p.get(FIELD_OPTIONS)));
+        if (p.containsKey("correctAnswer"))      q.setCorrectAnswer(toJsonString(p.get("correctAnswer")));
+        if (p.containsKey("explanation"))        q.setExplanation((String) p.get("explanation"));
+        if (p.containsKey("marks"))              q.setMarks(toDouble(p.get("marks")));
         if (p.containsKey(FIELD_NEGATIVE_MARKS)) q.setNegativeMarks(toDouble(p.get(FIELD_NEGATIVE_MARKS)));
-        if (p.containsKey("difficulty"))        q.setDifficulty((String) p.get("difficulty"));
-        if (p.containsKey("orderIndex"))        q.setOrderIndex(toInt(p.get("orderIndex")));
+        if (p.containsKey(FIELD_DIFFICULTY))     q.setDifficulty((String) p.get(FIELD_DIFFICULTY));
+        if (p.containsKey(FIELD_ORDER_INDEX))    q.setOrderIndex(toInt(p.get(FIELD_ORDER_INDEX)));
     }
 
     private void applyQuestionMetaFields(Question q, Map<String, Object> p) {
-        if (p.containsKey("tags"))              q.setTags(p.get("tags") != null ? p.get("tags").toString() : null);
-        if (p.containsKey("subject"))           q.setSubject((String) p.get("subject"));
-        if (p.containsKey("topic"))             q.setTopic((String) p.get("topic"));
-        if (p.containsKey(FIELD_LANGUAGE))      q.setLanguage((String) p.get(FIELD_LANGUAGE));
-        if (p.containsKey("starterCode"))       q.setStarterCode((String) p.get("starterCode"));
-        if (p.containsKey("testCases"))         q.setTestCases(toJsonString(p.get("testCases")));
-        if (p.containsKey("timeLimitSeconds"))  q.setTimeLimitSeconds(toInt(p.get("timeLimitSeconds")));
-        if (p.containsKey("imageUrl"))          q.setImageUrl((String) p.get("imageUrl"));
-        if (p.containsKey("isActive"))          q.setIsActive(toBool(p.get("isActive")));
-        if (p.containsKey("createdBy"))         q.setCreatedBy((String) p.get("createdBy"));
+        if (p.containsKey("tags"))                      q.setTags(p.get("tags") != null ? p.get("tags").toString() : null);
+        if (p.containsKey("subject"))                   q.setSubject((String) p.get("subject"));
+        if (p.containsKey("topic"))                     q.setTopic((String) p.get("topic"));
+        if (p.containsKey(FIELD_LANGUAGE))              q.setLanguage((String) p.get(FIELD_LANGUAGE));
+        if (p.containsKey(FIELD_STARTER_CODE))          q.setStarterCode((String) p.get(FIELD_STARTER_CODE));
+        if (p.containsKey("testCases"))                 q.setTestCases(toJsonString(p.get("testCases")));
+        if (p.containsKey(FIELD_TIME_LIMIT_SECONDS))    q.setTimeLimitSeconds(toInt(p.get(FIELD_TIME_LIMIT_SECONDS)));
+        if (p.containsKey(FIELD_IMAGE_URL))             q.setImageUrl((String) p.get(FIELD_IMAGE_URL));
+        if (p.containsKey("isActive"))                  q.setIsActive(toBool(p.get("isActive")));
+        if (p.containsKey("createdBy"))                 q.setCreatedBy((String) p.get("createdBy"));
     }
 
     private Map<String, Object> stripCorrectAnswer(Question q) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", q.getId());
-        m.put("questionType", q.getQuestionType());
-        m.put("questionText", q.getQuestionText());
-        m.put("options", q.getOptions());
+        m.put(FIELD_QUESTION_TYPE, q.getQuestionType());
+        m.put(FIELD_QUESTION_TEXT, q.getQuestionText());
+        m.put(FIELD_OPTIONS, q.getOptions());
         m.put("marks", q.getMarks());
         m.put(FIELD_NEGATIVE_MARKS, q.getNegativeMarks());
-        m.put("difficulty", q.getDifficulty());
-        m.put("orderIndex", q.getOrderIndex());
+        m.put(FIELD_DIFFICULTY, q.getDifficulty());
+        m.put(FIELD_ORDER_INDEX, q.getOrderIndex());
         m.put(FIELD_LANGUAGE, q.getLanguage());
-        m.put("starterCode", q.getStarterCode());
-        m.put("timeLimitSeconds", q.getTimeLimitSeconds());
-        m.put("imageUrl", q.getImageUrl());
+        m.put(FIELD_STARTER_CODE, q.getStarterCode());
+        m.put(FIELD_TIME_LIMIT_SECONDS, q.getTimeLimitSeconds());
+        m.put(FIELD_IMAGE_URL, q.getImageUrl());
         return m;
     }
 
+    @SuppressWarnings("java:S1172")
     private int autoGrade(ExamAttempt attempt, List<Question> questions, String answersJson, Exam exam) {
         // In production: parse JSON, compare answers per question type
         // For now return 0 — subjective questions require manual grading

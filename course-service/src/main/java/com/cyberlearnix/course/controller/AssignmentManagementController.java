@@ -5,7 +5,6 @@ import com.cyberlearnix.shared.entity.course.AssignmentSubmission;
 import com.cyberlearnix.shared.repository.course.AssignmentContentRepository;
 import com.cyberlearnix.shared.repository.course.AssignmentSubmissionRepository;
 import com.cyberlearnix.course.service.AssignmentManagementService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,14 +28,20 @@ import java.util.Map;
 @RequestMapping("/api/assignments")
 public class AssignmentManagementController {
 
-    @Autowired
-    private AssignmentManagementService assignmentManagementService;
+    private final AssignmentManagementService assignmentManagementService;
 
-    @Autowired
-    private AssignmentContentRepository assignmentContentRepository;
+    private final AssignmentContentRepository assignmentContentRepository;
 
-    @Autowired
-    private AssignmentSubmissionRepository submissionRepository;
+    private final AssignmentSubmissionRepository submissionRepository;
+
+    public AssignmentManagementController(
+            AssignmentManagementService assignmentManagementService,
+            AssignmentContentRepository assignmentContentRepository,
+            AssignmentSubmissionRepository submissionRepository) {
+        this.assignmentManagementService = assignmentManagementService;
+        this.assignmentContentRepository = assignmentContentRepository;
+        this.submissionRepository = submissionRepository;
+    }
 
     // ─── Submit assignment ────────────────────────────────────────────────────
 
@@ -46,7 +51,7 @@ public class AssignmentManagementController {
      */
     @PostMapping("/{contentId}/submit")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> submitAssignment(
+    public ResponseEntity<Object> submitAssignment(
             @PathVariable Long contentId,
             @RequestBody Map<String, Object> request,
             @RequestHeader("X-User-Id") String studentId,
@@ -130,7 +135,7 @@ public class AssignmentManagementController {
      */
     @PostMapping("/submissions/{submissionId}/grade")
     @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR','TEACHER')")
-    public ResponseEntity<?> gradeSubmission(
+    public ResponseEntity<Object> gradeSubmission(
             @PathVariable Long submissionId,
             @RequestBody Map<String, Object> request,
             @RequestHeader("X-User-Id") String graderId) {
@@ -167,7 +172,7 @@ public class AssignmentManagementController {
      */
     @PostMapping("/upload")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> uploadFile(
+    public ResponseEntity<Object> uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestHeader("X-User-Id") String userId) {
         if (file.isEmpty()) {
@@ -218,7 +223,6 @@ public class AssignmentManagementController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR','TEACHER')")
     public ResponseEntity<Map<String, Object>> aiAssist(@RequestBody Map<String, Object> request) {
         // Stub — replace with actual LLM call
-        String message = (String) request.getOrDefault("message", "");
         String stub = "AI evaluation is not yet configured for this environment. "
                 + "To enable it, connect an LLM API key in the course-service configuration.";
         return ResponseEntity.ok(Map.of("reply", stub));
