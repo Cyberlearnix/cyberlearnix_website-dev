@@ -862,11 +862,11 @@ public class CourseManagementController {
         response.put("createdBy", module.getCreatedBy());
         response.put("createdAt", module.getCreatedAt());
         response.put("updatedAt", module.getUpdatedAt());
-        if (module.getCourse() != null) {
-            response.put("courseId", module.getCourse().getId());
+        if (module.getCourseId() != null) {
+            response.put("courseId", module.getCourseId());
         }
-        if (module.getParentModule() != null) {
-            response.put("parentModuleId", module.getParentModule().getId());
+        if (module.getParentModuleId() != null) {
+            response.put("parentModuleId", module.getParentModuleId());
         }
         response.put("contents", contentRepository.findByModuleIdOrderByOrderIndex(module.getId())
                 .stream().map(this::toContentResponse).collect(Collectors.toList()));
@@ -887,8 +887,8 @@ public class CourseManagementController {
         response.put("createdAt", content.getCreatedAt());
         response.put("updatedAt", content.getUpdatedAt());
         response.put("status", content.getStatus());
-        if (content.getModule() != null) {
-            response.put("moduleId", content.getModule().getId());
+        if (content.getModuleId() != null) {
+            response.put("moduleId", content.getModuleId());
         }
 
         if (content instanceof LectureContent lecture) {

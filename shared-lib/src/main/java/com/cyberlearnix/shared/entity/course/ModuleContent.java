@@ -33,6 +33,9 @@ public abstract class ModuleContent {
     @lombok.EqualsAndHashCode.Exclude
     private CourseModule module;
 
+    @Column(name = "module_id", insertable = false, updatable = false)
+    private Long moduleId;
+
     @Column(name = "title", nullable = false)
     private String title;
 
