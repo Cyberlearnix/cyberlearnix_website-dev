@@ -8,23 +8,35 @@ import java.time.LocalDateTime;
 @Table(name = "certificates")
 @Data
 public class Certificate {
+    
+    public enum CertificateType {
+        CERTIFICATE,
+        EXAM,
+        COURSE_BADGE
+    }
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "student_name")
-    private String studentName;
+    @Column(name = "student_id")
+    private String studentId;
     
-    @Column(name = "student_dob")
-    private String studentDob;
+    @Column(name = "course_id")
+    private Long courseId;
     
-    private String type;
+    @Column(name = "course_title")
+    private String courseTitle;
     
-    @Column(name = "course_name")
-    private String courseName;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type")
+    private CertificateType type = CertificateType.CERTIFICATE;
     
-    @Column(name = "issue_date")
-    private String issueDate;
+    @Column(name = "issued_at")
+    private LocalDateTime issuedAt = LocalDateTime.now();
+    
+    @Column(name = "badge_image_url")
+    private String badgeImageUrl;
     
     @Column(name = "certificate_id", unique = true)
     private String certificateId;

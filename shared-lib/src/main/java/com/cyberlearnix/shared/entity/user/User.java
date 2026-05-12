@@ -19,9 +19,9 @@ public class User {
     private String passwordHash;
 
     @Column(nullable = false)
-    private String role; // admin, teacher, student, dual
+    private String role; // admin, teacher, student, dual, institute
 
-    @Column(name = "is_first_login")
+    @Column(name = "is_first_login", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
     private Boolean isFirstLogin = true;
 
     @Column(name = "failed_attempts")

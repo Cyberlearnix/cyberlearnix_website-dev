@@ -42,10 +42,17 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/forms/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Public access for forms
                         .requestMatchers(HttpMethod.GET, "/api/forms/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/forms/*/public/**").permitAll()
+                        // Public access for payment callbacks (called by PayU)
+                        .requestMatchers("/api/forms/payments/callback/**").permitAll()
+                        .requestMatchers("/api/forms/payments/webhook").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/forms/payments/price/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/forms/payments/initiate").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/forms/payments/status/**").permitAll()
                         // Public access for responses (submission and check)
                         .requestMatchers(HttpMethod.POST, "/api/forms/{formId}/responses").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/forms/{formId}/responses/check").permitAll()

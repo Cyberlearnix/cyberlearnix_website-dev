@@ -10,7 +10,7 @@ import java.util.Map;
 public interface EnrollmentServiceClient {
 
     @GetMapping("/api/enrollments")
-    List<Map<String, Object>> getEnrollments(
+    Map<String, Object> getEnrollments(
             @RequestParam(required = false) String studentId,
             @RequestParam(required = false) Long courseId,
             @RequestHeader("Authorization") String auth);

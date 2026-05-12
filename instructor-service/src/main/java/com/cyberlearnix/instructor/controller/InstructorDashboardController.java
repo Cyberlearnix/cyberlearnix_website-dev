@@ -39,7 +39,11 @@ public class InstructorDashboardController {
                 .count();
 
         // Fetch all courses created by this instructor
-        List<Map<String, Object>> allCourses = courseServiceClient.getAllCourses(null, auth);
+        Map<String, Object> coursesResponse = courseServiceClient.getAllCourses(null, auth);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> allCourses = coursesResponse.containsKey("courses")
+                ? (List<Map<String, Object>>) coursesResponse.get("courses")
+                : java.util.Collections.emptyList();
         long createdCourses = allCourses.stream()
                 .filter(c -> instructorId.equals(String.valueOf(c.get("createdBy"))))
                 .count();
@@ -53,7 +57,11 @@ public class InstructorDashboardController {
                 .count();
 
         // Enrollment stats
-        List<Map<String, Object>> enrollments = enrollmentServiceClient.getEnrollments(null, null, auth);
+        Map<String, Object> enrollmentsResponse = enrollmentServiceClient.getEnrollments(null, null, auth);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> enrollments = enrollmentsResponse.containsKey("enrollments")
+                ? (List<Map<String, Object>>) enrollmentsResponse.get("enrollments")
+                : java.util.Collections.emptyList();
         long totalStudents = enrollments.stream()
                 .filter(e -> String.valueOf(e.get("instructorId")).equals(instructorId))
                 .map(e -> e.get("studentId"))

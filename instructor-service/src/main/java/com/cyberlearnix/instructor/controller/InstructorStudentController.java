@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +27,12 @@ public class InstructorStudentController {
             @RequestParam(required = false) Long courseId,
             @RequestHeader("Authorization") String auth) {
 
-        return ResponseEntity.ok(enrollmentServiceClient.getEnrollments(null, courseId, auth));
+        Map<String, Object> resp = enrollmentServiceClient.getEnrollments(null, courseId, auth);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> enrollments = resp.containsKey("enrollments")
+                ? (List<Map<String, Object>>) resp.get("enrollments")
+                : Collections.emptyList();
+        return ResponseEntity.ok(enrollments);
     }
 
     /**

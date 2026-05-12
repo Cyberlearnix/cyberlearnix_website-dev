@@ -17,9 +17,13 @@ spec:
   tls:
     - hosts:
         - {{ $.Values.hosts.api }}
+        {{- if $.Values.hosts.lms }}
+        - {{ $.Values.hosts.lms }}
+        {{- end }}
       secretName: {{ $.Values.ingress.tls.secretName }}
   {{- end }}
   rules:
+    {{- if $.Values.hosts.api }}
     - host: {{ $.Values.hosts.api }}
       http:
         paths:
@@ -30,6 +34,30 @@ spec:
                 name: {{ $name }}
                 port:
                   name: http
+    {{- end }}
+    {{- if $.Values.hosts.lms }}
+    - host: {{ $.Values.hosts.lms }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  name: http
+    {{- end }}
+    {{- if not $.Values.hosts.api }}
+    - http:
+        paths:
+          - path: {{ $svc.ingress.path | default "/" }}
+            pathType: {{ $svc.ingress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  name: http
+    {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

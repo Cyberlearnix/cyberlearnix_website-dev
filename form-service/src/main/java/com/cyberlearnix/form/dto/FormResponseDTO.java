@@ -27,4 +27,10 @@ public class FormResponseDTO {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean paymentEnabled;
+    private Long courseId;
+    private Double paymentAmount;
+    private Integer gstPercent;
+    private Double gstAmount;
+    private Double totalAmount;
 }

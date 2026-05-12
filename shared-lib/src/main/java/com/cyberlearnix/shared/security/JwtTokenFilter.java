@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,7 +15,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class JwtTokenFilter extends OncePerRequestFilter {
 
@@ -31,16 +35,51 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         this.blacklistChecker = blacklistChecker;
     }
 
+    // Wraps the request to inject extra headers derived from JWT claims
+    private static class HeaderInjectingRequestWrapper extends HttpServletRequestWrapper {
+        private final Map<String, String> extraHeaders;
+
+        HeaderInjectingRequestWrapper(HttpServletRequest request, Map<String, String> extraHeaders) {
+            super(request);
+            this.extraHeaders = extraHeaders;
+        }
+
+        @Override
+        public String getHeader(String name) {
+            if (extraHeaders.containsKey(name)) {
+                return extraHeaders.get(name);
+            }
+            return super.getHeader(name);
+        }
+
+        @Override
+        public Enumeration<String> getHeaders(String name) {
+            if (extraHeaders.containsKey(name)) {
+                return Collections.enumeration(Collections.singletonList(extraHeaders.get(name)));
+            }
+            return super.getHeaders(name);
+        }
+
+        @Override
+        public Enumeration<String> getHeaderNames() {
+            List<String> names = Collections.list(super.getHeaderNames());
+            names.addAll(extraHeaders.keySet());
+            return Collections.enumeration(names);
+        }
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
         boolean authenticated = false;
+        String resolvedUserId = null;
+        String resolvedRole = null;
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            
+
             // Check blacklist if checker is provided
             if (blacklistChecker != null && blacklistChecker.test(token)) {
                 System.err.println("Blacklisted token encountered");
@@ -55,26 +94,33 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                         .parseSignedClaims(token)
                         .getPayload();
 
-                String userId = claims.getSubject();
-                String role = (String) claims.get("role");
+                resolvedUserId = claims.getSubject();
+                resolvedRole = (String) claims.get("role");
 
-                if (userId != null) {
-                    authenticateUser(userId, role, request);
+                if (resolvedUserId != null) {
                     authenticated = true;
                 }
             } catch (Exception e) {
                 // JWT parsing failed — fall through to header-based fallback
-                System.err.println("JWT Validation Error: " + e.getMessage());
+                System.err.println("JWT Validation Error [" + e.getClass().getSimpleName() + "]: " + e.getMessage());
             }
         }
 
         // Fallback: use gateway/service-injected headers if JWT was absent or failed to parse
         if (!authenticated) {
-            String userId = request.getHeader("X-User-Id");
-            String role = request.getHeader("X-User-Role");
-            if (userId != null) {
-                authenticateUser(userId, role, request);
+            resolvedUserId = request.getHeader("X-User-Id");
+            resolvedRole = request.getHeader("X-User-Role");
+        }
+
+        if (resolvedUserId != null) {
+            // Inject userId and role as actual HTTP headers so @RequestHeader works in controllers
+            Map<String, String> extraHeaders = new HashMap<>();
+            extraHeaders.put("X-User-Id", resolvedUserId);
+            if (resolvedRole != null) {
+                extraHeaders.put("X-User-Role", resolvedRole);
             }
+            request = new HeaderInjectingRequestWrapper(request, extraHeaders);
+            authenticateUser(resolvedUserId, resolvedRole, request);
         }
 
         filterChain.doFilter(request, response);
@@ -89,10 +135,11 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(auth);
 
-        // Set attributes for controller access
+        // Set attributes for controller access (kept for backward compatibility)
         request.setAttribute("X-User-Id", userId);
         if (role != null) {
             request.setAttribute("X-User-Role", role);
         }
     }
 }
+

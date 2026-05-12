@@ -17,7 +17,7 @@ public class FormValidationService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
 
     public void validateResponse(String fieldsJson, String submissionDataJson) throws Exception {
-        if (fieldsJson == null || fieldsJson.isEmpty()) return;
+        if (fieldsJson == null || fieldsJson.isBlank()) return;
         if (submissionDataJson == null || submissionDataJson.isEmpty()) return;
 
         List<Map<String, Object>> fields = objectMapper.readValue(fieldsJson, new TypeReference<List<Map<String, Object>>>() {});
@@ -26,6 +26,7 @@ public class FormValidationService {
         for (Map<String, Object> field : fields) {
             String label = (String) field.get("label");
             String id = (String) field.get("id");
+            String name = (String) field.get("name");
             
             // Get field type (check both 'field_type' and 'type')
             String type = (String) field.get("field_type");
@@ -45,9 +46,10 @@ public class FormValidationService {
                 }
             }
             
-            // Try lookup by ID first, then Label
+            // Try lookup by: ID → name (frontend form builder uses name as key) → label (legacy fallback)
             Object value = data.get(id);
-            if (value == null) value = data.get(label);
+            if (value == null && name != null) value = data.get(name);
+            if (value == null && label != null) value = data.get(label);
 
             if ("section_header".equals(type) || "paragraph".equals(type) || "html".equals(type)) continue;
 

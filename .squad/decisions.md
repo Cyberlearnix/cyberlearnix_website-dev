@@ -3,7 +3,7 @@
 ## Active Decisions
 
 ### [2026-04-21] ADR-001: Squad Team Composition for Cyberlearnix
-**Decision:** Established a 5-member specialist team (Vance, Nova, Aria, Kai, Quinn) plus Scribe and Ralph.
+**Decision:** Established a 5-member specialist team (Srini, Shiva, Sandeep, Rohit, Sneha) plus Scribe and Ralph.
 **Rationale:** The platform is a Java Spring Boot microservices system requiring dedicated ownership of backend, security, DevOps, and QA domains. A generalist team would create context collisions across 10 services.
 **Consequences:** Each agent owns a clear domain; cross-domain work requires explicit handoff.
 **Status:** Accepted
@@ -11,7 +11,7 @@
 ### [2026-04-21] ADR-002: Tech Stack Baseline
 **Decision:** Java Spring Boot 3.x, Gradle multi-module, PostgreSQL, Docker Compose.
 **Rationale:** This is the existing production stack. Squad agents will follow these constraints.
-**Consequences:** No new framework introductions without Vance sign-off.
+**Consequences:** No new framework introductions without Srini sign-off.
 **Status:** Accepted
 
 ### [2026-04-21] ADR-003: Azure AKS + Helm Deployment Architecture
@@ -31,8 +31,8 @@
 
 ## Governance
 
-- Vance reviews all cross-service and shared-lib changes
-- Aria reviews all new endpoints for security coverage
-- Quinn writes tests before a feature is marked done
-- Kai owns all infrastructure changes
+- Srini reviews all cross-service and shared-lib changes
+- Sandeep reviews all new endpoints for security coverage
+- Sneha writes tests before a feature is marked done
+- Rohit owns all infrastructure changes
 - All meaningful decisions are recorded here with an ADR number

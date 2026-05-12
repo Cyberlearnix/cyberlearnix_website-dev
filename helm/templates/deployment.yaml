@@ -11,14 +11,16 @@ metadata:
     deployment.kubernetes.io/revision: "1"
 spec:
   replicas: {{ $svc.replicas | default 1 }}
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 600
   selector:
     matchLabels:
       {{- include "cyberlearnix.selectorLabels" (dict "serviceName" $name "root" $) | nindent 6 }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0    # Zero-downtime: always bring new pods up before taking old ones down
+      maxUnavailable: 0   # never remove old pod until new pod passes readiness — zero downtime
+      maxSurge: 1         # allow 1 extra pod during rollout; DB connections: 10 svcs × 3 pool × 2 = 60 (safe under Postgres 100)
   template:
     metadata:
       labels:
@@ -29,6 +31,14 @@ spec:
     spec:
       serviceAccountName: {{ $name }}
       automountServiceAccountToken: false
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+
+      {{- if $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $.Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
 
       # Level-1 Pod security: all containers run non-root
       securityContext:
@@ -39,11 +49,12 @@ spec:
         seccompProfile:
           type: RuntimeDefault
 
-      # Spread pods across nodes to survive a node failure
+      # Spread pods across nodes to survive a node failure.
+      # whenUnsatisfiable: DoNotSchedule (multi-node) or ScheduleAnyway (single-node K3s)
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
+          whenUnsatisfiable: {{ $.Values.topology.whenUnsatisfiable | default "DoNotSchedule" }}
           labelSelector:
             matchLabels:
               app.kubernetes.io/name: {{ $name }}
@@ -54,6 +65,8 @@ spec:
         - name: {{ $name }}
           image: {{ include "cyberlearnix.image" (dict "serviceName" $name "root" $) }}
           imagePullPolicy: {{ $.Values.global.pullPolicy }}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
 
           ports:
             - name: http
@@ -72,6 +85,12 @@ spec:
             - name: SPRING_APPLICATION_NAME
               value: {{ $name | quote }}
             {{- if $svc.dbRequired }}
+            - name: DB_HOST
+              value: {{ $.Values.appConfig.DB_HOST | quote }}
+            - name: DB_PORT
+              value: {{ $.Values.appConfig.DB_PORT | quote }}
+            - name: DB_USER
+              value: {{ $.Values.appConfig.DB_USER | quote }}
             - name: DB_NAME
               value: {{ $svc.dbName | quote }}
             - name: DB_PASS
@@ -97,10 +116,10 @@ spec:
           resources:
             {{- toYaml $svc.resources | nindent 12 }}
 
-          # Liveness: is the JVM alive? Restart if stuck.
+          # Liveness: is the JVM alive? TCP check avoids DB-health false positives.
+          # HTTP /actuator/health would return 503 if Postgres is slow -> kills healthy pods.
           livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
+            tcpSocket:
               port: http
             initialDelaySeconds: 90
             periodSeconds: 30
@@ -108,7 +127,7 @@ spec:
             failureThreshold: 3
 
           # Readiness: is the service ready for traffic?
-          # Do NOT send traffic until DB/Redis connections are established.
+          # /actuator/health/readiness returns 200 when the app is ready (excludes mail/external checks)
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
@@ -119,14 +138,15 @@ spec:
             failureThreshold: 3
             successThreshold: 1
 
-          # Startup: give Spring Boot time to warm up (avoids premature liveness failures)
+          # Startup: TCP check — passes as soon as Tomcat opens the port.
+          # HTTP would fail if DB health is DOWN even after Tomcat is up.
           startupProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10
-            failureThreshold: 18   # 15s + 18×10s = up to 3 minutes to start
+            timeoutSeconds: 5
+            failureThreshold: 60   # 15s + 60×10s = up to 10 minutes to start
 
           # Level-2 Container security
           securityContext:

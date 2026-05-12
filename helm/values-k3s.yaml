@@ -1,0 +1,348 @@
+# =============================================================================
+# Cyberlearnix Helm Values — K3s single-node (no Azure, SSH-only)
+#
+# Architecture:
+#   • K3s on the existing Azure VM (IP: 20.197.21.226)
+#   • Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
+#   • K3s handles:           10 Spring Boot microservices
+#   • Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
+#
+# Usage (from setup script / CI):
+#   helm upgrade --install cyberlearnix ./helm \
+#     -f ./helm/values-k3s.yaml \
+#     --set global.registry=$DOCKERHUB_USERNAME \
+#     --set appConfig.DB_HOST=$HOST_IP \
+#     --set appConfig.REDIS_HOST=$HOST_IP \
+#     --set images.gateway-service=$SHA \
+#     ... (one --set per service, SHA injected by CI) \
+#     --namespace cyberlearnix --create-namespace
+# =============================================================================
+
+global:
+  registry: "ghcr.io/cyberlearnix"  # images: ghcr.io/cyberlearnix/cyberlearnix-<service>
+  imagePrefix: "cyberlearnix-"       # image name: cyberlearnix-{service}
+  pullPolicy: Always                 # always pull latest from ghcr.io
+  environment: production
+
+# Pull secret created by k3s-setup.sh (kubectl create secret docker-registry ghcr-secret)
+imagePullSecrets:
+  - name: ghcr-secret
+
+# ── Image tags — updated automatically by CI on every main push ──────────────
+# Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
+images:
+  gateway-service:      08c48159b6329ee4ea18cd551102a6872180c7eb
+  user-service:   08c48159b6329ee4ea18cd551102a6872180c7eb
+  course-service:  08c48159b6329ee4ea18cd551102a6872180c7eb
+  enrollment-service:   08c48159b6329ee4ea18cd551102a6872180c7eb
+  notification-service:  08c48159b6329ee4ea18cd551102a6872180c7eb
+  shop-service:  08c48159b6329ee4ea18cd551102a6872180c7eb
+  form-service:  08c48159b6329ee4ea18cd551102a6872180c7eb
+  admin-service:   08c48159b6329ee4ea18cd551102a6872180c7eb
+  cms-service:  08c48159b6329ee4ea18cd551102a6872180c7eb
+  instructor-service:   08c48159b6329ee4ea18cd551102a6872180c7eb
+
+# Single-node: ScheduleAnyway so replicas don't stay Pending on one node
+topology:
+  whenUnsatisfiable: ScheduleAnyway
+
+# ── Shared application config ─────────────────────────────────────────────────
+# DB_HOST and REDIS_HOST point to Docker Compose containers on the same VM.
+# They are injected via --set appConfig.DB_HOST=$VM_PRIVATE_IP at deploy time.
+appConfig:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_HOST: "postgres"       # k8s service name — resolves within namespace
+  DB_PORT: "5432"
+  DB_USER: "postgres"
+  REDIS_HOST: "redis"       # k8s service name — resolves within namespace
+  REDIS_PORT: "6379"
+  # K8s DNS — services resolve within the cyberlearnix namespace
+  USER_SERVICE_URL: "http://user-service:8081"
+  COURSE_SERVICE_URL: "http://course-service:8082"
+  ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8084"
+  SHOP_SERVICE_URL: "http://shop-service:8085"
+  FORM_SERVICE_URL: "http://form-service:8087"
+  CMS_SERVICE_URL: "http://cms-service:8089"
+  ADMIN_SERVICE_URL: "http://admin-service:8090"
+  INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
+  CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://app.cyberlearnix.com,https://cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app"
+  # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+  # JVM heap size optimization for 4 CPU / 16GB server
+  # Balanced settings for performance while staying under 50% resource usage
+  JAVA_OPTS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:CompressedClassSpaceSize=48m -XX:MaxDirectMemorySize=64m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+UseStringDeduplication -XX:StringDeduplicationAgeThreshold=3 -XX:MaxGCPauseMillis=200 -XX:InitiatingHeapOccupancyPercent=35"
+
+# ── Ingress — NGINX Ingress Controller (installed by k3s-setup.sh) ─────────
+ingress:
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    secretName: apis-cyberlearnix-tls
+
+# ── External access host ──────────────────────────────────────────────────────
+hosts:
+  api: "apis.cyberlearnix.com"
+  lms: "lmsclass.cyberlearnix.com"
+
+# ── PostgreSQL (deployed as k8s StatefulSet) ──────────────────────────────────
+postgres:
+  enabled: true
+  user: postgres
+  storage: 10Gi
+
+# ── ResourceQuota — managed by Helm so ArgoCD keeps it in sync ───────────────
+resourceQuota:
+  enabled: true
+  hard:
+    pods: "40"
+    requestsCpu: "6"
+    # 10 services × 3 max replicas × 384Mi + infra (postgres/redis) = ~12Gi
+    requestsMemory: "12Gi"
+    # 20 CPUs: 10 services × up to ~500m + HPA surge (up to 3 replicas × 10 svcs) + rolling update headroom
+    limitsCpu: "20"
+    limitsMemory: "16Gi"
+    pvcs: "10"
+
+# ── Redis (deployed as k8s Deployment) ───────────────────────────────────────
+redis:
+  enabled: true
+
+# ── Per-service overrides — single replica, HPA/PDB disabled (single node) ──
+services:
+
+  gateway-service:
+    port: 8080
+    containerPort: 8080
+    replicas: 1
+    dbRequired: false
+    ingress:
+      enabled: true
+      path: /
+      pathType: Prefix
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      # no targetMemoryUtilizationPercentage — JVM heap is constant, not load-driven
+    pdb:
+      minAvailable: 1
+
+  user-service:
+    port: 8081
+    containerPort: 8081
+    replicas: 1
+    dbName: cyberlearnix_users
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  course-service:
+    port: 8082
+    containerPort: 8082
+    replicas: 1
+    dbName: cyberlearnix_courses
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  enrollment-service:
+    port: 8083
+    containerPort: 8083
+    replicas: 1
+    dbName: cyberlearnix_enrollments
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  notification-service:
+    port: 8084
+    containerPort: 8084
+    replicas: 1
+    dbRequired: false
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "320Mi"
+        cpu: "75m"
+      limits:
+        memory: "640Mi"
+        cpu: "400m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  shop-service:
+    port: 8085
+    containerPort: 8085
+    replicas: 1
+    dbName: cyberlearnix_shop
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  form-service:
+    port: 8087
+    containerPort: 8087
+    replicas: 1
+    dbName: cyberlearnix_forms
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  admin-service:
+    port: 8090
+    containerPort: 8090
+    replicas: 1
+    dbName: cyberlearnix_admin
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  cms-service:
+    port: 8089
+    containerPort: 8089
+    replicas: 1
+    dbName: cyberlearnix_cms
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  instructor-service:
+    port: 8091
+    containerPort: 8091
+    replicas: 1
+    dbName: cyberlearnix_instructor
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1

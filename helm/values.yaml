@@ -5,8 +5,16 @@
 
 global:
   registry: swachvegaregistry.azurecr.io
+  imagePrefix: ""       # set to "cyberlearnix-" for Docker Hub (K3s) deployments
   pullPolicy: IfNotPresent
   environment: staging
+
+# ── Image pull secrets (empty = ACR managed identity; set for Docker Hub) ────
+imagePullSecrets: []
+
+# ── Topology spread — single-node K3s override to ScheduleAnyway ─────────────
+topology:
+  whenUnsatisfiable: DoNotSchedule
 
 # ── Image tags ──────────────────────────────────────────────────────────────
 # Updated per deployment by GitHub Actions (image-override.yaml injected)

@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "courses")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"modules", "courseModules"})
 public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,10 +47,13 @@ public class Course {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "status")
-    private String status = "APPROVED"; // Default to APPROVED for legacy, but PENDING for new ones
+    private String status = "APPROVED"; // PENDING, APPROVED, PUBLISHED, TRASHED
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     @PreUpdate

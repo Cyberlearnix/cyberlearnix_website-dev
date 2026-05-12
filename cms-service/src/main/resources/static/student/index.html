@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — Cyberlearnix Student Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Particles / decorative blobs */
+    .bg-blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: .18;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-blob-1 { width: 420px; height: 420px; background: var(--cl-teal);   top: -80px;  left: -80px; }
+    .bg-blob-2 { width: 360px; height: 360px; background: var(--cl-purple); bottom: -60px; right: -60px; }
+    .login-page { position: relative; z-index: 1; }
+    .password-wrap { position: relative; }
+    .password-wrap .toggle-pw {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--cl-muted);
+      font-size: 16px;
+      padding: 0;
+      line-height: 1;
+    }
+    .password-wrap .form-input { padding-right: 40px; }
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--cl-muted);
+      font-size: 12px;
+    }
+    .login-divider::before,
+    .login-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--cl-border);
+    }
+    .spinner-inline {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .btn-primary.loading .spinner-inline { display: block; }
+    .btn-primary.loading .btn-text { opacity: .7; }
+  </style>
+</head>
+<body>
+  <div class="bg-blob bg-blob-1"></div>
+  <div class="bg-blob bg-blob-2"></div>
+
+  <main class="login-page">
+    <div class="login-card">
+      <!-- Logo -->
+      <div class="login-logo">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text">Cyberlearnix</div>
+      </div>
+      <p class="login-subtitle">Student Learning Portal — Sign in to continue</p>
+
+      <!-- Error box -->
+      <div id="loginError" class="login-error" role="alert"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="email" class="form-label">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="form-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="password-wrap">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              class="form-input"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="toggle-pw" id="togglePw" aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary btn-full mt-8" id="signInBtn">
+          <span class="spinner-inline" id="btnSpinner"></span>
+          <span class="btn-text">Sign In</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        &copy; 2025 Cyberlearnix. All rights reserved.
+      </div>
+    </div>
+  </main>
+
+  <script>
+    'use strict';
+
+    const API_BASE = '/api';
+    const LS = { TOKEN: 'cl_token', USER_ID: 'cl_user_id', ROLE: 'cl_role', NAME: 'cl_user_name' };
+
+    // If already logged in as student, skip login
+    (function checkExisting() {
+      const token = localStorage.getItem(LS.TOKEN);
+      const role  = localStorage.getItem(LS.ROLE);
+      if (token && role === 'STUDENT') {
+        window.location.replace('dashboard.html');
+      }
+    })();
+
+    /* ── DOM refs ─────────────────────────────────── */
+    const form      = document.getElementById('loginForm');
+    const emailInp  = document.getElementById('email');
+    const passInp   = document.getElementById('password');
+    const errorBox  = document.getElementById('loginError');
+    const signInBtn = document.getElementById('signInBtn');
+    const togglePw  = document.getElementById('togglePw');
+
+    /* ── Toggle password visibility ──────────────── */
+    togglePw.addEventListener('click', () => {
+      const isText = passInp.type === 'text';
+      passInp.type  = isText ? 'password' : 'text';
+      togglePw.textContent = isText ? '👁' : '🙈';
+    });
+
+    /* ── Show error ───────────────────────────────── */
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.classList.add('visible');
+    }
+    function clearError() {
+      errorBox.textContent = '';
+      errorBox.classList.remove('visible');
+    }
+
+    /* ── Set loading state ────────────────────────── */
+    function setLoading(on) {
+      signInBtn.classList.toggle('loading', on);
+      signInBtn.disabled = on;
+    }
+
+    /* ── Form submit ──────────────────────────────── */
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const email    = emailInp.value.trim();
+      const password = passInp.value;
+
+      if (!email || !password) {
+        showError('Please enter your email and password.');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        if (!res.ok) {
+          let msg = 'Invalid email or password.';
+          try {
+            const body = await res.json();
+            msg = body.message || body.error || msg;
+          } catch (_) { /* ignore */ }
+          showError(msg);
+          return;
+        }
+
+        const data = await res.json();
+        const role = (data.role || '').toUpperCase();
+
+        if (role !== 'STUDENT') {
+          showError('Access denied — this portal is for students only.');
+          return;
+        }
+
+        // Persist session
+        localStorage.setItem(LS.TOKEN,   data.token || data.accessToken || '');
+        localStorage.setItem(LS.USER_ID, String(data.userId || data.id || ''));
+        localStorage.setItem(LS.ROLE,    role);
+        localStorage.setItem(LS.NAME,    data.fullName || data.name || data.email || '');
+
+        // First-time login → force password change before proceeding
+        const isFirstLogin = data.isFirstLogin || (data.user && data.user.isFirstLogin);
+        if (isFirstLogin) {
+          window.location.replace('update-password.html');
+        } else {
+          window.location.replace('dashboard.html');
+        }
+
+      } catch (err) {
+        console.error('[login]', err);
+        showError('Unable to connect. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

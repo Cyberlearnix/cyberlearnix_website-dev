@@ -34,7 +34,11 @@ public class InstructorAnalyticsController {
 
         String instructorId = authentication.getName();
 
-        List<Map<String, Object>> allCourses = courseServiceClient.getAllCourses(null, auth);
+        Map<String, Object> coursesResp = courseServiceClient.getAllCourses(null, auth);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> allCourses = coursesResp.containsKey("courses")
+                ? (List<Map<String, Object>>) coursesResp.get("courses")
+                : java.util.Collections.emptyList();
         long totalCourses = allCourses.stream()
                 .filter(c -> instructorId.equals(String.valueOf(c.get("createdBy"))))
                 .count();

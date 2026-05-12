@@ -3,6 +3,8 @@ package com.cyberlearnix.gateway;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -17,6 +19,8 @@ import reactor.core.publisher.Mono;
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     @Value("${jwt.secret}")
     private String jwtSecret;
 
@@ -28,14 +32,26 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getPath().value();
+        // SECURITY: Strip spoofed identity headers unconditionally before ANY routing.
+        // Prevents privilege escalation via X-User-Id / X-User-Role header injection.
+        ServerHttpRequest sanitized = exchange.getRequest().mutate()
+                .headers(h -> {
+                    h.remove("X-User-Id");
+                    h.remove("X-User-Role");
+                })
+                .build();
+        final ServerWebExchange sanitizedExchange = exchange.mutate().request(sanitized).build();
+
+        String path = sanitizedExchange.getRequest().getPath().value();
+        String method = sanitizedExchange.getRequest().getMethod().name();
 
         // 1. Whitelist Public Endpoints
-        if (isPublicPath(path)) {
-            return chain.filter(exchange);
+        if (isPublicPath(path, method)) {
+            return chain.filter(sanitizedExchange);
         }
 
-        String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+        String authHeader = sanitizedExchange.getRequest().getHeaders().getFirst("Authorization");
+        log.debug("[GW] {} {} | auth={}", method, path, authHeader != null ? "present" : "missing");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim();
@@ -43,10 +59,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             String blacklistKey = "blacklisted:" + token;
 
             return redisTemplate.hasKey(blacklistKey)
+                    .defaultIfEmpty(false)
+                    .onErrorReturn(false)
                     .flatMap(isBlacklisted -> {
                         if (Boolean.TRUE.equals(isBlacklisted)) {
-                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                            return exchange.getResponse().setComplete();
+                            log.warn("[GW] Token is blacklisted — rejecting");
+                            sanitizedExchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return sanitizedExchange.getResponse().setComplete();
                         }
                         try {
                             Claims claims = Jwts.parser()
@@ -57,32 +76,49 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                             String userId = claims.getSubject();
                             String userRole = (String) claims.get("role");
+                            log.debug("[GW] JWT valid — userId={} role={} injecting headers", userId, userRole);
 
-                            ServerHttpRequest.Builder builder = exchange.getRequest().mutate();
+                            ServerHttpRequest.Builder builder = sanitizedExchange.getRequest().mutate();
                             if (userId != null) builder.header("X-User-Id", userId);
                             if (userRole != null) builder.header("X-User-Role", userRole);
 
-                            return chain.filter(exchange.mutate().request(builder.build()).build());
+                            return chain.filter(sanitizedExchange.mutate().request(builder.build()).build());
                         } catch (Exception e) {
-                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                            return exchange.getResponse().setComplete();
+                            log.warn("[GW] JWT parse failed [{}]: {} — rejecting", e.getClass().getSimpleName(), e.getMessage());
+                            sanitizedExchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return sanitizedExchange.getResponse().setComplete();
                         }
                     });
         }
 
-        // No token — let downstream service enforce its own security
-        return chain.filter(exchange);
+        log.debug("[GW] No Bearer token on protected path {} {} — rejecting with 401", method, path);
+        // Defense-in-depth: reject unauthenticated requests at the gateway rather than
+        // forwarding them without identity headers and relying solely on downstream auth.
+        sanitizedExchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+        return sanitizedExchange.getResponse().setComplete();
     }
 
-    private boolean isPublicPath(String path) {
+    private boolean isPublicPath(String path, String method) {
+        // Public POST endpoints (no auth required)
+        if ("POST".equals(method)) {
+            if (path.startsWith("/api/auth/")) return true;
+            if (path.equals("/api/enrollments/responses")) return true;
+            if (path.startsWith("/api/enrollments/payments/callback/")) return true;
+            if (path.equals("/api/enrollments/payments/initiate")) return true;
+            if (path.equals("/api/enrollments/payments/webhook")) return true;
+            if (path.equals("/api/enrollments/payu-payment")) return true;
+            return path.endsWith("/responses") || path.endsWith("/responses/check");
+        }
+
+        // PUT/PATCH/DELETE always require auth
+        if ("PUT".equals(method) || "PATCH".equals(method) || "DELETE".equals(method)) {
+            return false;
+        }
+
         if (path.startsWith("/api/auth/") || 
             path.startsWith("/api/careers") ||
             path.startsWith("/api/contact-submissions") || 
-            path.startsWith("/api/shop") ||
-            path.equals("/swagger-ui.html") ||
-            path.startsWith("/swagger-ui/") ||
-            path.startsWith("/v3/api-docs") ||
-            path.contains("/v3/api-docs")) {
+            path.startsWith("/api/shop")) {
             return true;
         }
 
@@ -95,9 +131,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Form Service & Enrollment Service Public Endpoints
         if (path.startsWith("/api/forms/") || path.startsWith("/api/enrollments/")) {
-            // WHite-list specific public enrollment paths
-            if (path.startsWith("/api/enrollments/forms/") || 
-                path.equals("/api/enrollments/responses") || 
+            // White-list specific public enrollment paths
+            // NOTE: GET /api/enrollments/responses is intentionally NOT public — it returns
+            // all student PII and payment data and requires ADMIN role.
+            if (path.startsWith("/api/enrollments/forms/") ||
                 path.equals("/api/enrollments/responses/check")) {
                 return true;
             }

@@ -44,6 +44,24 @@ public class GeneralForm {
     @Column(name = "created_by")
     private String createdBy;
 
+    @Column(name = "payment_enabled")
+    private boolean paymentEnabled = false;
+
+    @Column(name = "course_id")
+    private Long courseId;
+
+    @Column(name = "payment_amount")
+    private Double paymentAmount;
+
+    @Column(name = "gst_percent")
+    private Integer gstPercent;
+
+    @Column(name = "gst_amount")
+    private Double gstAmount;
+
+    @Column(name = "total_amount")
+    private Double totalAmount;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

@@ -5,19 +5,21 @@ spring:
   application:
     name: gateway-service
   codec:
-    max-in-memory-size: 512MB
+    # 50MB covers typical API payloads; large file uploads go directly to CMS/course services
+    max-in-memory-size: 50MB
   data:
     redis:
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   cloud:
     gateway:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
       httpclient:
-        wiretap: true
+        wiretap: false
       httpserver:
-        wiretap: true
+        wiretap: false
       routes:
         # Auth Service (on user-service)
         - id: auth-service
@@ -74,7 +76,7 @@ spring:
         - id: course-service
           uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
-            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**, /api/teacher/**
+            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**, /api/teacher/**, /api/certificates, /api/certificates/**
         - id: course-service-suggestions
           uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
           predicates:
@@ -99,10 +101,15 @@ spring:
                 regexp: /api/manage-enrollment-responses
                 replacement: /api/enrollments/responses
 
+        - id: student-dashboard
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
+          predicates:
+            - Path=/api/student/**
+
         - id: enrollment-service
           uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
           predicates:
-            - Path=/api/enrollments/**, /api/payments/**, /api/payu-payment
+            - Path=/api/enrollments, /api/enrollments/**, /api/payments/**, /api/payu-payment
 
         # Others
         - id: notification-service
@@ -142,6 +149,11 @@ spring:
                 regexp: /api/cms/forms/(?<formId>.*)/submit
                 replacement: /api/forms/${formId}/responses
 
+        - id: student-portal
+          uri: ${CMS_SERVICE_URL:http://127.0.0.1:8089}
+          predicates:
+            - Path=/student/**
+
         # Admin Service
         - id: admin-service
           uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
@@ -164,8 +176,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
+    prometheus:
+      enabled: true
     health:
       show-details: never
       # Kubernetes liveness + readiness probe endpoints
@@ -179,11 +193,11 @@ management:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: INFO
-    reactor.netty.http.client: DEBUG
-    reactor.netty.http.server: DEBUG
-    com.cyberlearnix.gateway: DEBUG
+    org.springframework.cloud.gateway: WARN
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: WARN
+    reactor.netty.http.client: WARN
+    reactor.netty.http.server: WARN
+    com.cyberlearnix.gateway: INFO
 
 springdoc:
   swagger-ui:

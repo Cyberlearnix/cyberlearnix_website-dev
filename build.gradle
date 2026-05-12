@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.2.2' apply false
     id 'io.spring.dependency-management' version '1.1.4' apply false
+    id 'org.sonarqube' version '5.1.0.4882'
 }
 
 allprojects {
@@ -30,12 +31,46 @@ subprojects {
     dependencies {
         implementation 'org.springframework.boot:spring-boot-starter'
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'com.h2database:h2'   // in-memory DB for context-load tests
+        implementation 'io.micrometer:micrometer-registry-prometheus'
         
         compileOnly 'org.projectlombok:lombok'
         annotationProcessor 'org.projectlombok:lombok'
     }
 
+    apply plugin: 'jacoco'
+
+    jacoco {
+        toolVersion = "0.8.12"
+    }
+
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            def groups = System.getProperty('groups', '').trim()
+            if (!groups.isEmpty()) {
+                includeTags groups
+            }
+        }
+        finalizedBy jacocoTestReport
+    }
+
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = false
+        }
+    }
+}
+
+sonar {
+    properties {
+        property "sonar.projectKey",  "Cyberlearnix_cyberlearnix_website-dev"
+        property "sonar.organization", "cyberlearnix"
+        property "sonar.host.url",     "https://sonarcloud.io"
+        property "sonar.coverage.jacoco.xmlReportPaths",
+                 "**/build/reports/jacoco/test/jacocoTestReport.xml"
+        property "sonar.exclusions",
+                 "**/generated/**,**/*Application.java,**/*ApplicationTests.java,**/bin/**"
     }
 }

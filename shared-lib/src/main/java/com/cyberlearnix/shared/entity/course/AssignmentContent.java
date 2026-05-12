@@ -44,4 +44,23 @@ public class AssignmentContent extends ModuleContent {
     
     @Column(name = "plagiarism_check")
     private Boolean plagiarismCheck = true;
+
+    // ─── Rich metadata (JSON — all builder config stored here) ───────────────
+    @Column(name = "assignment_metadata", columnDefinition = "TEXT")
+    private String assignmentMetadata;
+
+    @Column(name = "grading_mode")
+    private String gradingMode = "MANUAL"; // AUTO, MANUAL, HYBRID, PEER
+
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
+    @Column(name = "max_attempts")
+    private Integer maxAttempts = 1;
+
+    @Column(name = "passing_score")
+    private Integer passingScore = 60;
+
+    @Column(name = "difficulty")
+    private String difficulty = "MEDIUM";
 }

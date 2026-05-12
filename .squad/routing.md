@@ -6,20 +6,20 @@ How to decide who handles what.
 
 | Work Type | Route To | Examples |
 |-----------|----------|----------|
-| Architecture, ADRs, system design | Vance | Service decomposition, inter-service contracts, tech decisions |
-| Spring Boot services, JPA, business logic | Nova | Entities, repositories, service layer, REST controllers |
-| API design, Spring Security, JWT, CORS | Aria | Gateway config, auth filters, endpoint security, RBAC |
-| Docker, Gradle, CI/CD, PostgreSQL infra | Kai | Dockerfile, docker-compose, build.gradle, init scripts |
-| Unit tests, integration tests, test coverage | Quinn | JUnit 5, Mockito, TestContainers, Postman collections |
-| Code review | Vance | Review PRs, architecture alignment, quality gate |
-| Scope & priorities | Vance | What to build next, trade-offs, decisions |
+| Architecture, ADRs, system design | Srini | Service decomposition, inter-service contracts, tech decisions |
+| Spring Boot services, JPA, business logic | Shiva | Entities, repositories, service layer, REST controllers |
+| API design, Spring Security, JWT, CORS | Sandeep | Gateway config, auth filters, endpoint security, RBAC |
+| Docker, Gradle, CI/CD, PostgreSQL infra | Rohit | Dockerfile, docker-compose, build.gradle, init scripts |
+| Unit tests, integration tests, test coverage | Sneha | JUnit 5, Mockito, TestContainers, Postman collections |
+| Code review | Srini | Review PRs, architecture alignment, quality gate |
+| Scope & priorities | Srini | What to build next, trade-offs, decisions |
 | Session logging | Scribe | Automatic — never needs routing |
 
 ## Issue Routing
 
 | Label | Action | Who |
 |-------|--------|-----|
-| `squad` | Triage: analyze issue, assign `squad:{member}` label | Lead |
+| `squad` | Triage: analyze issue, assign `squad:{member}` label | Srini |
 | `squad:{name}` | Pick up issue and complete the work | Named member |
 
 ### How Issue Assignment Works

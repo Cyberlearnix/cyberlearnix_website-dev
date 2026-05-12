@@ -36,6 +36,22 @@ public class EnrollmentFormResponse {
     @Column(name = "payment_status")
     private String paymentStatus = "PENDING";
 
+    @Column(name = "payment_mode")
+    private String paymentMode;
+
+    @Column(name = "mihpayid")
+    private String mihpayid;
+
+    @Column(name = "bank_ref_num")
+    private String bankRefNum;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payu_response", columnDefinition = "jsonb")
+    private String payuResponse;
+
     @Column(name = "reviewed_by")
     private String reviewedBy;
 

@@ -22,4 +22,8 @@ public class SecurityUtils {
     public static boolean isTeacher(HttpServletRequest request) {
         return getUserRole(request).map(role -> "teacher".equals(role) || "dual".equals(role)).orElse(false);
     }
+
+    public static boolean isInstitute(HttpServletRequest request) {
+        return getUserRole(request).map("institute"::equals).orElse(false);
+    }
 }

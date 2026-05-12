@@ -32,7 +32,7 @@ public class SharedSecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/courses/**").permitAll()
+                        .requestMatchers("/api/courses/**").authenticated()
                         .requestMatchers("/api/shop/**").permitAll()
                         .requestMatchers("/api/contact-submissions/**").permitAll()
                         .requestMatchers("/api/course-management/**").authenticated()

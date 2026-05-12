@@ -55,6 +55,8 @@ public class CourseManagementService {
     }
 
     public boolean canDeleteCourse(Long courseId, String userId) {
+        // BUG-004: Must verify ownership before checking global permission (same as canEditCourse)
+        if (!courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) return false;
         try {
             Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
             return perm != null && Boolean.TRUE.equals(perm.get("canDeleteCourses"));

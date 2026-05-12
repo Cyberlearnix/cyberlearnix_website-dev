@@ -6,7 +6,7 @@ import lombok.Data;
 public class ContentCreateDTO {
     private String title;
     private String description;
-    private String contentType; // LAB, ASSIGNMENT, LECTURE, VIDEO, QUIZ, EXAM
+    private String contentType; // LAB, ASSIGNMENT, LECTURE, VIDEO, IMAGE, TEXT, ARTICLE, QUIZ, EXAM
     private Integer orderIndex;
     
     // Additional fields for specific types
@@ -22,6 +22,13 @@ public class ContentCreateDTO {
     private String contentText;
     private Boolean isPreview;
     private String attachmentUrl;
+
+    // IMAGE type: image URL + optional metadata
+    private String imageUrl;
+    private String caption;
+    private String altText;
+
+    private String contentBlocks;
     
     private String quizId;
     private Integer timeLimitMinutes;

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Course — Cyberlearnix Student Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { background: var(--cl-bg); }
+    .cl-course-page { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* Header */
+    .cl-course-header {
+      height: var(--cl-header-height);
+      background: var(--cl-sidebar);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .cl-course-header .course-title-header { font-size: 0.9375rem; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cl-course-progress-header { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; color: #94a3b8; white-space: nowrap; }
+    .cl-course-progress-header .cl-progress { width: 120px; background: rgba(255,255,255,0.15); }
+
+    /* Layout */
+    .cl-course-layout { display: flex; flex: 1; }
+
+    /* Outline */
+    .cl-outline-panel { width: 300px; flex-shrink: 0; background: var(--cl-sidebar); color: #e2e8f0; overflow-y: auto; height: calc(100vh - var(--cl-header-height)); position: sticky; top: var(--cl-header-height); }
+    .cl-outline-top { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+    /* Viewer */
+    .cl-viewer-area { flex: 1; padding: 28px; overflow-y: auto; }
+
+    .content-placeholder {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--cl-text-muted);
+    }
+    .content-placeholder .ph-icon { font-size: 4rem; margin-bottom: 16px; }
+    .content-placeholder h3 { font-size: 1.25rem; font-weight: 700; color: var(--cl-text); margin-bottom: 8px; }
+
+    /* Complete button bar */
+    .cl-content-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--cl-border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Lab */
+    .lab-section { margin-bottom: 20px; }
+    .lab-section h4 { font-size: 0.875rem; font-weight: 600; color: var(--cl-text-muted); margin-bottom: 6px; }
+    .lab-section p, .lab-section pre { font-size: 0.9rem; color: var(--cl-text); white-space: pre-wrap; background: #f8fafc; border: 1px solid var(--cl-border); padding: 12px; border-radius: 8px; }
+
+    /* Quiz placeholder */
+    .quiz-placeholder {
+      background: linear-gradient(135deg, #fefce8, #fef9c3);
+      border: 1px solid #fde047;
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+    }
+    .quiz-placeholder .quiz-icon { font-size: 3rem; margin-bottom: 12px; }
+    .quiz-placeholder h3 { font-size: 1.125rem; font-weight: 700; color: #78350f; margin-bottom: 8px; }
+    .quiz-placeholder p { color: #92400e; font-size: 0.875rem; margin-bottom: 20px; }
+
+    /* Video */
+    .video-wrapper { position: relative; padding-top: 56.25%; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    .video-fallback { padding: 40px; text-align: center; color: #94a3b8; }
+  </style>
+</head>
+<body>
+<div class="cl-course-page">
+
+  <!-- Header -->
+  <header class="cl-course-header">
+    <a href="dashboard.html" class="btn btn-secondary btn-sm">← Back</a>
+    <div class="course-title-header" id="headerCourseTitle">Loading…</div>
+    <div class="cl-course-progress-header">
+      <span id="progressPct">0%</span>
+      <div class="cl-progress" style="width:120px;">
+        <div class="cl-progress-bar" id="headerProgressBar" style="width:0%"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="cl-course-layout">
+
+    <!-- Outline Panel -->
+    <aside class="cl-outline-panel" id="outlinePanel">
+      <div class="cl-outline-top">
+        <a href="dashboard.html" class="cl-back-link">← Dashboard</a>
+        <div class="cl-course-outline-title" id="outlineCourseTitle">Loading course…</div>
+      </div>
+      <div id="modulesContainer"><div class="cl-spinner" style="margin:30px auto;"></div></div>
+    </aside>
+
+    <!-- Content Viewer -->
+    <main class="cl-viewer-area" id="viewerArea">
+      <div class="content-placeholder">
+        <div class="ph-icon">📖</div>
+        <h3>Select a lesson</h3>
+        <p>Choose a lesson from the course outline on the left to start learning.</p>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ── Auth guard ── */
+const token  = localStorage.getItem('cl_token');
+const userId = localStorage.getItem('cl_user_id');
+const role   = localStorage.getItem('cl_role');
+if (!token || role !== 'student') window.location.href = 'index.html';
+
+/* ── Read courseId from URL ── */
+const params   = new URLSearchParams(window.location.search);
+const courseId = params.get('courseId');
+if (!courseId) window.location.href = 'dashboard.html';
+
+/* ── Helpers ── */
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'X-User-Id': userId || '',
+      ...(opts.headers || {})
+    }
+  });
+  if (res.status === 401) { localStorage.clear(); window.location.href = 'index.html'; throw new Error('Unauthorized'); }
+  return res;
+}
+
+function showToast(message, type = 'info') {
+  const tc = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  t.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+  tc.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+  t.onclick = () => t.remove();
+}
+
+function contentTypeIcon(ct) {
+  const t = (ct || '').toUpperCase();
+  if (t === 'VIDEO') return '🎬';
+  if (t === 'LAB') return '🔬';
+  if (t === 'QUIZ' || t === 'EXAM') return '📝';
+  if (t === 'ASSIGNMENT') return '✏️';
+  return '📄';
+}
+
+function typeBadgeClass(ct) {
+  const t = (ct || '').toLowerCase();
+  if (t === 'video') return 'badge-type-video';
+  if (t === 'lab') return 'badge-type-lab';
+  if (t === 'quiz' || t === 'exam') return 'badge-type-quiz';
+  if (t === 'assignment') return 'badge-type-assignment';
+  return 'badge-type-lecture';
+}
+
+/* ── Progress state ── */
+let progressMap = {}; // contentId → { isCompleted, status }
+
+async function loadProgress() {
+  try {
+    const res = await apiFetch(`/api/courses/progress/${courseId}`);
+    if (res.ok) {
+      const data = await res.json();
+      // ProgressController returns { overallProgress, items: [...] }
+      const items = data.itemProgress || data.items || data.progress || [];
+      items.forEach(p => { progressMap[p.contentId] = p; });
+      const pct = data.overallProgress || 0;
+      document.getElementById('progressPct').textContent = pct + '%';
+      document.getElementById('headerProgressBar').style.width = pct + '%';
+    }
+  } catch(e) { /* ignore */ }
+}
+
+/* ── Modules outline ── */
+let allContents = {}; // contentId → content object
+
+async function loadModules() {
+  try {
+    const res = await apiFetch(`/api/courses/${courseId}/curriculum`);
+    if (!res.ok) throw new Error('Failed to load modules');
+    const data = await res.json();
+    const modules = data.modules || data || [];
+
+    document.getElementById('outlineCourseTitle').textContent = data.courseTitle || 'Course';
+    document.getElementById('headerCourseTitle').textContent = data.courseTitle || 'Course';
+    document.title = (data.courseTitle || 'Course') + ' — Cyberlearnix';
+
+    const container = document.getElementById('modulesContainer');
+    if (!modules.length) {
+      container.innerHTML = `<div style="padding:20px;color:#94a3b8;font-size:0.8125rem;">No modules available yet.</div>`;
+      return;
+    }
+
+    container.innerHTML = modules.map((m, mi) => {
+      const contents = m.contents || m.moduleContents || [];
+      contents.forEach(c => { allContents[c.id] = c; });
+      const items = contents.map(c => {
+        const prog = progressMap[c.id];
+        const done = prog && prog.isCompleted;
+        return `<div class="cl-content-item ${done ? 'completed' : ''}" data-content-id="${c.id}" onclick="loadContent(${c.id})">
+          <span class="cl-content-icon">${done ? '✅' : contentTypeIcon(c.contentType)}</span>
+          <span>${c.title || 'Lesson ' + (c.id)}</span>
+        </div>`;
+      }).join('');
+
+      return `<div class="cl-module open" id="module-${m.id}">
+        <div class="cl-module-header" onclick="toggleModule(${m.id})">
+          <span>${m.title || 'Module ' + (mi + 1)}</span>
+          <span class="cl-module-toggle">▶</span>
+        </div>
+        <div class="cl-module-contents">${items || '<div style="padding:8px 28px;color:#64748b;font-size:0.8rem;">No contents</div>'}</div>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    document.getElementById('modulesContainer').innerHTML =
+      `<div style="padding:20px;color:#ef4444;font-size:0.8125rem;">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function toggleModule(moduleId) {
+  document.getElementById('module-' + moduleId).classList.toggle('open');
+}
+
+/* ── Load content into viewer ── */
+let currentContentId = null;
+
+async function loadContent(contentId) {
+  currentContentId = contentId;
+  const c = allContents[contentId];
+
+  // Highlight active
+  document.querySelectorAll('.cl-content-item').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`[data-content-id="${contentId}"]`);
+  if (el) el.classList.add('active');
+
+  if (!c) {
+    document.getElementById('viewerArea').innerHTML = `<div class="content-placeholder"><div class="ph-icon">⚠️</div><h3>Content not found</h3></div>`;
+    return;
+  }
+
+  const prog = progressMap[contentId];
+  const isCompleted = prog && prog.isCompleted;
+  const ct = (c.contentType || 'LECTURE').toUpperCase();
+
+  let bodyHtml = '';
+
+  if (ct === 'VIDEO') {
+    const url = c.contentUrl || c.videoUrl || '';
+    let embedHtml = '';
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      let videoId = '';
+      const match = url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+      if (match) videoId = match[1];
+      embedHtml = videoId
+        ? `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe></div>`
+        : `<div class="video-wrapper"><div class="video-fallback">Video not embeddable. <a href="${url}" target="_blank">Open in new tab</a></div></div>`;
+    } else if (url) {
+      embedHtml = `<div class="video-wrapper"><video controls style="width:100%;height:100%;position:absolute;top:0;left:0;" src="${url}"></video></div>`;
+    } else {
+      embedHtml = `<div style="padding:40px;text-align:center;color:var(--cl-text-muted);">Video URL not available</div>`;
+    }
+    bodyHtml = `${embedHtml}${c.description ? `<p style="margin-top:12px;color:var(--cl-text-muted);">${c.description}</p>` : ''}`;
+  } else if (ct === 'LAB') {
+    bodyHtml = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;">
+          <div style="font-size:0.75rem;font-weight:600;color:#0369a1;margin-bottom:4px;">TYPE</div>
+          <div style="font-weight:600;">${c.labType || 'Hands-on Lab'}</div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;">
+          <div style="font-size:0.75rem;font-weight:600;color:#15803d;margin-bottom:4px;">DIFFICULTY</div>
+          <div style="font-weight:600;">${c.difficultyLevel || 'Intermediate'}</div>
+        </div>
+        <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:12px;">
+          <div style="font-size:0.75rem;font-weight:600;color:#a16207;margin-bottom:4px;">DURATION</div>
+          <div style="font-weight:600;">${c.durationMinutes ? c.durationMinutes + ' min' : 'Self-paced'}</div>
+        </div>
+      </div>
+      ${c.learningObjectives ? `<div class="lab-section"><h4>🎯 Learning Objectives</h4><p>${c.learningObjectives}</p></div>` : ''}
+      ${c.prerequisites ? `<div class="lab-section"><h4>📋 Prerequisites</h4><p>${c.prerequisites}</p></div>` : ''}
+      ${c.instructions ? `<div class="lab-section"><h4>📝 Instructions</h4><pre>${c.instructions}</pre></div>` : ''}
+      ${c.description ? `<div class="lab-section"><h4>About this Lab</h4><p>${c.description}</p></div>` : ''}
+    `;
+  } else if (ct === 'QUIZ' || ct === 'EXAM') {
+    bodyHtml = `<div class="quiz-placeholder">
+      <div class="quiz-icon">📝</div>
+      <h3>${ct === 'EXAM' ? 'Exam' : 'Quiz'}: ${c.title}</h3>
+      <p>${c.description || 'Test your knowledge on this topic.'}</p>
+      <button class="btn btn-primary" onclick="showToast('Quiz integration coming soon!', 'info')">
+        Start ${ct === 'EXAM' ? 'Exam' : 'Quiz'}
+      </button>
+    </div>`;
+  } else if (ct === 'ASSIGNMENT') {
+    bodyHtml = `
+      ${c.description ? `<div class="cl-card" style="margin-bottom:16px;"><p>${c.description}</p></div>` : ''}
+      <div class="quiz-placeholder" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#86efac;">
+        <div class="quiz-icon">✏️</div>
+        <h3>Assignment</h3>
+        <p>Complete and submit your assignment to your instructor.</p>
+        <button class="btn btn-primary" onclick="showToast('Assignment submission coming soon!', 'info')">Submit Assignment</button>
+      </div>
+    `;
+  } else {
+    // LECTURE / TEXT / IMAGE / default
+    bodyHtml = c.contentUrl
+      ? `<div style="margin-bottom:16px;"><a href="${c.contentUrl}" target="_blank" class="btn btn-outline">📂 Open Resource</a></div>${c.description ? `<div class="cl-card"><p>${c.description}</p></div>` : ''}`
+      : `${c.description ? `<div class="cl-card"><p>${c.description}</p></div>` : '<p style="color:var(--cl-text-muted);">No content available for this lesson.</p>'}`;
+  }
+
+  document.getElementById('viewerArea').innerHTML = `
+    <div class="cl-viewer-header">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        <h2 class="cl-viewer-title" style="margin:0;">${c.title}</h2>
+        <span class="badge ${typeBadgeClass(ct)}">${ct}</span>
+        ${isCompleted ? '<span class="badge badge-status-completed">✅ Completed</span>' : ''}
+      </div>
+    </div>
+    <div class="cl-content-body">
+      ${bodyHtml}
+      <div class="cl-content-actions">
+        <div></div>
+        ${!isCompleted ? `<button class="btn btn-primary" id="markCompleteBtn" onclick="markComplete(${contentId})">✅ Mark as Complete</button>` : `<span class="badge badge-status-completed" style="font-size:0.875rem;padding:6px 14px;">✅ Completed</span>`}
+      </div>
+    </div>
+  `;
+}
+
+async function markComplete(contentId) {
+  const btn = document.getElementById('markCompleteBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const res = await apiFetch('/api/courses/progress/update', {
+      method: 'POST',
+      body: JSON.stringify({ contentId: contentId, status: 'COMPLETED' })
+    });
+    if (res.ok) {
+      progressMap[contentId] = { isCompleted: true, status: 'COMPLETED' };
+      // Update outline item
+      const el = document.querySelector(`[data-content-id="${contentId}"]`);
+      if (el) { el.classList.add('completed'); el.querySelector('.cl-content-icon').textContent = '✅'; }
+      showToast('Lesson marked complete! 🎉', 'success');
+      // Reload progress bar
+      await loadProgress();
+      // Reload viewer to show completed state
+      loadContent(contentId);
+    } else {
+      showToast('Could not save progress', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Mark as Complete'; }
+    }
+  } catch(e) {
+    showToast('Network error', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Mark as Complete'; }
+  }
+}
+
+/* ── Init ── */
+(async function init() {
+  await loadProgress();
+  await loadModules();
+})();
+</script>
+</body>
+</html>

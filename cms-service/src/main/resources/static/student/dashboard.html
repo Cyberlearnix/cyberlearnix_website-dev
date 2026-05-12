@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Cyberlearnix Student Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- App shell -->
+<div class="cl-app">
+
+  <!-- Sidebar -->
+  <nav class="cl-sidebar" id="sidebar">
+    <a class="cl-sidebar-logo" href="#">
+      🎓 <span>Cyber</span>learnix
+    </a>
+
+    <div class="cl-sidebar-user">
+      <div class="cl-avatar" id="sidebarAvatar">S</div>
+      <div class="cl-sidebar-user-info">
+        <div class="cl-sidebar-user-name" id="sidebarName">Student</div>
+        <div class="cl-sidebar-user-role">Student Account</div>
+      </div>
+    </div>
+
+    <nav class="cl-sidebar-nav">
+      <button class="cl-nav-item active" data-section="home">
+        <span class="nav-icon">🏠</span> Dashboard
+      </button>
+      <button class="cl-nav-item" data-section="courses">
+        <span class="nav-icon">📚</span> My Courses
+      </button>
+      <button class="cl-nav-item" data-section="profile">
+        <span class="nav-icon">👤</span> Profile
+      </button>
+      <button class="cl-nav-item" data-section="activity">
+        <span class="nav-icon">📋</span> Activity Logs
+      </button>
+    </nav>
+
+    <div class="cl-sidebar-bottom">
+      <button class="btn btn-danger btn-full" id="logoutBtn">🔑 Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="cl-main">
+
+    <!-- Header -->
+    <header class="cl-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-secondary btn-sm" id="menuToggle" style="display:none;">☰</button>
+        <span class="cl-header-title" id="pageTitle">Dashboard</span>
+      </div>
+      <div class="cl-header-actions">
+        <div class="cl-avatar" id="headerAvatar" style="cursor:pointer;" onclick="showSection('profile')">S</div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="cl-content">
+
+      <!-- ── HOME SECTION ── -->
+      <div class="cl-section active" id="section-home">
+        <div class="section-header">
+          <h2 class="section-title" id="welcomeText">Welcome back! 👋</h2>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+          <div class="cl-stat-card blue">
+            <div class="stat-icon">📚</div>
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-label">Total Courses</div>
+          </div>
+          <div class="cl-stat-card green">
+            <div class="stat-icon">✅</div>
+            <div class="stat-value" id="statCompleted">—</div>
+            <div class="stat-label">Completed</div>
+          </div>
+          <div class="cl-stat-card orange">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-value" id="statInProgress">—</div>
+            <div class="stat-label">In Progress</div>
+          </div>
+          <div class="cl-stat-card purple">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value" id="statOverall">—%</div>
+            <div class="stat-label">Overall Progress</div>
+          </div>
+        </div>
+
+        <!-- Recent Courses -->
+        <div class="section-header">
+          <h3 class="section-title">Continue Learning</h3>
+        </div>
+        <div id="homeCoursesContainer"><div class="cl-spinner"></div></div>
+      </div>
+
+      <!-- ── MY COURSES SECTION ── -->
+      <div class="cl-section" id="section-courses">
+        <div class="section-header">
+          <h2 class="section-title">My Courses</h2>
+          <span id="coursesCountBadge" class="badge badge-category"></span>
+        </div>
+        <div id="coursesContainer"><div class="cl-spinner"></div></div>
+      </div>
+
+      <!-- ── PROFILE SECTION ── -->
+      <div class="cl-section" id="section-profile">
+        <div class="section-header">
+          <h2 class="section-title">My Profile</h2>
+        </div>
+        <div class="cl-card" style="max-width:680px;">
+          <form id="profileForm">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="pfFullName" placeholder="Your full name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" id="pfPhone" placeholder="+91 9876543210" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" class="form-control" id="pfDob" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Age</label>
+                <input type="number" class="form-control" id="pfAge" placeholder="25" min="10" max="100" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-control" id="pfLocation" placeholder="City, Country" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bio</label>
+              <textarea class="form-control" id="pfBio" rows="3" placeholder="Tell us about yourself..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Profile Photo URL</label>
+              <input type="url" class="form-control" id="pfPhoto" placeholder="https://..." />
+            </div>
+            <div style="margin-top:8px;">
+              <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                💾 Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ── ACTIVITY SECTION ── -->
+      <div class="cl-section" id="section-activity">
+        <div class="section-header">
+          <h2 class="section-title">Activity Logs</h2>
+        </div>
+        <div class="cl-card">
+          <div class="cl-table-wrapper">
+            <table class="cl-table">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Description</th>
+                  <th>Date &amp; Time</th>
+                </tr>
+              </thead>
+              <tbody id="activityTableBody">
+                <tr><td colspan="3"><div class="cl-spinner spinner-sm" style="margin:20px auto;display:block;"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+/* ── Auth guard ── */
+const token   = localStorage.getItem('cl_token');
+const userId  = localStorage.getItem('cl_user_id');
+const role    = localStorage.getItem('cl_role');
+const uname   = localStorage.getItem('cl_user_name') || 'Student';
+
+if (!token || role !== 'student') {
+  window.location.href = 'index.html';
+}
+
+/* ── Helpers ── */
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'X-User-Id': userId || '',
+      ...(opts.headers || {})
+    }
+  });
+  if (res.status === 401) {
+    localStorage.clear();
+    window.location.href = 'index.html';
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
+
+function showToast(message, type = 'info') {
+  const tc = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  t.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+  tc.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+  t.onclick = () => t.remove();
+}
+
+function diffBadge(level) {
+  const l = (level || '').toLowerCase();
+  if (l === 'beginner') return `<span class="badge badge-difficulty-beginner">Beginner</span>`;
+  if (l === 'advanced') return `<span class="badge badge-difficulty-advanced">Advanced</span>`;
+  return `<span class="badge badge-difficulty-intermediate">${level || 'Intermediate'}</span>`;
+}
+
+function statusBadge(s) {
+  if (s === 'COMPLETED') return `<span class="badge badge-status-completed">Completed</span>`;
+  if (s === 'IN_PROGRESS') return `<span class="badge badge-status-in-progress">In Progress</span>`;
+  return `<span class="badge badge-status-not-started">Not Started</span>`;
+}
+
+function courseCard(e, slim = false) {
+  const pct = e.progress || 0;
+  const thumbHtml = e.courseThumbnail
+    ? `<img src="${e.courseThumbnail}" alt="${e.courseTitle || 'Course'}" loading="lazy" onerror="this.parentElement.innerHTML='📚'"/>`
+    : '📚';
+  return `
+    <div class="course-card" onclick="window.location.href='course.html?courseId=${e.courseId}'">
+      <div class="course-card-thumb">${thumbHtml}</div>
+      <div class="course-card-body">
+        <div class="course-card-title">${e.courseTitle || 'Untitled Course'}</div>
+        <div class="course-card-badges">
+          ${e.category ? `<span class="badge badge-category">${e.category}</span>` : ''}
+          ${diffBadge(e.difficultyLevel)}
+          ${slim ? '' : statusBadge(e.status)}
+        </div>
+        <div class="course-card-progress">
+          <div class="course-card-progress-label">
+            <span>Progress</span><span>${pct}%</span>
+          </div>
+          <div class="cl-progress">
+            <div class="cl-progress-bar ${pct === 100 ? 'green' : pct > 0 ? '' : 'orange'}" style="width:${pct}%"></div>
+          </div>
+        </div>
+        <a href="course.html?courseId=${e.courseId}" class="btn btn-primary btn-sm btn-full" style="margin-top:4px;">
+          ${pct === 100 ? '🏆 Review' : pct > 0 ? '▶ Continue' : '▶ Start Learning'}
+        </a>
+      </div>
+    </div>`;
+}
+
+/* ── Sidebar nav ── */
+let enrollmentsData = [];
+let dashboardLoaded = false;
+
+function showSection(name) {
+  document.querySelectorAll('.cl-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.cl-nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.querySelector(`[data-section="${name}"]`).classList.add('active');
+  const titles = { home: 'Dashboard', courses: 'My Courses', profile: 'Profile', activity: 'Activity Logs' };
+  document.getElementById('pageTitle').textContent = titles[name] || 'Dashboard';
+  if (name === 'activity' && !activityLoaded) loadActivity();
+  if (name === 'profile' && !profileLoaded) loadProfile();
+}
+
+document.querySelectorAll('.cl-nav-item[data-section]').forEach(btn => {
+  btn.addEventListener('click', () => showSection(btn.dataset.section));
+});
+
+/* ── Logout ── */
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.clear();
+  window.location.href = 'index.html';
+});
+
+/* ── User avatar ── */
+function setAvatar(name) {
+  const initials = (name || 'S').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  document.getElementById('sidebarAvatar').textContent = initials;
+  document.getElementById('headerAvatar').textContent = initials;
+  document.getElementById('sidebarName').textContent = name || 'Student';
+  document.getElementById('welcomeText').textContent = `Welcome back, ${name ? name.split(' ')[0] : 'Student'}! 👋`;
+}
+setAvatar(uname);
+
+/* ── Dashboard data ── */
+async function loadDashboard() {
+  try {
+    const res = await apiFetch('/api/student/dashboard');
+    if (!res.ok) throw new Error('Failed to load dashboard');
+    const data = await res.json();
+    enrollmentsData = data.enrollments || [];
+    const s = data.stats || {};
+
+    document.getElementById('statTotal').textContent = s.totalCourses ?? 0;
+    document.getElementById('statCompleted').textContent = s.completedCourses ?? 0;
+    document.getElementById('statInProgress').textContent = s.inProgressCourses ?? 0;
+    document.getElementById('statOverall').textContent = (s.overallProgress ?? 0) + '%';
+
+    renderCourseGrid(enrollmentsData, 'homeCoursesContainer', 3);
+    renderCourseGrid(enrollmentsData, 'coursesContainer');
+    document.getElementById('coursesCountBadge').textContent = enrollmentsData.length + ' courses';
+
+    dashboardLoaded = true;
+  } catch (e) {
+    document.getElementById('homeCoursesContainer').innerHTML =
+      `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Failed to load</h3><p>${e.message}</p></div>`;
+    document.getElementById('coursesContainer').innerHTML = document.getElementById('homeCoursesContainer').innerHTML;
+  }
+}
+
+function renderCourseGrid(list, containerId, limit) {
+  const el = document.getElementById(containerId);
+  const items = limit ? list.slice(0, limit) : list;
+  if (!items.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">📚</div>
+      <h3>No courses yet</h3>
+      <p>Your enrolled courses will appear here after admin approval.</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<div class="courses-grid">${items.map(e => courseCard(e)).join('')}</div>`;
+  if (limit && list.length > limit) {
+    el.innerHTML += `<div style="text-align:center;margin-top:20px;">
+      <button class="btn btn-outline" onclick="showSection('courses')">View all ${list.length} courses →</button>
+    </div>`;
+  }
+}
+
+/* ── Profile ── */
+let profileLoaded = false;
+async function loadProfile() {
+  try {
+    const res = await apiFetch('/api/users/profile');
+    if (res.ok) {
+      const p = await res.json();
+      document.getElementById('pfFullName').value = p.fullName || '';
+      document.getElementById('pfPhone').value = p.phone || '';
+      document.getElementById('pfDob').value = p.dateOfBirth || '';
+      document.getElementById('pfAge').value = p.age || '';
+      document.getElementById('pfLocation').value = p.location || '';
+      document.getElementById('pfBio').value = p.bio || '';
+      document.getElementById('pfPhoto').value = p.photoUrl || '';
+      if (p.fullName) {
+        setAvatar(p.fullName);
+        localStorage.setItem('cl_user_name', p.fullName);
+      }
+    }
+    profileLoaded = true;
+  } catch(e) { showToast('Could not load profile', 'error'); }
+}
+
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveProfileBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const body = {};
+  const fn = document.getElementById('pfFullName').value.trim();
+  const ph = document.getElementById('pfPhone').value.trim();
+  const db = document.getElementById('pfDob').value.trim();
+  const ag = document.getElementById('pfAge').value.trim();
+  const lo = document.getElementById('pfLocation').value.trim();
+  const bi = document.getElementById('pfBio').value.trim();
+  const ph2 = document.getElementById('pfPhoto').value.trim();
+
+  if (fn) body.fullName = fn;
+  if (ph) body.phone = ph;
+  if (db) body.dateOfBirth = db;
+  if (ag) body.age = parseInt(ag, 10);
+  if (lo) body.location = lo;
+  if (bi) body.bio = bi;
+  if (ph2) body.photoUrl = ph2;
+
+  try {
+    const res = await apiFetch('/api/users/profile', {
+      method: 'PUT',
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      const p = await res.json();
+      if (p.fullName) { setAvatar(p.fullName); localStorage.setItem('cl_user_name', p.fullName); }
+      showToast('Profile updated successfully!', 'success');
+    } else {
+      showToast('Failed to save profile', 'error');
+    }
+  } catch(err) { showToast('Network error', 'error'); }
+
+  btn.disabled = false;
+  btn.textContent = '💾 Save Changes';
+});
+
+/* ── Activity ── */
+let activityLoaded = false;
+async function loadActivity() {
+  const tbody = document.getElementById('activityTableBody');
+  try {
+    const res = await apiFetch(`/api/activity/logs/${userId}`);
+    if (res.ok) {
+      const logs = await res.json();
+      if (!logs.length) {
+        tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state" style="padding:30px 0;"><div class="empty-state-icon">📋</div><h3>No activity yet</h3></div></td></tr>`;
+      } else {
+        tbody.innerHTML = logs.slice(0, 100).map(l => `<tr>
+          <td><strong>${l.eventType || '—'}</strong></td>
+          <td>${l.description || '—'}</td>
+          <td style="white-space:nowrap;color:var(--cl-text-muted);">${l.createdAt ? new Date(l.createdAt).toLocaleString() : '—'}</td>
+        </tr>`).join('');
+      }
+    } else {
+      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--cl-text-muted);">Could not load activity</td></tr>`;
+    }
+    activityLoaded = true;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--cl-text-muted);">Error loading activity</td></tr>`;
+  }
+}
+
+/* ── Mobile menu ── */
+const menuToggle = document.getElementById('menuToggle');
+if (window.innerWidth <= 768) menuToggle.style.display = 'flex';
+menuToggle.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+
+/* ── Init ── */
+loadDashboard();
+</script>
+</body>
+</html>

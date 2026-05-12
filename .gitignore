@@ -3,6 +3,9 @@
 build/
 !**/src/**/build/
 
+# Compiled Java bytecode — never commit binary artifacts
+**/*.class
+
 # Eclipse/VS Code compiled output
 **/bin/
 

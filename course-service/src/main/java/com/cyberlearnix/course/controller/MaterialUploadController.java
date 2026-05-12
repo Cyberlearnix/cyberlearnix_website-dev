@@ -25,6 +25,10 @@ import java.util.Map;
 @RequestMapping("/api/materials")
 public class MaterialUploadController {
 
+    private static final String AUTH_REQUIRED = "Authentication required";
+    private static final String KEY_ERROR = "error";
+    private static final String KEY_SUCCESS = "success";
+
     @Autowired
     private CloudinaryService cloudinaryService;
 
@@ -36,32 +40,72 @@ public class MaterialUploadController {
      * Returns: { "success": true, "url": "https://res.cloudinary.com/..." }
      */
     @PostMapping(value = "/upload/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadThumbnail(
+    public ResponseEntity<Map<String, Object>> uploadThumbnail(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
 
         // Validate type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed for thumbnails"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for thumbnails"));
         }
 
         // Max 5MB
         if (file.getSize() > 5 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Thumbnail must be under 5MB"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Thumbnail must be under 5MB"));
         }
 
         try {
             String url = cloudinaryService.uploadImage(file, "cyberlearnix/thumbnails");
-            return ResponseEntity.ok(Map.of("success", true, "url", url));
-        } catch (IOException e) {
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url, "folder", "thumbnails"));
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Upload failed: " + e.getMessage()));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Thumbnail upload failed: " + msg));
+        }
+    }
+
+    /**
+     * Upload a chapter or sub-chapter cover image.
+     * POST /api/materials/upload/module-image
+     * Header: Authorization: Bearer <token>  (any logged-in user)
+     * Body: multipart/form-data { file: <image file> }
+     * Returns: { "success": true, "url": "https://res.cloudinary.com/dt6rxrpqr/image/upload/cyberlearnix/modules/...", "folder": "modules" }
+     *
+     * Images land in Cloudinary folder  cyberlearnix/modules/
+     * so the URL clearly shows it belongs to a chapter/sub-chapter, not a course thumbnail.
+     */
+    @PostMapping(value = "/upload/module-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> uploadModuleImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for module images"));
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Module image must be under 5MB"));
+        }
+
+        try {
+            String url = cloudinaryService.uploadImage(file, "cyberlearnix/modules");
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url, "folder", "modules"));
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Module image upload failed: " + msg));
         }
     }
 
@@ -73,37 +117,38 @@ public class MaterialUploadController {
      * Returns: { "success": true, "url": "https://res.cloudinary.com/...", "duration": 120 }
      */
     @PostMapping(value = "/upload/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadVideo(
+    public ResponseEntity<Map<String, Object>> uploadVideo(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
 
         // Only admin/teacher can upload videos
         if (!"admin".equals(userRole) && !"teacher".equals(userRole) && !"dual".equals(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only teachers and admins can upload videos"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only teachers and admins can upload videos"));
         }
 
         // Validate type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("video/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only video files are allowed"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only video files are allowed"));
         }
 
         // Max 500MB
         if (file.getSize() > 500L * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Video must be under 500MB"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Video must be under 500MB"));
         }
 
         try {
             String url = cloudinaryService.uploadVideo(file, "cyberlearnix/lectures");
-            return ResponseEntity.ok(Map.of("success", true, "url", url));
-        } catch (IOException e) {
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Upload failed: " + e.getMessage()));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Video upload failed: " + msg));
         }
     }
 
@@ -115,30 +160,31 @@ public class MaterialUploadController {
      * Returns: { "success": true, "url": "https://res.cloudinary.com/..." }
      */
     @PostMapping(value = "/upload/document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadDocument(
+    public ResponseEntity<Map<String, Object>> uploadDocument(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
 
         if (!"admin".equals(userRole) && !"teacher".equals(userRole) && !"dual".equals(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only teachers and admins can upload documents"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only teachers and admins can upload documents"));
         }
 
         // Max 50MB
         if (file.getSize() > 50L * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Document must be under 50MB"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Document must be under 50MB"));
         }
 
         try {
             String url = cloudinaryService.uploadDocument(file, "cyberlearnix/attachments");
-            return ResponseEntity.ok(Map.of("success", true, "url", url));
-        } catch (IOException e) {
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Upload failed: " + e.getMessage()));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Document upload failed: " + msg));
         }
     }
 
@@ -147,29 +193,30 @@ public class MaterialUploadController {
      * POST /api/materials/upload/banner
      */
     @PostMapping(value = "/upload/banner", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadBanner(
+    public ResponseEntity<Map<String, Object>> uploadBanner(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
         if (!"admin".equals(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can upload banners"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only admins can upload banners"));
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed for banners"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for banners"));
         }
 
         try {
             String url = cloudinaryService.uploadImage(file, "cyberlearnix/banners");
-            return ResponseEntity.ok(Map.of("success", true, "url", url));
-        } catch (IOException e) {
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Upload failed: " + e.getMessage()));
+                    .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Banner upload failed: " + msg));
         }
     }
 }

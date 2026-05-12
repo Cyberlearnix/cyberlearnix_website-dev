@@ -31,7 +31,11 @@ public class InstructorCourseController {
 
         String instructorId = authentication.getName();
 
-        List<Map<String, Object>> allCourses = courseServiceClient.getAllCourses(status, auth);
+        Map<String, Object> coursesResp = courseServiceClient.getAllCourses(status, auth);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> allCourses = coursesResp.containsKey("courses")
+                ? (List<Map<String, Object>>) coursesResp.get("courses")
+                : java.util.Collections.emptyList();
         List<Map<String, Object>> myCourses = allCourses.stream()
                 .filter(c -> instructorId.equals(String.valueOf(c.get("createdBy"))))
                 .collect(Collectors.toList());

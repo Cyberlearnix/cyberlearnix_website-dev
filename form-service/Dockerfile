@@ -1,24 +1,13 @@
-# Build stage
-FROM gradle:8.14-jdk21 AS build
-WORKDIR /app
-
-# Copy gradle files
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
-
-# Copy source code
-COPY shared-lib shared-lib
-COPY form-service form-service
-
-# Build the form-service
-RUN gradle :form-service:bootJar --no-daemon
-
-# Run stage
+# Run stage — JAR pre-built locally via ./gradlew bootJar
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY --from=build /app/form-service/build/libs/*.jar app.jar
+# curl is required for HEALTHCHECK probes
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY form-service/build/libs/ /tmp/jars/
+RUN find /tmp/jars -name "*.jar" ! -name "*plain*" -exec cp {} /app/app.jar \; && rm -rf /tmp/jars
 
 EXPOSE 8087
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8087/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]

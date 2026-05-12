@@ -10,7 +10,7 @@ import java.util.Map;
 public interface CourseServiceClient {
 
     @GetMapping("/api/courses")
-    List<Map<String, Object>> getAllCourses(
+    Map<String, Object> getAllCourses(
             @RequestParam(required = false) String status,
             @RequestHeader("Authorization") String auth);
 

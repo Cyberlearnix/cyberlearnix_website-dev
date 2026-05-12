@@ -6,7 +6,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -20,6 +19,8 @@ import com.cyberlearnix.shared.repository.user.BlacklistedTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 import java.util.Arrays;
 import java.util.List;
@@ -44,19 +45,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF Protection with SameSite cookie
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/register",
-                                "/api/auth/refresh-token",
-                                "/api/auth/request-otp",
-                                "/api/auth/verify-otp",
-                                "/api/auth/verify-otp-login",
-                                "/api/auth/logout",
-                                "/api/admin/stats/**"
-                        )
+                // CSRF disabled — JWT Bearer token auth is stateless (no session cookies)
+                .csrf(csrf -> csrf.disable())
+                .httpBasic(basic -> basic.disable())
+                .formLogin(form -> form.disable())
+                
+                // Return 401 for unauthenticated requests (not 403)
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
                 
                 // Security Headers
@@ -81,9 +77,11 @@ public class SecurityConfig {
                 
                 // Authorization Rules
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/refresh-token").permitAll()
                         .requestMatchers("/api/auth/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/users").permitAll()
+                        .requestMatchers("/api/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/careers", "/api/careers/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/contact-submissions").permitAll()
                         .requestMatchers("/api/contact-submissions/**").hasRole("ADMIN")
@@ -98,6 +96,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/activity/logs", "/api/activity/logs/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/stats/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/profile").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/profile").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/logout").authenticated()
                         .anyRequest().authenticated()
