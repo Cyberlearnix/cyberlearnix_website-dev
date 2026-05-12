@@ -33,8 +33,9 @@ public class GatewaySecurityConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
         
-        // Allowed origins — configured via CORS_ALLOWED_ORIGINS env var (Spring relaxed binding)
-        corsConfig.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        // Allowed origin patterns — supports wildcards like https://*.netlify.app
+        // setAllowedOriginPatterns is required when allowCredentials=true and wildcard patterns are needed
+        corsConfig.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
         
         // Allowed methods
         corsConfig.setAllowedMethods(Arrays.asList(
