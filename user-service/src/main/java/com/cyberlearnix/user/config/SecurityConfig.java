@@ -19,6 +19,8 @@ import com.cyberlearnix.shared.repository.user.BlacklistedTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 import java.util.Arrays;
 import java.util.List;
@@ -45,6 +47,13 @@ public class SecurityConfig {
         http
                 // CSRF disabled — JWT Bearer token auth is stateless (no session cookies)
                 .csrf(csrf -> csrf.disable())
+                .httpBasic(basic -> basic.disable())
+                .formLogin(form -> form.disable())
+                
+                // Return 401 for unauthenticated requests (not 403)
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                )
                 
                 // Security Headers
                 .headers(headers -> headers
