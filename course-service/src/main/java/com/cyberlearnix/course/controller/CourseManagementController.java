@@ -746,7 +746,7 @@ public class CourseManagementController {
      * Provides a consistent /api/course-management/* namespace for the frontend.
      */
     @GetMapping("/permissions/{teacherId}")
-    public ResponseEntity<?> getTeacherPermissions(@PathVariable String teacherId,
+    public ResponseEntity<?> getTeacherPermissionsProxy(@PathVariable String teacherId,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
         if (!"admin".equalsIgnoreCase(userRole) && !"teacher".equalsIgnoreCase(userRole)
                 && !"dual".equalsIgnoreCase(userRole)) {

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cyberlearnix.course.client.EnrollmentServiceClient;
 import com.cyberlearnix.course.client.UserServiceClient;
 import com.cyberlearnix.course.dto.*;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
