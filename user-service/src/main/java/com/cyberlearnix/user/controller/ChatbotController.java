@@ -2,6 +2,7 @@ package com.cyberlearnix.user.controller;
 
 import com.cyberlearnix.shared.entity.user.ChatbotResponse;
 import com.cyberlearnix.shared.repository.user.ChatbotResponseRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -57,7 +58,7 @@ public class ChatbotController {
     public ResponseEntity<ChatbotResponse> createResponse(@RequestBody ChatbotResponse response) {
         response.setCreatedAt(LocalDateTime.now());
         response.setUpdatedAt(LocalDateTime.now());
-        return ResponseEntity.ok(chatbotResponseRepository.save(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(chatbotResponseRepository.save(response));
     }
 
     @PutMapping("/{id}")

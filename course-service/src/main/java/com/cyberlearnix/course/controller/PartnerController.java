@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.repository.course.ContentPartnerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ public class PartnerController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createPartner(@RequestBody ContentPartner partner) {
         partner.setCreatedAt(LocalDateTime.now());
         ContentPartner saved = partnerRepository.save(partner);
@@ -31,6 +33,7 @@ public class PartnerController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updatePartner(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
         return partnerRepository.findById(id).map(partner -> {
             if (updates.containsKey("name"))
@@ -45,6 +48,7 @@ public class PartnerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deletePartner(@PathVariable Long id) {
         if (partnerRepository.existsById(id)) {
             partnerRepository.deleteById(id);

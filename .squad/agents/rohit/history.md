@@ -1,5 +1,14 @@
 # Kai — DevOps Engineer History
 
+## Learnings
+
+### [2026-05-13] Gateway Routing Fixes
+- Added `admin-stats-users` route (→ user-service:8081 `/api/admin/stats/users`) and `admin-stats-courses` route (→ course-service:8082 `/api/admin/stats/courses`) **before** the generic `admin-service` catch-all in `gateway-service/src/main/resources/application.yml`. Spring Cloud Gateway uses first-match-wins — specific routes must precede wildcards.
+- `activity-service` route covering `/api/activity/**` was already present — no change needed.
+- `ADMIN_SERVICE_URL`, `CMS_SERVICE_URL`, `INSTRUCTOR_SERVICE_URL` were already defined in `docker-compose.yml` gateway environment block — no change needed.
+- All default fallback ports in `application.yml` (8081–8091) match the ports in `docker-compose.yml` — no mismatches found.
+- Key file: `gateway-service/src/main/resources/application.yml`
+
 ## What I Know About This Project
 
 ### Infrastructure Stack

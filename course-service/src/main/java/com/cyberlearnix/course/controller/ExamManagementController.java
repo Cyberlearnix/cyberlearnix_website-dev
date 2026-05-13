@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -64,7 +65,7 @@ public class ExamManagementController {
     public ResponseEntity<Exam> createExam(@RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", required = false) String userId) {
         Exam exam = examService.createExam(payload, userId);
-        return ResponseEntity.ok(exam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(exam);
     }
 
     @PutMapping("/exams/{id}")

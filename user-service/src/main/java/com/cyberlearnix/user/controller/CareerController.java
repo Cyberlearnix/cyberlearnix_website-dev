@@ -3,6 +3,7 @@ package com.cyberlearnix.user.controller;
 import com.cyberlearnix.shared.entity.user.JobOpening;
 import com.cyberlearnix.shared.repository.user.JobOpeningRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,7 +34,7 @@ public class CareerController {
     @PostMapping
     public ResponseEntity<JobOpening> createJob(@RequestBody JobOpening jobOpening) {
         System.out.println("CareerController: createJob called for: " + jobOpening.getTitle());
-        return ResponseEntity.ok(jobOpeningRepository.save(jobOpening));
+        return ResponseEntity.status(HttpStatus.CREATED).body(jobOpeningRepository.save(jobOpening));
     }
 
     @PutMapping("/{id}")

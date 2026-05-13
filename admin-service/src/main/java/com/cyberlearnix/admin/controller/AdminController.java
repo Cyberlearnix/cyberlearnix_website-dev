@@ -2,6 +2,8 @@ package com.cyberlearnix.admin.controller;
 
 import com.cyberlearnix.admin.client.AuthServiceClient;
 import com.cyberlearnix.admin.client.UserServiceClient;
+import com.cyberlearnix.admin.dto.AdminLoginRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +22,9 @@ public class AdminController {
     private final UserServiceClient userServiceClient;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody AdminLoginRequest loginRequest) {
         try {
-            Map<String, Object> response = authServiceClient.login(loginRequest);
+            Map<String, Object> response = authServiceClient.login(Map.of("email", loginRequest.getEmail(), "password", loginRequest.getPassword()));
             Map<String, Object> userMap = (Map<String, Object>) response.get("user");
             String role = (String) userMap.get("role");
 

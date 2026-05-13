@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.entity.course.CertificateTemplate;
 import com.cyberlearnix.shared.repository.course.CertificateRepository;
 import com.cyberlearnix.shared.repository.course.CertificateTemplateRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,7 +40,7 @@ public class CertificateController {
         if (certificate.getIssuedAt() == null) {
             certificate.setIssuedAt(java.time.LocalDateTime.now());
         }
-        return ResponseEntity.ok(certificateRepository.save(certificate));
+        return ResponseEntity.status(HttpStatus.CREATED).body(certificateRepository.save(certificate));
     }
 
     @DeleteMapping("/{id}")

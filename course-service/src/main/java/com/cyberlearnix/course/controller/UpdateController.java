@@ -3,6 +3,7 @@ package com.cyberlearnix.course.controller;
 import com.cyberlearnix.shared.entity.course.ContentUpdate;
 import com.cyberlearnix.shared.repository.course.ContentUpdateRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +24,7 @@ public class UpdateController {
 
     @PostMapping
     public ResponseEntity<ContentUpdate> createUpdate(@RequestBody ContentUpdate update) {
-        return ResponseEntity.ok(updateRepository.save(update));
+        return ResponseEntity.status(HttpStatus.CREATED).body(updateRepository.save(update));
     }
 
     @PutMapping("/{id}")
