@@ -13,4 +13,6 @@ public interface EnrollmentFormConfigRepository extends JpaRepository<Enrollment
     List<EnrollmentFormConfig> findByDeletedAtIsNull();
 
     List<EnrollmentFormConfig> findByDeletedAtIsNotNull();
+
+    List<EnrollmentFormConfig> findByCourseIdAndDeletedAtIsNull(Long courseId);
 }

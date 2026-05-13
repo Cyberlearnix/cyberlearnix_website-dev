@@ -466,6 +466,7 @@ public class CourseManagementController {
 
     // Get course with all modules and content
     @GetMapping("/courses/{id}/full")
+    @Transactional
     public ResponseEntity<?> getCourseWithContent(@PathVariable Long id,
             @RequestHeader("X-User-Id") String userId,
             @RequestHeader("X-User-Role") String userRole) {
@@ -581,6 +582,7 @@ public class CourseManagementController {
 
     // GET /courses/{courseId}/modules — top-level chapters + their sub-modules
     @GetMapping("/courses/{courseId}/modules")
+    @Transactional
     public ResponseEntity<?> getCourseModules(@PathVariable Long courseId,
             @RequestHeader("X-User-Role") String userRole) {
 
@@ -805,6 +807,12 @@ public class CourseManagementController {
             txt.setContentText(contentDTO.getContentText());
             txt.setContentBlocks(contentDTO.getContentBlocks());
             return txt;
+        } else if ("ARTICLE".equals(type)) {
+            LectureContent article = new LectureContent();
+            article.setContentText(contentDTO.getContentText());
+            article.setContentBlocks(contentDTO.getContentBlocks());
+            article.setAttachmentUrl(contentDTO.getAttachmentUrl());
+            return article;
         } else if ("QUIZ".equals(type) || "EXAM".equals(type)) {
             QuizContent quiz = new QuizContent();
             quiz.setQuizId(contentDTO.getQuizId());

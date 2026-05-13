@@ -31,7 +31,16 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(origins);
+                    String path = request.getRequestURI();
+                    // PayU posts callbacks & webhook from its own domain — must allow any origin
+                    boolean isPayuEndpoint = path.contains("/payments/callback")
+                            || path.contains("/payments/webhook");
+                    if (isPayuEndpoint) {
+                        corsConfig.setAllowedOriginPatterns(java.util.List.of("*"));
+                        corsConfig.setAllowCredentials(false);
+                    } else {
+                        corsConfig.setAllowedOrigins(origins);
+                    }
                     corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(java.util.List.of("*"));
                     return corsConfig;

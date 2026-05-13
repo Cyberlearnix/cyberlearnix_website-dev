@@ -8,6 +8,8 @@ import lombok.Data;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Entity
@@ -21,6 +23,30 @@ public class EnrollmentFormConfig {
 
     @Column(name = "course_id")
     private Long courseId;
+
+    /**
+     * Multiple courses linked to this enrollment form.
+     * When payment is approved, the student is enrolled in ALL of these courses.
+     * Stored as a JSON array of Long IDs, e.g. [1, 2, 3].
+     * Takes precedence over the legacy single courseId field if non-empty.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "course_ids", columnDefinition = "jsonb")
+    private List<Long> courseIds = new ArrayList<>();
+
+    /**
+     * Returns the effective list of course IDs to enroll a student in.
+     * Uses courseIds if present, falls back to the single courseId for backward compatibility.
+     */
+    public List<Long> getEffectiveCourseIds() {
+        if (courseIds != null && !courseIds.isEmpty()) {
+            return courseIds;
+        }
+        if (courseId != null) {
+            return List.of(courseId);
+        }
+        return List.of();
+    }
 
     @Column(name = "enrollee_role", length = 20)
     private String enrolleeRole = "student";

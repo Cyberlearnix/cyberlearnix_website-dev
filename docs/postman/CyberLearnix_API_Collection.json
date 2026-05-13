@@ -1,0 +1,1818 @@
+{
+  "info": {
+    "name": "CyberLearnix API Collection",
+    "description": "Complete API collection for CyberLearnix platform - includes Auth, User, Course, Enrollment, Payment, CMS, and Admin services",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "cyberlearnix-api-collection-2024"
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "description": "User authentication and authorization endpoints",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticate user and get JWT token"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\"\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:8080/api/auth/login",
+                  "host": ["localhost:8080"],
+                  "path": ["api", "auth", "login"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"token\": \"eyJhbGciOiJIUzI1NiIs...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIs...\",\n  \"user\": {\n    \"id\": 1,\n    \"email\": \"student@example.com\",\n    \"fullName\": \"John Doe\",\n    \"role\": \"STUDENT\"\n  }\n}"
+            },
+            {
+              "name": "Error - Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"error\": \"Invalid credentials\",\n  \"message\": \"Email or password is incorrect\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"fullName\": \"Jane Smith\",\n  \"phone\": \"+1234567890\",\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/auth/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new user account"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 2,\n  \"email\": \"newuser@example.com\",\n  \"fullName\": \"Jane Smith\",\n  \"role\": \"STUDENT\",\n  \"message\": \"User registered successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIs...\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/auth/refresh",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Refresh JWT access token using refresh token"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"token\": \"eyJhbGciOiJIUzI1NiIs...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIs...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/auth/logout",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout user and invalidate token"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Logged out successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/auth/forgot-password",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "auth", "forgot-password"]
+            },
+            "description": "Request password reset email"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Password reset link sent to your email\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/auth/reset-password",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "auth", "reset-password"]
+            },
+            "description": "Reset password using reset token"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Password reset successful\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "👤 Users",
+      "description": "User management endpoints",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/users?page=0&size=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get paginated list of all users (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"content\": [\n    {\n      \"id\": 1,\n      \"email\": \"admin@example.com\",\n      \"fullName\": \"Admin User\",\n      \"role\": \"ADMIN\",\n      \"status\": \"ACTIVE\"\n    },\n    {\n      \"id\": 2,\n      \"email\": \"student@example.com\",\n      \"fullName\": \"Student User\",\n      \"role\": \"STUDENT\",\n      \"status\": \"ACTIVE\"\n    }\n  ],\n  \"totalElements\": 2,\n  \"totalPages\": 1,\n  \"size\": 10,\n  \"number\": 0\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/users/{{user_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "users", "{{user_id}}"]
+            },
+            "description": "Get user details by ID"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"id\": 1,\n  \"email\": \"user@example.com\",\n  \"fullName\": \"John Doe\",\n  \"phone\": \"+1234567890\",\n  \"role\": \"STUDENT\",\n  \"status\": \"ACTIVE\",\n  \"createdAt\": \"2024-01-15T10:30:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Updated Name\",\n  \"phone\": \"+9876543210\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/users/{{user_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "users", "{{user_id}}"]
+            },
+            "description": "Update user profile information"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"id\": 1,\n  \"email\": \"user@example.com\",\n  \"fullName\": \"Updated Name\",\n  \"phone\": \"+9876543210\",\n  \"message\": \"User updated successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/users/{{user_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "users", "{{user_id}}"]
+            },
+            "description": "Delete user account (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"User deleted successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"oldpassword123\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/users/change-password",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "users", "change-password"]
+            },
+            "description": "Change user password"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Password changed successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📚 Courses",
+      "description": "Course management endpoints",
+      "item": [
+        {
+          "name": "Get All Courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/courses?page=0&size=10&sort=id,desc",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "courses"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "id,desc"
+                }
+              ]
+            },
+            "description": "Get paginated list of all courses"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"content\": [\n    {\n      \"id\": 1,\n      \"title\": \"Introduction to Python\",\n      \"description\": \"Learn Python from scratch\",\n      \"duration\": \"8 weeks\",\n      \"price\": 99.99,\n      \"level\": \"BEGINNER\",\n      \"status\": \"ACTIVE\",\n      \"thumbnail\": \"https://example.com/python.jpg\",\n      \"instructor\": {\n        \"id\": 3,\n        \"fullName\": \"Jane Instructor\"\n      }\n    }\n  ],\n  \"totalElements\": 1,\n  \"totalPages\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Course by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/courses/{{course_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "courses", "{{course_id}}"]
+            },
+            "description": "Get detailed course information"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"id\": 1,\n  \"title\": \"Introduction to Python\",\n  \"description\": \"Learn Python programming from scratch\",\n  \"syllabus\": \"Week 1: Basics, Week 2: Data Types...\",\n  \"duration\": \"8 weeks\",\n  \"price\": 99.99,\n  \"discountedPrice\": 79.99,\n  \"level\": \"BEGINNER\",\n  \"prerequisites\": \"None\",\n  \"status\": \"ACTIVE\",\n  \"thumbnail\": \"https://example.com/python.jpg\",\n  \"materials\": [\n    {\n      \"id\": 1,\n      \"title\": \"Introduction Slides\",\n      \"type\": \"PDF\",\n      \"url\": \"https://example.com/slides.pdf\"\n    }\n  ],\n  \"instructor\": {\n    \"id\": 3,\n    \"fullName\": \"Jane Instructor\",\n    \"bio\": \"Senior Python Developer\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Course",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Advanced Java\",\n  \"description\": \"Master Java programming with advanced concepts\",\n  \"syllabus\": \"Week 1: OOP, Week 2: Collections...\",\n  \"duration\": \"12 weeks\",\n  \"price\": 149.99,\n  \"level\": \"ADVANCED\",\n  \"prerequisites\": \"Basic Java knowledge\",\n  \"thumbnail\": \"https://example.com/java.jpg\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/courses",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "courses"]
+            },
+            "description": "Create a new course (Instructor/Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 2,\n  \"title\": \"Advanced Java\",\n  \"description\": \"Master Java programming with advanced concepts\",\n  \"duration\": \"12 weeks\",\n  \"price\": 149.99,\n  \"level\": \"ADVANCED\",\n  \"status\": \"DRAFT\",\n  \"message\": \"Course created successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Course",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Course Title\",\n  \"description\": \"Updated description\",\n  \"price\": 129.99\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/courses/{{course_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "courses", "{{course_id}}"]
+            },
+            "description": "Update course details (Instructor/Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"id\": 1,\n  \"title\": \"Updated Course Title\",\n  \"description\": \"Updated description\",\n  \"price\": 129.99,\n  \"message\": \"Course updated successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Course",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/courses/{{course_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "courses", "{{course_id}}"]
+            },
+            "description": "Delete a course (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Course deleted successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📝 Enrollment",
+      "description": "Enrollment and form management endpoints",
+      "item": [
+        {
+          "name": "Enroll in Course",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseId\": 1,\n  \"studentId\": 2\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments"]
+            },
+            "description": "Enroll a student in a course"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 1,\n  \"studentId\": 2,\n  \"courseId\": 1,\n  \"enrollmentDate\": \"2024-01-15T10:30:00Z\",\n  \"status\": \"ACTIVE\",\n  \"progress\": 0,\n  \"message\": \"Enrolled successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get My Enrollments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/my-enrollments",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "my-enrollments"]
+            },
+            "description": "Get current user's enrollments"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"enrollments\": [\n    {\n      \"id\": 1,\n      \"course\": {\n        \"id\": 1,\n        \"title\": \"Introduction to Python\",\n        \"thumbnail\": \"https://example.com/python.jpg\"\n      },\n      \"enrollmentDate\": \"2024-01-15T10:30:00Z\",\n      \"progress\": 45,\n      \"status\": \"ACTIVE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Enrollment Forms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/forms",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "forms"]
+            },
+            "description": "Get all enrollment forms (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"forms\": [\n    {\n      \"id\": 1,\n      \"title\": \"Summer Batch 2024 Registration\",\n      \"description\": \"Registration form for summer courses\",\n      \"status\": \"ACTIVE\",\n      \"fields\": [\n        {\n          \"name\": \"fullName\",\n          \"type\": \"text\",\n          \"required\": true\n        },\n        {\n          \"name\": \"email\",\n          \"type\": \"email\",\n          \"required\": true\n        }\n      ],\n      \"createdAt\": \"2024-01-10T08:00:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Enrollment Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Winter Batch 2024\",\n  \"description\": \"Registration for winter courses\",\n  \"courseIds\": [1, 2, 3],\n  \"fields\": [\n    {\n      \"name\": \"fullName\",\n      \"label\": \"Full Name\",\n      \"type\": \"text\",\n      \"required\": true\n    },\n    {\n      \"name\": \"email\",\n      \"label\": \"Email Address\",\n      \"type\": \"email\",\n      \"required\": true\n    },\n    {\n      \"name\": \"phone\",\n      \"label\": \"Phone Number\",\n      \"type\": \"tel\",\n      \"required\": true\n    }\n  ],\n  \"pricingConfig\": {\n    \"basePrice\": 99.99,\n    \"discountPercent\": 10\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/forms",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "forms"]
+            },
+            "description": "Create a new enrollment form (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 2,\n  \"title\": \"Winter Batch 2024\",\n  \"description\": \"Registration for winter courses\",\n  \"courseIds\": [1, 2, 3],\n  \"fields\": [...],\n  \"status\": \"ACTIVE\",\n  \"message\": \"Form created successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Submit Enrollment Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formId\": 1,\n  \"studentData\": {\n    \"fullName\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone\": \"+1234567890\",\n    \"education\": \"Bachelor's Degree\"\n  },\n  \"selectedCourses\": [1, 2]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/forms/{{form_id}}/submit",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "forms", "{{form_id}}", "submit"]
+            },
+            "description": "Submit an enrollment form"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 1,\n  \"formId\": 1,\n  \"studentEmail\": \"john@example.com\",\n  \"studentData\": {...},\n  \"selectedCourses\": [1, 2],\n  \"totalAmount\": 199.98,\n  \"paymentStatus\": \"PENDING\",\n  \"transactionId\": \"txn_123456789\",\n  \"message\": \"Form submitted successfully. Please complete payment.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Enrollment Responses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/responses?formId=1&status=PENDING",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "responses"],
+              "query": [
+                {
+                  "key": "formId",
+                  "value": "1"
+                },
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            },
+            "description": "Get all enrollment form responses (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"responses\": [\n    {\n      \"id\": 1,\n      \"formId\": 1,\n      \"studentEmail\": \"john@example.com\",\n      \"studentData\": {...},\n      \"selectedCourses\": [1, 2],\n      \"totalAmount\": 199.98,\n      \"paymentStatus\": \"PENDING\",\n      \"submittedAt\": \"2024-01-15T10:30:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Enrollment Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/{{enrollment_id}}/status",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "{{enrollment_id}}", "status"]
+            },
+            "description": "Update enrollment status"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"id\": 1,\n  \"status\": \"COMPLETED\",\n  \"message\": \"Status updated successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "💳 Payments",
+      "description": "Payment processing and PayU integration endpoints",
+      "item": [
+        {
+          "name": "Initiate PayU Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formResponseId\": 1,\n  \"amount\": 199.98,\n  \"productInfo\": \"Course Bundle: Python + Java\",\n  \"firstname\": \"John\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\",\n  \"udf1\": \"form_1\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/payments/initiate",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "payments", "initiate"]
+            },
+            "description": "Initiate PayU payment and get payment URL"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"paymentUrl\": \"https://secure.payu.in/_payment\",\n  \"params\": {\n    \"key\": \"XidEdD\",\n    \"txnid\": \"txn_abc123\",\n    \"amount\": \"199.98\",\n    \"productinfo\": \"Course Bundle: Python + Java\",\n    \"firstname\": \"John\",\n    \"email\": \"john@example.com\",\n    \"phone\": \"+1234567890\",\n    \"surl\": \"http://localhost:3000/payment/success\",\n    \"furl\": \"http://localhost:3000/payment/failure\",\n    \"hash\": \"abc123hash...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "PayU Webhook (Server-to-Server)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "txnid",
+                  "value": "txn_abc123"
+                },
+                {
+                  "key": "status",
+                  "value": "success"
+                },
+                {
+                  "key": "amount",
+                  "value": "199.98"
+                },
+                {
+                  "key": "mihpayid",
+                  "value": "payu_123456"
+                },
+                {
+                  "key": "mode",
+                  "value": "CC"
+                },
+                {
+                  "key": "bank_ref_num",
+                  "value": "bank_ref_123"
+                },
+                {
+                  "key": "hash",
+                  "value": "webhook_hash_value"
+                },
+                {
+                  "key": "email",
+                  "value": "john@example.com"
+                },
+                {
+                  "key": "firstname",
+                  "value": "John"
+                },
+                {
+                  "key": "productinfo",
+                  "value": "Course Bundle: Python + Java"
+                },
+                {
+                  "key": "udf1",
+                  "value": "form_1"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/payments/webhook",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "payments", "webhook"]
+            },
+            "description": "PayU Server-to-Server webhook notification (Called by PayU, not frontend)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "OK"
+            }
+          ]
+        },
+        {
+          "name": "Get Payment Transaction",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/payments/transaction/{{txnid}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "payments", "transaction", "{{txnid}}"]
+            },
+            "description": "Get payment transaction details by transaction ID"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"txnid\": \"txn_abc123\",\n  \"status\": \"SUCCESS\",\n  \"amount\": 199.98,\n  \"mihpayid\": \"payu_123456\",\n  \"mode\": \"CC\",\n  \"bankRefNum\": \"bank_ref_123\",\n  \"hashVerified\": true,\n  \"completedAt\": \"2024-01-15T10:35:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Apply Coupon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"couponCode\": \"SUMMER2024\",\n  \"originalAmount\": 199.98\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/enrollments/coupons/apply",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "enrollments", "coupons", "apply"]
+            },
+            "description": "Apply coupon code and get discounted price"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"couponCode\": \"SUMMER2024\",\n  \"discountAmount\": 20.00,\n  \"discountPercent\": 10,\n  \"finalAmount\": 179.98,\n  \"valid\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📄 CMS (Content Management)",
+      "description": "Content management system endpoints",
+      "item": [
+        {
+          "name": "Get All Pages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/cms/pages",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "cms", "pages"]
+            },
+            "description": "Get all CMS pages"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"pages\": [\n    {\n      \"id\": 1,\n      \"slug\": \"home\",\n      \"title\": \"Home Page\",\n      \"content\": \"Welcome to CyberLearnix...\",\n      \"status\": \"PUBLISHED\",\n      \"createdAt\": \"2024-01-10T08:00:00Z\"\n    },\n    {\n      \"id\": 2,\n      \"slug\": \"about\",\n      \"title\": \"About Us\",\n      \"content\": \"CyberLearnix is...\",\n      \"status\": \"PUBLISHED\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Page by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/cms/pages/{{slug}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "cms", "pages", "{{slug}}"]
+            },
+            "description": "Get CMS page by slug"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"id\": 1,\n  \"slug\": \"home\",\n  \"title\": \"Home Page\",\n  \"content\": \"Welcome to CyberLearnix...\",\n  \"metaDescription\": \"Learn tech skills with CyberLearnix\",\n  \"status\": \"PUBLISHED\",\n  \"createdAt\": \"2024-01-10T08:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Page",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"new-page\",\n  \"title\": \"New Page\",\n  \"content\": \"Page content here...\",\n  \"metaDescription\": \"Meta description\",\n  \"status\": \"DRAFT\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/cms/pages",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "cms", "pages"]
+            },
+            "description": "Create a new CMS page (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 3,\n  \"slug\": \"new-page\",\n  \"title\": \"New Page\",\n  \"content\": \"Page content here...\",\n  \"status\": \"DRAFT\",\n  \"message\": \"Page created successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Page",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Page Title\",\n  \"content\": \"Updated content...\",\n  \"status\": \"PUBLISHED\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/cms/pages/{{page_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "cms", "pages", "{{page_id}}"]
+            },
+            "description": "Update CMS page (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"id\": 1,\n  \"title\": \"Updated Page Title\",\n  \"status\": \"PUBLISHED\",\n  \"message\": \"Page updated successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Page",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/cms/pages/{{page_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "cms", "pages", "{{page_id}}"]
+            },
+            "description": "Delete CMS page (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Page deleted successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Site Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/site-settings",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "site-settings"]
+            },
+            "description": "Get site-wide settings"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"siteName\": \"CyberLearnix\",\n  \"logo\": \"https://example.com/logo.png\",\n  \"contactEmail\": \"contact@cyberlearnix.com\",\n  \"socialLinks\": {\n    \"facebook\": \"https://facebook.com/cyberlearnix\",\n    \"twitter\": \"https://twitter.com/cyberlearnix\",\n    \"linkedin\": \"https://linkedin.com/company/cyberlearnix\"\n  },\n  \"footerText\": \"© 2024 CyberLearnix. All rights reserved.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Site Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteName\": \"CyberLearnix Academy\",\n  \"contactEmail\": \"support@cyberlearnix.com\",\n  \"footerText\": \"© 2024 CyberLearnix Academy\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/site-settings",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "site-settings"]
+            },
+            "description": "Update site settings (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"siteName\": \"CyberLearnix Academy\",\n  \"message\": \"Settings updated successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📧 Contact & Careers",
+      "description": "Contact form and career application endpoints",
+      "item": [
+        {
+          "name": "Submit Contact Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\",\n  \"subject\": \"Course Inquiry\",\n  \"message\": \"I am interested in learning Python. Please provide more information.\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/contact-submissions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "contact-submissions"]
+            },
+            "description": "Submit a contact form inquiry"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 1,\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"subject\": \"Course Inquiry\",\n  \"status\": \"NEW\",\n  \"message\": \"Thank you for your inquiry. We will get back to you soon.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Contact Submissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/contact-submissions?status=NEW",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "contact-submissions"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "NEW"
+                }
+              ]
+            },
+            "description": "Get all contact form submissions (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"submissions\": [\n    {\n      \"id\": 1,\n      \"name\": \"John Doe\",\n      \"email\": \"john@example.com\",\n      \"subject\": \"Course Inquiry\",\n      \"message\": \"I am interested...\",\n      \"status\": \"NEW\",\n      \"createdAt\": \"2024-01-15T10:30:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Submit Career Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Jane Smith\",\n  \"email\": \"jane@example.com\",\n  \"phone\": \"+9876543210\",\n  \"position\": \"Python Instructor\",\n  \"experience\": \"5 years\",\n  \"resume\": \"https://example.com/resume.pdf\",\n  \"coverLetter\": \"I am passionate about teaching...\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/careers",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "careers"]
+            },
+            "description": "Submit a career/job application"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 1,\n  \"fullName\": \"Jane Smith\",\n  \"email\": \"jane@example.com\",\n  \"position\": \"Python Instructor\",\n  \"status\": \"PENDING\",\n  \"message\": \"Application submitted successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Career Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/careers",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "careers"]
+            },
+            "description": "Get all career applications (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"applications\": [\n    {\n      \"id\": 1,\n      \"fullName\": \"Jane Smith\",\n      \"email\": \"jane@example.com\",\n      \"position\": \"Python Instructor\",\n      \"experience\": \"5 years\",\n      \"status\": \"PENDING\",\n      \"appliedAt\": \"2024-01-15T10:30:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📊 Instructor Dashboard",
+      "description": "Instructor-specific endpoints",
+      "item": [
+        {
+          "name": "Get Instructor Courses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/instructor/courses",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "instructor", "courses"]
+            },
+            "description": "Get courses taught by the instructor"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"courses\": [\n    {\n      \"id\": 1,\n      \"title\": \"Introduction to Python\",\n      \"enrolledStudents\": 45,\n      \"averageProgress\": 65,\n      \"status\": \"ACTIVE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Course Students",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/instructor/courses/{{course_id}}/students",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "instructor", "courses", "{{course_id}}", "students"]
+            },
+            "description": "Get students enrolled in instructor's course"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"students\": [\n    {\n      \"id\": 2,\n      \"fullName\": \"Student Name\",\n      \"email\": \"student@example.com\",\n      \"progress\": 75,\n      \"enrollmentDate\": \"2024-01-15T10:30:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Instructor Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/instructor/analytics",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "instructor", "analytics"]
+            },
+            "description": "Get instructor dashboard analytics"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"totalCourses\": 3,\n  \"totalStudents\": 150,\n  \"averageRating\": 4.5,\n  \"monthlyRevenue\": 5000,\n  \"topCourses\": [\n    {\n      \"courseId\": 1,\n      \"title\": \"Introduction to Python\",\n      \"enrollments\": 75,\n      \"revenue\": 2500\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🛍️ Shop",
+      "description": "E-commerce and shop endpoints",
+      "item": [
+        {
+          "name": "Get Shop Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/shop/items?page=0&size=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "shop", "items"]
+            },
+            "description": "Get all shop items/products"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"items\": [\n    {\n      \"id\": 1,\n      \"name\": \"CyberLearnix Hoodie\",\n      \"description\": \"Premium cotton hoodie\",\n      \"price\": 49.99,\n      \"category\": \"APPAREL\",\n      \"stock\": 25,\n      \"image\": \"https://example.com/hoodie.jpg\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/shop/cart",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "shop", "cart"]
+            },
+            "description": "Get current user's shopping cart"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"name\": \"CyberLearnix Hoodie\",\n      \"quantity\": 2,\n      \"unitPrice\": 49.99,\n      \"totalPrice\": 99.98\n    }\n  ],\n  \"totalAmount\": 99.98\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/shop/cart",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "shop", "cart"]
+            },
+            "description": "Add item to shopping cart"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Item added to cart\",\n  \"cart\": {\n    \"items\": [...],\n    \"totalAmount\": 99.98\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"CREDIT_CARD\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/shop/orders",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "shop", "orders"]
+            },
+            "description": "Create order from cart"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"orderId\": \"ord_123456\",\n  \"status\": \"PENDING\",\n  \"totalAmount\": 99.98,\n  \"items\": [...],\n  \"createdAt\": \"2024-01-15T10:30:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications",
+      "description": "Notification management endpoints",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/notifications?page=0&size=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "notifications"]
+            },
+            "description": "Get user's notifications"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"notifications\": [\n    {\n      \"id\": 1,\n      \"title\": \"Welcome to CyberLearnix\",\n      \"message\": \"Thank you for joining us!\",\n      \"type\": \"INFO\",\n      \"read\": false,\n      \"createdAt\": \"2024-01-15T10:30:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/notifications/{{notification_id}}/read",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "notifications", "{{notification_id}}", "read"]
+            },
+            "description": "Mark notification as read"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Notification marked as read\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "⚙️ Admin",
+      "description": "Admin-only management endpoints",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/admin/dashboard",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "admin", "dashboard"]
+            },
+            "description": "Get admin dashboard statistics"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"totalUsers\": 500,\n  \"totalCourses\": 25,\n  \"totalEnrollments\": 1200,\n  \"totalRevenue\": 45000,\n  \"newUsersToday\": 15,\n  \"newEnrollmentsToday\": 45\n}"
+            }
+          ]
+        },
+        {
+          "name": "Manage User Permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 3,\n  \"role\": \"INSTRUCTOR\",\n  \"permissions\": [\"CREATE_COURSE\", \"EDIT_COURSE\", \"VIEW_ANALYTICS\"]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/admin/users/{{user_id}}/permissions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "admin", "users", "{{user_id}}", "permissions"]
+            },
+            "description": "Update user permissions (Admin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"userId\": 3,\n  \"role\": \"INSTRUCTOR\",\n  \"permissions\": [...],\n  \"message\": \"Permissions updated successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📊 Health & Monitoring",
+      "description": "Service health and monitoring endpoints",
+      "item": [
+        {
+          "name": "Gateway Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/actuator/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["actuator", "health"]
+            },
+            "description": "Check gateway service health"
+          },
+          "response": [
+            {
+              "name": "Healthy Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"UP\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "User Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/actuator/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8081",
+              "path": ["actuator", "health"]
+            },
+            "description": "Check user service health"
+          },
+          "response": [
+            {
+              "name": "Healthy Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"UP\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Course Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/actuator/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["actuator", "health"]
+            },
+            "description": "Check course service health"
+          }
+        },
+        {
+          "name": "Enrollment Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/actuator/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["actuator", "health"]
+            },
+            "description": "Check enrollment service health"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT token obtained from login endpoint"
+    },
+    {
+      "key": "user_id",
+      "value": "1",
+      "type": "string",
+      "description": "User ID for requests"
+    },
+    {
+      "key": "course_id",
+      "value": "1",
+      "type": "string",
+      "description": "Course ID for requests"
+    },
+    {
+      "key": "enrollment_id",
+      "value": "1",
+      "type": "string",
+      "description": "Enrollment ID for requests"
+    },
+    {
+      "key": "form_id",
+      "value": "1",
+      "type": "string",
+      "description": "Form ID for requests"
+    },
+    {
+      "key": "txnid",
+      "value": "txn_abc123",
+      "type": "string",
+      "description": "Transaction ID for payment requests"
+    },
+    {
+      "key": "notification_id",
+      "value": "1",
+      "type": "string",
+      "description": "Notification ID for requests"
+    },
+    {
+      "key": "page_id",
+      "value": "1",
+      "type": "string",
+      "description": "Page ID for CMS requests"
+    },
+    {
+      "key": "slug",
+      "value": "home",
+      "type": "string",
+      "description": "Page slug for CMS requests"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  }
+}

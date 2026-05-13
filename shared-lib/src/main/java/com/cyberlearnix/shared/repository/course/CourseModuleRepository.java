@@ -27,10 +27,10 @@ public interface CourseModuleRepository extends JpaRepository<CourseModule, Long
     @Query("SELECT MAX(m.orderIndex) FROM CourseModule m WHERE m.course.id = :courseId")
     Integer findMaxOrderIndexByCourseId(@Param("courseId") Long courseId);
 
-    @Query("SELECT m FROM CourseModule m WHERE m.course.id = :courseId AND m.parentModule IS NULL ORDER BY m.orderIndex")
+    @Query("SELECT m FROM CourseModule m LEFT JOIN FETCH m.parentModule LEFT JOIN FETCH m.subModules WHERE m.course.id = :courseId AND m.parentModule IS NULL ORDER BY m.orderIndex")
     List<CourseModule> findTopLevelByCourseId(@Param("courseId") Long courseId);
 
-    @Query("SELECT m FROM CourseModule m WHERE m.parentModule.id = :parentId ORDER BY m.orderIndex")
+    @Query("SELECT m FROM CourseModule m LEFT JOIN FETCH m.parentModule LEFT JOIN FETCH m.subModules WHERE m.parentModule.id = :parentId ORDER BY m.orderIndex")
     List<CourseModule> findByParentModuleId(@Param("parentId") Long parentId);
 
     @Query("SELECT MAX(m.orderIndex) FROM CourseModule m WHERE m.parentModule.id = :parentId")

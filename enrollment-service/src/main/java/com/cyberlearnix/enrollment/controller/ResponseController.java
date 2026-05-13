@@ -86,16 +86,19 @@ public class ResponseController {
             // Resolve course info from form config, then fetch actual course name
             String courseTitle = null;
             Long courseId = null;
+            List<Long> courseIds = null;
             Double coursePrice = null;
             try {
                 EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
                 if (config != null) {
                     courseId = config.getCourseId();
+                    courseIds = config.getEffectiveCourseIds();
                     coursePrice = config.getPaymentAmount();
-                    // Fetch the real course name from course-service
-                    if (courseId != null) {
+                    // Fetch real course name — use first effective courseId
+                    Long primaryCourseId = (courseIds != null && !courseIds.isEmpty()) ? courseIds.get(0) : courseId;
+                    if (primaryCourseId != null) {
                         try {
-                            java.util.Map<String, Object> courseInfo = courseServiceClient.getCourseInfo(courseId);
+                            java.util.Map<String, Object> courseInfo = courseServiceClient.getCourseInfo(primaryCourseId);
                             if (courseInfo != null && courseInfo.get("title") != null) {
                                 courseTitle = courseInfo.get("title").toString();
                             }
@@ -135,6 +138,7 @@ public class ResponseController {
             item.put("studentData", r.getStudentData()); // raw JSON for Eye modal
             item.put("courseTitle", courseTitle);
             item.put("courseId", courseId);
+            item.put("courseIds", courseIds);      // all linked courses for multi-enrollment
             item.put("coursePrice", coursePrice);  // original price from form config
             item.put("amountPaid", r.getAmountPaid() != null ? r.getAmountPaid() : coursePrice);
             item.put("paymentStatus", r.getPaymentStatus());
@@ -147,6 +151,7 @@ public class ResponseController {
             item.put("createdAt", r.getCreatedAt());
             item.put("reviewedAt", r.getReviewedAt());
             item.put("reviewedBy", r.getReviewedBy());
+            item.put("createdUserId", r.getCreatedUserId()); // for re-enroll without user lookup
             result.add(item);
         }
 

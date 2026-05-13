@@ -88,6 +88,7 @@ public class PaymentController {
      * Verifies the hash and marks the transaction + form response as PAID.
      * Redirects to the frontend with status parameters.
      */
+    @CrossOrigin(origins = "*", allowCredentials = "false")
     @PostMapping("/callback/success")
     public ResponseEntity<?> paymentSuccess(@RequestParam Map<String, String> params) {
         try {
@@ -106,6 +107,7 @@ public class PaymentController {
     /**
      * PayU redirects the student's browser here after a FAILED/CANCELLED payment.
      */
+    @CrossOrigin(origins = "*", allowCredentials = "false")
     @PostMapping("/callback/failure")
     public ResponseEntity<?> paymentFailure(@RequestParam Map<String, String> params) {
         try {
@@ -133,7 +135,7 @@ public class PaymentController {
         } catch (Exception e) {
             // Log but still return 200 to avoid PayU retrying
             log.error("[PayU Webhook] Error: {}", e.getMessage(), e);
-            return ResponseEntity.ok(Map.of("status", "OK", "note", e.getMessage()));
+            return ResponseEntity.ok(Map.of("status", "OK"));
         }
     }
 
