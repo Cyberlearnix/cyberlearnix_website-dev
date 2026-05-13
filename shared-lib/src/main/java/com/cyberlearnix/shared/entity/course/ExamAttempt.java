@@ -65,6 +65,7 @@ public class ExamAttempt {
     private Integer remainingSeconds;
 
     // ─── Answers ──────────────────────────────────────────────────────────────
+    // JSON map: { "questionId": { "answer": ..., "answeredAt": "ISO", "flagged": bool } }
 
     @Column(columnDefinition = "TEXT")
     private String answers;
@@ -85,6 +86,7 @@ public class ExamAttempt {
 
     @Column(name = "question_scores", columnDefinition = "TEXT")
     private String questionScores;
+    private String questionScores; // JSON map: { questionId: score }
 
     @Column(columnDefinition = "TEXT")
     private String feedback;
@@ -104,6 +106,7 @@ public class ExamAttempt {
 
     @Column(columnDefinition = "TEXT")
     private String violations;
+    private String violations; // JSON array of { type, timestamp, detail }
 
     // ─── Session info ─────────────────────────────────────────────────────────
 
@@ -118,6 +121,7 @@ public class ExamAttempt {
 
     @Column(name = "attempt_metadata", columnDefinition = "TEXT")
     private String attemptMetadata;
+    private String attemptMetadata; // JSON for extra fields
 
     @PrePersist
     protected void onCreate() {

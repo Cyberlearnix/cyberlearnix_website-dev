@@ -6,6 +6,7 @@ import com.cyberlearnix.shared.repository.course.AssignmentContentRepository;
 import com.cyberlearnix.shared.repository.course.AssignmentSubmissionRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,14 @@ public class AssignmentManagementService {
         this.assignmentContentRepository = assignmentContentRepository;
         this.submissionRepository = submissionRepository;
     }
+
+    @Autowired
+    private AssignmentContentRepository assignmentContentRepository;
+
+    @Autowired
+    private AssignmentSubmissionRepository submissionRepository;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ─── Submit assignment ────────────────────────────────────────────────────
 
@@ -95,6 +104,7 @@ public class AssignmentManagementService {
 
     // ─── Auto-grading ─────────────────────────────────────────────────────────
 
+    @Transactional
     protected void autoGrade(AssignmentSubmission submission, AssignmentContent content, Map<String, Object> request) {
         try {
             Map<String, Object> meta = parseMeta(content.getAssignmentMetadata());
@@ -104,6 +114,7 @@ public class AssignmentManagementService {
             if ("QUIZ".equals(subType)) {
                 // Score is already computed on frontend and passed as quizDetail
                 Object quizScore = request.get(KEY_SCORE);
+                Object quizScore = request.get("score");
                 if (quizScore instanceof Number n) score = n.intValue();
             } else if ("LAB_PRACTICAL".equals(subType)) {
                 // Score completed steps
@@ -139,6 +150,8 @@ public class AssignmentManagementService {
             if (cmd == null) {
                 result.put(KEY_SUCCESS, false);
                 result.put(KEY_STDERR, "Language not supported: " + language);
+                result.put("success", false);
+                result.put("stderr", "Language not supported: " + language);
                 return result;
             }
 
@@ -160,6 +173,8 @@ public class AssignmentManagementService {
                 process.destroyForcibly();
                 result.put(KEY_SUCCESS, false);
                 result.put(KEY_STDERR, "Time limit exceeded (" + timeout + "s)");
+                result.put("success", false);
+                result.put("stderr", "Time limit exceeded (" + timeout + "s)");
                 return result;
             }
 
@@ -176,11 +191,19 @@ public class AssignmentManagementService {
         } catch (Exception e) {
             result.put(KEY_SUCCESS, false);
             result.put(KEY_STDERR, "Execution error: " + e.getMessage());
+            result.put("success", process.exitValue() == 0);
+            result.put("stdout", stdout);
+            result.put("stderr", stderr);
+            result.put("exitCode", process.exitValue());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("stderr", "Execution error: " + e.getMessage());
         }
         return result;
     }
 
     private String[] buildCommand(String language, String code, String stdin) {
+    private String[] buildCommand(String language, String code, String stdin) throws Exception {
         // NOTE: In production, use Docker isolation. This is a restricted dev sandbox.
         return switch (language != null ? language.toLowerCase() : "") {
             case "python"     -> new String[]{"python3", "-c", code};
@@ -222,6 +245,7 @@ public class AssignmentManagementService {
         if (a == null || b == null || a.isEmpty() || b.isEmpty()) return 0;
         Map<String, Integer> freqA = wordFreq(a);
         Map<String, Integer> freqB = wordFreq(b);
+        Map<String, Integer> freqA = wordFreq(a), freqB = wordFreq(b);
         Set<String> vocab = new HashSet<>(freqA.keySet());
         vocab.addAll(freqB.keySet());
 
@@ -253,6 +277,7 @@ public class AssignmentManagementService {
                 .orElseThrow(() -> new IllegalArgumentException("Submission not found: " + submissionId));
 
         if (request.get(KEY_SCORE) instanceof Number n) sub.setScore(n.intValue());
+        if (request.get("score") instanceof Number n) sub.setScore(n.intValue());
         sub.setFeedback(getString(request, "feedback"));
         sub.setInternalNote(getString(request, "internalNote"));
         sub.setGradedBy(graderId);
@@ -283,6 +308,7 @@ public class AssignmentManagementService {
         List<Integer> scores = submissionRepository.findScoresByContentId(contentId);
         List<Map<String, Object>> dist = scores.stream()
                 .map(s -> Map.<String, Object>of(KEY_SCORE, s)).toList();
+                .map(s -> Map.<String, Object>of("score", s)).toList();
 
         Map<String, Object> analytics = new HashMap<>();
         analytics.put("totalSubmissions", total);
@@ -309,6 +335,7 @@ public class AssignmentManagementService {
         try {
             String serialized = v instanceof String s ? s : objectMapper.writeValueAsString(v);
             setter.accept(serialized);
+            setter.accept(v instanceof String s ? s : objectMapper.writeValueAsString(v));
         } catch (Exception ignored) {}
     }
 

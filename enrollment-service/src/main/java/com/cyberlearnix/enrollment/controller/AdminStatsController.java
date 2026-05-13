@@ -7,6 +7,7 @@ import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepos
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 public class AdminStatsController {
@@ -22,6 +24,12 @@ public class AdminStatsController {
     private static final Logger log = LoggerFactory.getLogger(AdminStatsController.class);
     private static final String KEY_TOTAL_ENROLLED = "totalEnrolled";
     private static final String KEY_TOTAL_ENROLLMENTS = "totalEnrollments";
+
+    @Autowired
+    private EnrollmentFormResponseRepository responseRepository;
+
+    @Autowired
+    private EnrollmentFormConfigRepository configRepository;
 
     private final EnrollmentFormResponseRepository responseRepository;
     private final EnrollmentFormConfigRepository configRepository;
@@ -38,6 +46,8 @@ public class AdminStatsController {
         this.enrollmentRepository = enrollmentRepository;
         this.courseServiceClient = courseServiceClient;
     }
+    @Autowired
+    private CourseServiceClient courseServiceClient;
 
     // ─── Legacy endpoint (kept for backward compat) ──────────────────────────
     @GetMapping("/api/admin/stats/revenue")
@@ -48,6 +58,7 @@ public class AdminStatsController {
         stats.put("totalRevenue", rawRevenue != null ? rawRevenue : 0.0);
         stats.put("paidOrders", responseRepository.countPaidOrders());
         stats.put(KEY_TOTAL_ENROLLMENTS, enrollmentRepository.count());
+        stats.put("totalEnrollments", enrollmentRepository.count());
         return ResponseEntity.ok(stats);
     }
 
@@ -68,6 +79,9 @@ public class AdminStatsController {
             m.put("revenue", toDouble(row[2]));
             return m;
         }).toList();
+        }).collect(Collectors.toList());
+
+        // Top coupons
         List<Object[]> couponRows = responseRepository.topCouponsByRevenue();
         List<Map<String, Object>> topCoupons = couponRows.stream().map(row -> {
             Map<String, Object> c = new LinkedHashMap<>();
@@ -77,6 +91,7 @@ public class AdminStatsController {
             c.put("avgSaving", toDouble(row[3]));
             return c;
         }).toList();
+        }).collect(Collectors.toList());
 
         // Discount totals: sum of discount_amount from payment_transactions via native coupon query
         double totalDiscounts = topCoupons.stream()
@@ -92,6 +107,7 @@ public class AdminStatsController {
         result.put("totalDiscounts", totalDiscounts);
         result.put("totalListPrice", totalListPrice);
         result.put(KEY_TOTAL_ENROLLMENTS, totalEnrollments);
+        result.put("totalEnrollments", totalEnrollments);
         result.put("paidOrders", paidOrders);
         result.put("freeEnrollments", totalEnrollments - paidOrders);
         result.put("discountedEnrollments", couponRows.stream().mapToLong(r -> ((Number) r[1]).longValue()).sum());
@@ -198,6 +214,109 @@ public class AdminStatsController {
             log.warn("Could not fetch course info for id={}: {}", courseId, e.getMessage());
         }
         return new String[]{title, difficulty, published};
+        // Get all active forms that have a courseId
+        List<EnrollmentFormConfig> configs = configRepository.findByDeletedAtIsNull();
+
+        // Build map: courseId → list of formIds
+        Map<Long, List<String>> courseToForms = new LinkedHashMap<>();
+        for (EnrollmentFormConfig cfg : configs) {
+            if (cfg.getCourseId() != null) {
+                courseToForms.computeIfAbsent(cfg.getCourseId(), k -> new ArrayList<>()).add(cfg.getId());
+            }
+        }
+
+        // Build map: formId → revenue row (formId, count, sum)
+        List<Object[]> revenueRows = responseRepository.revenueByForm();
+        Map<String, long[]> formRevMap = new HashMap<>(); // formId → [count, sumPaise]
+        Map<String, Double> formSumMap = new HashMap<>(); // formId → sumRevenue
+        for (Object[] row : revenueRows) {
+            String fid = (String) row[0];
+            long cnt = ((Number) row[1]).longValue();
+            double rev = toDouble(row[2]);
+            formRevMap.put(fid, new long[]{cnt});
+            formSumMap.put(fid, rev);
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Map.Entry<Long, List<String>> entry : courseToForms.entrySet()) {
+            Long courseId = entry.getKey();
+            List<String> formIds = entry.getValue();
+
+            // Aggregate across all forms for this course
+            long totalEnrolled = 0;
+            double totalRevenue = 0.0;
+            long paidCount = 0;
+
+            // Config-level data (use first form with payment enabled, or first form)
+            EnrollmentFormConfig primaryConfig = configs.stream()
+                    .filter(c -> courseId.equals(c.getCourseId()))
+                    .findFirst().orElse(null);
+
+            double coursePrice = primaryConfig != null && primaryConfig.getPaymentAmount() != null
+                    ? primaryConfig.getPaymentAmount() : 0.0;
+            boolean discountEnabled = primaryConfig != null && primaryConfig.isDiscountEnabled();
+            String discountType = primaryConfig != null ? primaryConfig.getDiscountType() : null;
+            Double discountValue = primaryConfig != null ? primaryConfig.getDiscountValue() : null;
+            String couponCode = primaryConfig != null ? primaryConfig.getDiscountCouponCode() : null;
+
+            for (String fid : formIds) {
+                if (formRevMap.containsKey(fid)) {
+                    paidCount += formRevMap.get(fid)[0];
+                    totalRevenue += formSumMap.getOrDefault(fid, 0.0);
+                }
+                // Count all responses for this form (including free/pending)
+                totalEnrolled += responseRepository.findByFormId(fid).size();
+            }
+
+            // Expected revenue at list price
+            double totalListPrice = coursePrice * paidCount;
+            double totalDiscounts = totalListPrice - totalRevenue;
+            if (totalDiscounts < 0) totalDiscounts = 0.0;
+            double avgPayment = paidCount > 0 ? totalRevenue / paidCount : 0.0;
+
+            // Fetch course info from course-service
+            String courseTitle = "Course #" + courseId;
+            String difficulty = null;
+            boolean isPublished = false;
+            try {
+                Map<String, Object> info = courseServiceClient.getCourseInfo(courseId);
+                if (info != null) {
+                    courseTitle = info.getOrDefault("title", courseTitle).toString();
+                    if (info.get("difficulty") != null) difficulty = info.get("difficulty").toString();
+                    Object pub = info.get("isPublished");
+                    if (pub == null) pub = info.get("published");
+                    if (pub instanceof Boolean) isPublished = (Boolean) pub;
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch course info for id={}: {}", courseId, e.getMessage());
+            }
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", courseId);
+            row.put("title", courseTitle);
+            row.put("coursePrice", coursePrice);
+            row.put("difficulty", difficulty);
+            row.put("isPublished", isPublished);
+            row.put("totalEnrolled", totalEnrolled);
+            row.put("totalRevenue", Math.round(totalRevenue * 100.0) / 100.0);
+            row.put("totalDiscounts", Math.round(totalDiscounts * 100.0) / 100.0);
+            row.put("totalListPrice", Math.round(totalListPrice * 100.0) / 100.0);
+            row.put("avgPayment", Math.round(avgPayment * 100.0) / 100.0);
+            row.put("freeEnrollments", totalEnrolled - paidCount);
+            row.put("paidEnrollments", paidCount);
+            row.put("discountEnabled", discountEnabled);
+            row.put("discountType", discountType);
+            row.put("discountValue", discountValue);
+            row.put("couponCode", couponCode);
+            result.add(row);
+        }
+
+        result.sort((a, b) -> Long.compare(
+                ((Number) b.get("totalEnrolled")).longValue(),
+                ((Number) a.get("totalEnrolled")).longValue()));
+
+        return ResponseEntity.ok(result);
     }
 
     // ─── GET /api/admin/reports/users ─────────────────────────────────────────
@@ -214,6 +333,7 @@ public class AdminStatsController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalStudents", totalStudents);
         result.put(KEY_TOTAL_ENROLLMENTS, totalEnrollments);
+        result.put("totalEnrollments", totalEnrollments);
         return ResponseEntity.ok(result);
     }
 
@@ -222,6 +342,8 @@ public class AdminStatsController {
         if (val == null) return 0.0;
         if (val instanceof BigDecimal bd) return bd.doubleValue();
         if (val instanceof Number n) return n.doubleValue();
+        if (val instanceof BigDecimal) return ((BigDecimal) val).doubleValue();
+        if (val instanceof Number) return ((Number) val).doubleValue();
         try { return Double.parseDouble(val.toString()); } catch (Exception e) { return 0.0; }
     }
 }

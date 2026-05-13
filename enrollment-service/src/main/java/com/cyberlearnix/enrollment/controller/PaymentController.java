@@ -143,6 +143,7 @@ public class PaymentController {
             // Log but still return 200 to avoid PayU retrying
             log.error("[PayU Webhook] Error: {}", e.getMessage(), e);
             return ResponseEntity.ok(Map.of(KEY_STATUS, "OK"));
+            return ResponseEntity.ok(Map.of("status", "OK"));
         }
     }
 

@@ -66,6 +66,7 @@ public class ExamManagementController {
             @RequestHeader(value = "X-User-Id", required = false) String userId) {
         Exam exam = examService.createExam(payload, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(exam);
+        return ResponseEntity.ok(exam);
     }
 
     @PutMapping("/exams/{id}")
@@ -132,6 +133,7 @@ public class ExamManagementController {
     @PutMapping("/exams/attempts/{attemptId}/answers")
     public ResponseEntity<Void> saveAnswers(@PathVariable Long attemptId, @RequestBody Map<String, Object> body) {
         String answersJson = body.containsKey(KEY_ANSWERS) ? body.get(KEY_ANSWERS).toString() : "{}";
+        String answersJson = body.containsKey("answers") ? body.get("answers").toString() : "{}";
         examService.saveAnswers(attemptId, answersJson);
         return ResponseEntity.noContent().build();
     }
@@ -140,6 +142,7 @@ public class ExamManagementController {
     public ResponseEntity<Map<String, Object>> submitAttempt(@PathVariable Long attemptId,
             @RequestBody Map<String, Object> body) {
         String answersJson = body.containsKey(KEY_ANSWERS) ? body.get(KEY_ANSWERS).toString() : "{}";
+        String answersJson = body.containsKey("answers") ? body.get("answers").toString() : "{}";
         return ResponseEntity.ok(examService.submitAttempt(attemptId, answersJson));
     }
 

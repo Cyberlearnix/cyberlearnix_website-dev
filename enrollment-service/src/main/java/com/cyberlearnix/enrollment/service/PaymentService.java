@@ -260,7 +260,6 @@ public class PaymentService {
         if (txnOpt.isPresent()) {
             txn = txnOpt.get();
         } else {
-            // Fallback: create record if webhook arrived before callback
             txn = new PaymentTransaction();
             txn.setTxnid(txnid);
         }
@@ -294,9 +293,39 @@ public class PaymentService {
 
         // Status returned in the response reflects both PayU outcome and hash verification
         String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
+        if (txn.getFormResponseId() != null && payuSaysSuccess && hashVerified) {
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                r.setPaymentStatus("PAID");
+                r.setTransactionId(txnid);
+                r.setMihpayid(mihpayid);
+                r.setPaymentMode(resolvePaymentMode(mode));
+                r.setAmountPaid(Double.parseDouble(amount));
+                responseRepository.save(r);
+            });
+        } else if (txn.getFormResponseId() != null && payuSaysSuccess && !hashVerified) {
+            // PayU says success but hash didn't verify — mark PENDING so webhook can update
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                if (!"PAID".equals(r.getPaymentStatus())) {
+                    r.setPaymentStatus("PENDING");
+                    responseRepository.save(r);
+                }
+            });
+        } else if (txn.getFormResponseId() != null && !payuSaysSuccess) {
+            // Payment failed — mark form response as FAILED
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                if (!"PAID".equals(r.getPaymentStatus())) {
+                    r.setPaymentStatus("FAILED");
+                    responseRepository.save(r);
+                }
+            });
+        }
+
+        // Status returned in the response reflects both PayU outcome and hash verification
+        String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put(KEY_STATUS, redirectStatus);
+        result.put("status", redirectStatus);
         result.put(KEY_TXNID, txnid);
         result.put("mihpayid", mihpayid);
         result.put(KEY_HASH_VERIFIED, hashVerified);
@@ -304,6 +333,7 @@ public class PaymentService {
         result.put("formId", txn.getFormId() != null ? txn.getFormId() : "");
         result.put("responseId", txn.getFormResponseId() != null ? String.valueOf(txn.getFormResponseId()) : "");
         result.put(KEY_EMAIL, txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
+        result.put("email", txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
         return result;
     }
 
@@ -498,13 +528,11 @@ public class PaymentService {
                 return;
             }
 
-            // Register or find student, then enroll
             String tempPassword = "Welcome@" + UUID.randomUUID().toString().substring(0, 8);
             Map<String, Object> regReq = Map.of(
                     KEY_EMAIL, txn.getStudentEmail(),
                     "password", tempPassword,
                     "role", "student");
-            // Use an internal service token — empty string uses default internal auth
             Map<String, Object> createdUser = userClient.registerUser("", regReq);
             String studentUuid = (createdUser != null && createdUser.get("id") != null)
                     ? (String) createdUser.get("id") : null;

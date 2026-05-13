@@ -1,9 +1,11 @@
 package com.cyberlearnix.course.controller;
 
+import com.cyberlearnix.shared.entity.course.AssignmentContent;
 import com.cyberlearnix.shared.entity.course.AssignmentSubmission;
 import com.cyberlearnix.shared.repository.course.AssignmentContentRepository;
 import com.cyberlearnix.shared.repository.course.AssignmentSubmissionRepository;
 import com.cyberlearnix.course.service.AssignmentManagementService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,6 +45,14 @@ public class AssignmentManagementController {
         this.assignmentContentRepository = assignmentContentRepository;
         this.submissionRepository = submissionRepository;
     }
+    @Autowired
+    private AssignmentManagementService assignmentManagementService;
+
+    @Autowired
+    private AssignmentContentRepository assignmentContentRepository;
+
+    @Autowired
+    private AssignmentSubmissionRepository submissionRepository;
 
     // ─── Submit assignment ────────────────────────────────────────────────────
 
@@ -53,6 +63,7 @@ public class AssignmentManagementController {
     @PostMapping("/{contentId}/submit")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Object> submitAssignment(
+    public ResponseEntity<?> submitAssignment(
             @PathVariable Long contentId,
             @RequestBody Map<String, Object> request,
             @RequestHeader("X-User-Id") String studentId,
@@ -67,6 +78,11 @@ public class AssignmentManagementController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(KEY_ERROR, "Submission failed: " + e.getMessage()));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Submission failed: " + e.getMessage()));
         }
     }
 
@@ -115,6 +131,7 @@ public class AssignmentManagementController {
     @GetMapping("/submissions/{submissionId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Object> getSubmission(
+    public ResponseEntity<?> getSubmission(
             @PathVariable Long submissionId,
             @RequestHeader("X-User-Id") String requesterId,
             @RequestHeader("X-User-Role") String role) {
@@ -125,6 +142,8 @@ public class AssignmentManagementController {
                         || "TEACHER".equalsIgnoreCase(role))
                 .map(s -> ResponseEntity.<Object>ok(s))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).<Object>build());
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
     // ─── Grading ──────────────────────────────────────────────────────────────
@@ -137,6 +156,7 @@ public class AssignmentManagementController {
     @PostMapping("/submissions/{submissionId}/grade")
     @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR','TEACHER')")
     public ResponseEntity<Object> gradeSubmission(
+    public ResponseEntity<?> gradeSubmission(
             @PathVariable Long submissionId,
             @RequestBody Map<String, Object> request,
             @RequestHeader("X-User-Id") String graderId) {
@@ -145,6 +165,7 @@ public class AssignmentManagementController {
             return ResponseEntity.ok(graded);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -161,6 +182,11 @@ public class AssignmentManagementController {
             return ResponseEntity.ok(assignmentManagementService.getAnalytics(contentId));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
+    public ResponseEntity<?> getAnalytics(@PathVariable Long contentId) {
+        try {
+            return ResponseEntity.ok(assignmentManagementService.getAnalytics(contentId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -178,11 +204,17 @@ public class AssignmentManagementController {
             @RequestHeader("X-User-Id") String userId) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Empty file"));
+    public ResponseEntity<?> uploadFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader("X-User-Id") String userId) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Empty file"));
         }
         // Validate file type and size (max 50MB)
         long maxBytes = 50L * 1024 * 1024;
         if (file.getSize() > maxBytes) {
             return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "File exceeds 50MB limit"));
+            return ResponseEntity.badRequest().body(Map.of("error", "File exceeds 50MB limit"));
         }
         // Validate content type — only allow safe submission formats
         String ct = file.getContentType() != null ? file.getContentType().toLowerCase() : "";
@@ -200,6 +232,7 @@ public class AssignmentManagementController {
                 || ct.contains("octet-stream");
         if (!safe) {
             return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "File type not allowed: " + ct));
+            return ResponseEntity.badRequest().body(Map.of("error", "File type not allowed: " + ct));
         }
         // In production, integrate with Cloudinary SDK or S3 here.
         // For now, return a placeholder indicating success for the dev environment.
@@ -224,6 +257,7 @@ public class AssignmentManagementController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR','TEACHER')")
     public ResponseEntity<Map<String, Object>> aiAssist(@RequestBody Map<String, Object> request) {
         // Stub — replace with actual LLM call
+        String message = (String) request.getOrDefault("message", "");
         String stub = "AI evaluation is not yet configured for this environment. "
                 + "To enable it, connect an LLM API key in the course-service configuration.";
         return ResponseEntity.ok(Map.of("reply", stub));
