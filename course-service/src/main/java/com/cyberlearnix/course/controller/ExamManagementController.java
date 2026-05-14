@@ -14,7 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,8 +30,6 @@ public class ExamManagementController {
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
     private final ExamAttemptRepository attemptRepository;
-
-    private static final String KEY_ANSWERS = "answers";
 
     // ─── Exam CRUD ────────────────────────────────────────────────────────────
 
@@ -65,7 +62,6 @@ public class ExamManagementController {
     public ResponseEntity<Exam> createExam(@RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", required = false) String userId) {
         Exam exam = examService.createExam(payload, userId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(exam);
         return ResponseEntity.ok(exam);
     }
 
@@ -132,7 +128,6 @@ public class ExamManagementController {
 
     @PutMapping("/exams/attempts/{attemptId}/answers")
     public ResponseEntity<Void> saveAnswers(@PathVariable Long attemptId, @RequestBody Map<String, Object> body) {
-        String answersJson = body.containsKey(KEY_ANSWERS) ? body.get(KEY_ANSWERS).toString() : "{}";
         String answersJson = body.containsKey("answers") ? body.get("answers").toString() : "{}";
         examService.saveAnswers(attemptId, answersJson);
         return ResponseEntity.noContent().build();
@@ -141,7 +136,6 @@ public class ExamManagementController {
     @PostMapping("/exams/attempts/{attemptId}/submit")
     public ResponseEntity<Map<String, Object>> submitAttempt(@PathVariable Long attemptId,
             @RequestBody Map<String, Object> body) {
-        String answersJson = body.containsKey(KEY_ANSWERS) ? body.get(KEY_ANSWERS).toString() : "{}";
         String answersJson = body.containsKey("answers") ? body.get("answers").toString() : "{}";
         return ResponseEntity.ok(examService.submitAttempt(attemptId, answersJson));
     }
