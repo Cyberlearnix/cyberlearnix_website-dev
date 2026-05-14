@@ -6,6 +6,7 @@ import com.cyberlearnix.course.dto.BannerDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -25,12 +26,8 @@ public class BannerController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createBanner(@RequestBody BannerDTO bannerDTO,
-                                        @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage banners"));
-        }
-
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createBanner(@RequestBody BannerDTO bannerDTO) {
         Banner banner = new Banner();
         banner.setTitle(bannerDTO.getTitle());
         banner.setSubtitle(bannerDTO.getSubtitle());
@@ -43,13 +40,9 @@ public class BannerController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateBanner(@PathVariable Long id, 
-                                        @RequestBody BannerDTO bannerDTO,
-                                        @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage banners"));
-        }
-
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateBanner(@PathVariable Long id,
+                                        @RequestBody BannerDTO bannerDTO) {
         return bannerRepository.findById(id).map(banner -> {
             if (bannerDTO.getTitle() != null) banner.setTitle(bannerDTO.getTitle());
             if (bannerDTO.getSubtitle() != null) banner.setSubtitle(bannerDTO.getSubtitle());
@@ -62,16 +55,12 @@ public class BannerController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteBanner(@PathVariable Long id,
-                                        @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage banners"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteBanner(@PathVariable Long id) {
+        if (!bannerRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
-
-        if (bannerRepository.existsById(id)) {
-            bannerRepository.deleteById(id);
-            return ResponseEntity.ok(Map.of("success", true));
-        }
-        return ResponseEntity.notFound().build();
+        bannerRepository.deleteById(id);
+        return ResponseEntity.ok(Map.of("success", true));
     }
 }

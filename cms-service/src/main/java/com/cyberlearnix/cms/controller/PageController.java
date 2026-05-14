@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -33,12 +34,12 @@ public class PageController {
     }
 
     @PostMapping("/pages")
-    public ResponseEntity<Page> createPage(@RequestBody PageCreateDTO dto) {
+    public ResponseEntity<Page> createPage(@Valid @RequestBody PageCreateDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(pageService.createPage(dto));
     }
 
     @PutMapping("/pages/{id}")
-    public ResponseEntity<Page> updatePage(@PathVariable Long id, @RequestBody PageCreateDTO dto) {
+    public ResponseEntity<Page> updatePage(@PathVariable Long id, @Valid @RequestBody PageCreateDTO dto) {
         try {
             return ResponseEntity.ok(pageService.updatePage(id, dto));
         } catch (RuntimeException e) {

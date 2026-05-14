@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.TimeZone;
@@ -13,6 +14,7 @@ import java.util.TimeZone;
 @EntityScan("com.cyberlearnix.shared.entity.user")
 @EnableJpaRepositories("com.cyberlearnix.shared.repository.user")
 @EnableScheduling
+@EnableAsync
 @EnableJpaAuditing
 public class UserServiceApplication {
     static {

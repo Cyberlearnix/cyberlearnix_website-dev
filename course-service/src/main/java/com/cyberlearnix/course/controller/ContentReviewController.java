@@ -2,6 +2,8 @@ package com.cyberlearnix.course.controller;
 
 import com.cyberlearnix.shared.entity.course.ContentReview;
 import com.cyberlearnix.shared.repository.course.ContentReviewRepository;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,11 +39,11 @@ public class ContentReviewController {
     }
 
     @PostMapping
-    public ResponseEntity<ContentReview> submitForReview(@RequestBody ContentReview review) {
+    public ResponseEntity<ContentReview> submitForReview(@Valid @RequestBody ContentReview review) {
         review.setReviewStatus("pending");
         review.setSubmittedAt(LocalDateTime.now());
         review.setIsApproved(null);
-        return ResponseEntity.ok(contentReviewRepository.save(review));
+        return ResponseEntity.status(HttpStatus.CREATED).body(contentReviewRepository.save(review));
     }
 
     @PatchMapping("/{id}/review")

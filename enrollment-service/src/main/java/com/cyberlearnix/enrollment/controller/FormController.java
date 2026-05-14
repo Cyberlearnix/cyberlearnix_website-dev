@@ -75,14 +75,14 @@ public class FormController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteConfig(@PathVariable String id,
+    public ResponseEntity<Void> deleteConfig(@PathVariable String id,
             @RequestParam(defaultValue = "false") boolean permanent) {
         if (permanent) {
             configRepository.deleteById(id);
         } else {
             enrollmentService.softDeleteForm(id);
         }
-        return ResponseEntity.ok(Map.of("success", true));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/restore")

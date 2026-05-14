@@ -10,7 +10,8 @@ import com.cyberlearnix.shared.repository.enrollment.EnrollmentFormResponseRepos
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentSubmissionRepository;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -24,26 +25,33 @@ import java.util.Map;
 @RequestMapping("/api/enrollments/responses")
 public class ResponseController {
 
+    private static final Logger log = LoggerFactory.getLogger(ResponseController.class);
+
     private static final String KEY_PAYMENT_REQUIRED = "paymentRequired";
     private static final String KEY_MESSAGE = "message";
+    private static final String KEY_STUDENT_DATA = "studentData";
 
-    @Autowired
-    private EnrollmentService enrollmentService;
+    private final EnrollmentService enrollmentService;
+    private final CourseServiceClient courseServiceClient;
+    private final EnrollmentSubmissionRepository submissionRepository;
+    private final EnrollmentFormResponseRepository responseRepository;
+    private final EnrollmentFormConfigRepository configRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
-    @Autowired
-    private CourseServiceClient courseServiceClient;
-
-    @Autowired
-    private EnrollmentSubmissionRepository submissionRepository;
-
-    @Autowired
-    private EnrollmentFormResponseRepository responseRepository;
-
-    @Autowired
-    private EnrollmentFormConfigRepository configRepository;
-
-    @Autowired
-    private PaymentTransactionRepository paymentTransactionRepository;
+    public ResponseController(
+            EnrollmentService enrollmentService,
+            CourseServiceClient courseServiceClient,
+            EnrollmentSubmissionRepository submissionRepository,
+            EnrollmentFormResponseRepository responseRepository,
+            EnrollmentFormConfigRepository configRepository,
+            PaymentTransactionRepository paymentTransactionRepository) {
+        this.enrollmentService = enrollmentService;
+        this.courseServiceClient = courseServiceClient;
+        this.submissionRepository = submissionRepository;
+        this.responseRepository = responseRepository;
+        this.configRepository = configRepository;
+        this.paymentTransactionRepository = paymentTransactionRepository;
+    }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -68,94 +76,116 @@ public class ResponseController {
                     && !paymentStatus.equalsIgnoreCase(r.getPaymentStatus())) {
                 continue;
             }
-
-            // Resolve student name from studentData JSON, fall back to email
-            String studentName = r.getStudentEmail();
-            try {
-                if (r.getStudentData() != null && !r.getStudentData().isBlank()) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> sd = mapper.readValue(r.getStudentData(), Map.class);
-                    Object name = sd.getOrDefault("studentName", sd.getOrDefault("name",
-                            sd.getOrDefault("fullName", null)));
-                    if (name != null && !name.toString().isBlank()) {
-                        studentName = name.toString();
-                    }
-                }
-            } catch (Exception ignored) { }
-
-            // Resolve course info from form config, then fetch actual course name
-            String courseTitle = null;
-            Long courseId = null;
-            List<Long> courseIds = null;
-            Double coursePrice = null;
-            try {
-                EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
-                if (config != null) {
-                    courseId = config.getCourseId();
-                    courseIds = config.getEffectiveCourseIds();
-                    coursePrice = config.getPaymentAmount();
-                    // Fetch real course name — use first effective courseId
-                    Long primaryCourseId = (courseIds != null && !courseIds.isEmpty()) ? courseIds.get(0) : courseId;
-                    if (primaryCourseId != null) {
-                        try {
-                            java.util.Map<String, Object> courseInfo = courseServiceClient.getCourseInfo(primaryCourseId);
-                            if (courseInfo != null && courseInfo.get("title") != null) {
-                                courseTitle = courseInfo.get("title").toString();
-                            }
-                        } catch (Exception ignored) { }
-                    }
-                    // Fall back to form title if course lookup fails
-                    if (courseTitle == null) {
-                        courseTitle = config.getTitle();
-                    }
-                }
-            } catch (Exception ignored) { }
-
-            // Resolve latest transaction details
-            String txnMode = r.getPaymentMode();
-            String txnMihpayid = r.getMihpayid();
-            String bankRefNum = null;
-            String txnStatus = null;
-            String initiatedTxnId = null;
-            try {
-                PaymentTransaction txn = paymentTransactionRepository
-                        .findTopByFormResponseIdOrderByInitiatedAtDesc(r.getId()).orElse(null);
-                if (txn != null) {
-                    if (txnMode == null) txnMode = txn.getMode();
-                    if (txnMihpayid == null) txnMihpayid = txn.getMihpayid();
-                    bankRefNum = txn.getBankRefNum();
-                    txnStatus = txn.getStatus();
-                    initiatedTxnId = txn.getTxnid();
-                }
-            } catch (Exception ignored) { }
-
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", r.getId());            // alias for frontend compatibility
-            item.put("responseId", r.getId());
-            item.put("formId", r.getFormId());    // needed for approve/reject actions
-            item.put("studentEmail", r.getStudentEmail());
-            item.put("studentName", studentName);
-            item.put("studentData", r.getStudentData()); // raw JSON for Eye modal
-            item.put("courseTitle", courseTitle);
-            item.put("courseId", courseId);
-            item.put("courseIds", courseIds);      // all linked courses for multi-enrollment
-            item.put("coursePrice", coursePrice);  // original price from form config
-            item.put("amountPaid", r.getAmountPaid() != null ? r.getAmountPaid() : coursePrice);
-            item.put("paymentStatus", r.getPaymentStatus());
-            item.put("transactionId", r.getTransactionId());
-            item.put("initiatedTxnId", initiatedTxnId); // txnid from payment_transactions
-            item.put("paymentMode", txnMode);
-            item.put("mihpayid", txnMihpayid);
-            item.put("bankRefNum", bankRefNum);
-            item.put("txnTableStatus", txnStatus);
-            item.put("createdAt", r.getCreatedAt());
-            item.put("reviewedAt", r.getReviewedAt());
-            item.put("reviewedBy", r.getReviewedBy());
-            item.put("createdUserId", r.getCreatedUserId()); // for re-enroll without user lookup
-            result.add(item);
+            result.add(buildAdminViewItem(r, mapper));
         }
 
         return ResponseEntity.ok(result);
+    }
+
+    private String resolveStudentName(EnrollmentFormResponse r, ObjectMapper mapper) {
+        String studentName = r.getStudentEmail();
+        try {
+            if (r.getStudentData() != null && !r.getStudentData().isBlank()) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> sd = mapper.readValue(r.getStudentData(), Map.class);
+                Object name = sd.getOrDefault("studentName", sd.getOrDefault("name",
+                        sd.getOrDefault("fullName", null)));
+                if (name != null && !name.toString().isBlank()) {
+                    studentName = name.toString();
+                }
+            }
+        } catch (Exception ignored) { }
+        return studentName;
+    }
+
+    private static final class CourseData {
+        String courseTitle;
+        Long courseId;
+        List<Long> courseIds;
+        Double coursePrice;
+    }
+
+    private CourseData resolveCourseData(EnrollmentFormResponse r) {
+        CourseData data = new CourseData();
+        try {
+            EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
+            if (config != null) {
+                data.courseId = config.getCourseId();
+                data.courseIds = config.getEffectiveCourseIds();
+                data.coursePrice = config.getPaymentAmount();
+                Long primaryId = (data.courseIds != null && !data.courseIds.isEmpty())
+                        ? data.courseIds.get(0) : data.courseId;
+                if (primaryId != null) {
+                    try {
+                        java.util.Map<String, Object> info = courseServiceClient.getCourseInfo(primaryId);
+                        if (info != null && info.get("title") != null) {
+                            data.courseTitle = info.get("title").toString();
+                        }
+                    } catch (Exception ignored) { }
+                }
+                if (data.courseTitle == null) {
+                    data.courseTitle = config.getTitle();
+                }
+            }
+        } catch (Exception ignored) { }
+        return data;
+    }
+
+    private static final class TxnData {
+        String txnMode;
+        String txnMihpayid;
+        String bankRefNum;
+        String txnStatus;
+        String initiatedTxnId;
+    }
+
+    private TxnData resolveTransactionData(EnrollmentFormResponse r) {
+        TxnData data = new TxnData();
+        data.txnMode = r.getPaymentMode();
+        data.txnMihpayid = r.getMihpayid();
+        try {
+            PaymentTransaction txn = paymentTransactionRepository
+                    .findTopByFormResponseIdOrderByInitiatedAtDesc(r.getId()).orElse(null);
+            if (txn != null) {
+                if (data.txnMode == null) data.txnMode = txn.getMode();
+                if (data.txnMihpayid == null) data.txnMihpayid = txn.getMihpayid();
+                data.bankRefNum = txn.getBankRefNum();
+                data.txnStatus = txn.getStatus();
+                data.initiatedTxnId = txn.getTxnid();
+            }
+        } catch (Exception ignored) { }
+        return data;
+    }
+
+    private Map<String, Object> buildAdminViewItem(EnrollmentFormResponse r, ObjectMapper mapper) {
+        String studentName = resolveStudentName(r, mapper);
+        CourseData cd = resolveCourseData(r);
+        TxnData td = resolveTransactionData(r);
+
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", r.getId());
+        item.put("responseId", r.getId());
+        item.put("formId", r.getFormId());
+        item.put("studentEmail", r.getStudentEmail());
+        item.put("studentName", studentName);
+        item.put(KEY_STUDENT_DATA, r.getStudentData());
+        item.put("courseTitle", cd.courseTitle);
+        item.put("courseId", cd.courseId);
+        item.put("courseIds", cd.courseIds);
+        item.put("coursePrice", cd.coursePrice);
+        item.put("amountPaid", r.getAmountPaid() != null ? r.getAmountPaid() : cd.coursePrice);
+        item.put("paymentStatus", r.getPaymentStatus());
+        item.put("transactionId", r.getTransactionId());
+        item.put("initiatedTxnId", td.initiatedTxnId);
+        item.put("paymentMode", td.txnMode);
+        item.put("mihpayid", td.txnMihpayid);
+        item.put("bankRefNum", td.bankRefNum);
+        item.put("txnTableStatus", td.txnStatus);
+        item.put("createdAt", r.getCreatedAt());
+        item.put("reviewedAt", r.getReviewedAt());
+        item.put("reviewedBy", r.getReviewedBy());
+        item.put("createdUserId", r.getCreatedUserId());
+        return item;
     }
 
     // ── Public receipt endpoint — student accesses after PayU redirect (no JWT) ──
@@ -226,7 +256,7 @@ public class ResponseController {
         receipt.put("studentEmail", r.getStudentEmail());
         receipt.put("submittedAt", r.getCreatedAt());
         receipt.put("reviewedAt", r.getReviewedAt());
-        receipt.put("studentData", studentData);
+        receipt.put(KEY_STUDENT_DATA, studentData);
 
         return ResponseEntity.ok(receipt);
     }
@@ -311,7 +341,7 @@ public class ResponseController {
             EnrollmentFormResponse r = new EnrollmentFormResponse();
             r.setFormId((String) data.get("formId"));
             try {
-                r.setStudentData(mapper.writeValueAsString(data.get("studentData")));
+                r.setStudentData(mapper.writeValueAsString(data.get(KEY_STUDENT_DATA)));
             } catch (Exception e) {
                 r.setStudentData("{}");
             }
@@ -341,7 +371,7 @@ public class ResponseController {
             try {
                 enrollmentService.notifyAdminOfPayment(saved);
             } catch (Exception e) {
-                System.err.println("Failed to notify admin: " + e.getMessage());
+                log.error("Failed to notify admin: {}", e.getMessage());
             }
 
             return ResponseEntity.ok(saved);
@@ -354,17 +384,14 @@ public class ResponseController {
         return responseRepository.findById(id).map(r -> {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             try {
-                if (payload.containsKey("studentData")) {
-                    r.setStudentData(mapper.writeValueAsString(payload.get("studentData")));
+                if (payload.containsKey(KEY_STUDENT_DATA)) {
+                    r.setStudentData(mapper.writeValueAsString(payload.get(KEY_STUDENT_DATA)));
                 }
                 if (payload.containsKey("paymentStatus")) {
                     r.setPaymentStatus((String) payload.get("paymentStatus"));
                 }
                 if (payload.containsKey("transactionId")) {
                     r.setTransactionId((String) payload.get("transactionId"));
-                }
-                if (payload.containsKey("paymentTxnid")) {
-                    r.setTransactionId((String) payload.get("paymentTxnid"));
                 }
             } catch (Exception e) {
                 return ResponseEntity.status(500).<EnrollmentFormResponse>build();
@@ -379,8 +406,8 @@ public class ResponseController {
         return responseRepository.findByTransactionId(txnid).map(r -> {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             try {
-                if (payload.containsKey("studentData")) {
-                    r.setStudentData(mapper.writeValueAsString(payload.get("studentData")));
+                if (payload.containsKey(KEY_STUDENT_DATA)) {
+                    r.setStudentData(mapper.writeValueAsString(payload.get(KEY_STUDENT_DATA)));
                 }
                 if (payload.containsKey("paymentStatus")) {
                     r.setPaymentStatus((String) payload.get("paymentStatus"));

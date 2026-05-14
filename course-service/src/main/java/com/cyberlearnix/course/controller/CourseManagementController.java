@@ -85,7 +85,7 @@ public class CourseManagementController {
     // Course CRUD Operations
     @Transactional
     @PostMapping("/courses")
-    public ResponseEntity<?> createCourse(@RequestBody CourseCreateDTO courseDTO,
+    public ResponseEntity<?> createCourse(@Valid @RequestBody CourseCreateDTO courseDTO,
             @RequestHeader("X-User-Id") String userId,
             @RequestHeader("X-User-Role") String userRole) {
 
@@ -736,6 +736,50 @@ public class CourseManagementController {
             "studentCount", students.size(),
             "students", students
         ));
+    }
+
+    // ── Teacher Permission Proxy Endpoints ──────────────────────────────────────────
+
+    /**
+     * GET /api/course-management/permissions/{teacherId}
+     * Proxies to user-service GET /api/users/{userId}/teacher-permission.
+     * Provides a consistent /api/course-management/* namespace for the frontend.
+     */
+    @GetMapping("/permissions/{teacherId}")
+    public ResponseEntity<?> getTeacherPermissionsProxy(@PathVariable String teacherId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        if (!"admin".equalsIgnoreCase(userRole) && !"teacher".equalsIgnoreCase(userRole)
+                && !"dual".equalsIgnoreCase(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
+        }
+        try {
+            Map<String, Object> permissions = userServiceClient.getTeacherPermission(teacherId);
+            return ResponseEntity.ok(permissions != null ? permissions : Map.of());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Teacher permissions not found", "teacherId", teacherId));
+        }
+    }
+
+    /**
+     * PUT /api/course-management/permissions/{teacherId}
+     * Proxies to user-service PUT /api/users/{teacherId}/teacher-permission.
+     */
+    @PutMapping("/permissions/{teacherId}")
+    public ResponseEntity<?> updateTeacherPermissions(@PathVariable String teacherId,
+            @RequestBody Map<String, Object> permissions,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        if (!"admin".equalsIgnoreCase(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Only administrators can update teacher permissions"));
+        }
+        try {
+            Map<String, Object> updated = userServiceClient.updateTeacherPermission(teacherId, permissions);
+            return ResponseEntity.ok(updated != null ? updated : Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to update teacher permissions: " + e.getMessage()));
+        }
     }
 
     // ── Private helpers for createContent ────────────────────────────────────

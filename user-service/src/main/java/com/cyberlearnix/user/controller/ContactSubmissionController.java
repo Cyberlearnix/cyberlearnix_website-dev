@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.repository.user.ContactSubmissionRepository;
 import com.cyberlearnix.user.service.EmailNotificationService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,20 +36,14 @@ public class ContactSubmissionController {
         submission.setStatus("unread");
         ContactSubmission saved = contactSubmissionRepository.save(submission);
 
-        // Notify admin asynchronously to avoid blocking the response
-        new Thread(() -> {
-            try {
-                emailService.sendAdminInquiryNotification(
-                        saved.getName(),
-                        saved.getEmail(),
-                        saved.getPhone(),
-                        saved.getMessage());
-            } catch (Exception e) {
-                System.err.println("Admin notification async failed: " + e.getMessage());
-            }
-        }).start();
+        // Notify admin asynchronously (EmailNotificationService method is @Async)
+        emailService.sendAdminInquiryNotification(
+                saved.getName(),
+                saved.getEmail(),
+                saved.getPhone(),
+                saved.getMessage());
 
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PatchMapping("/{id}")

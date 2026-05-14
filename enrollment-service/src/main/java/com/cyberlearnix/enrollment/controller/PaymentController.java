@@ -5,7 +5,6 @@ import com.cyberlearnix.shared.entity.enrollment.PaymentTransaction;
 import com.cyberlearnix.shared.repository.enrollment.PaymentTransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -38,15 +37,21 @@ public class PaymentController {
     private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
     private static final String KEY_MESSAGE = "message";
     private static final String KEY_SUCCESS = "success";
+    private static final String KEY_STATUS = "status";
 
-    @Autowired
-    private PaymentService paymentService;
+    private final PaymentService paymentService;
 
-    @Autowired
-    private PaymentTransactionRepository transactionRepository;
+    private final PaymentTransactionRepository transactionRepository;
 
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
+
+    public PaymentController(
+            PaymentService paymentService,
+            PaymentTransactionRepository transactionRepository) {
+        this.paymentService = paymentService;
+        this.transactionRepository = transactionRepository;
+    }
 
     // ── 1. Initiate ───────────────────────────────────────────────────────────
 
@@ -90,10 +95,11 @@ public class PaymentController {
      */
     @CrossOrigin(origins = "*", allowCredentials = "false")
     @PostMapping("/callback/success")
-    public ResponseEntity<?> paymentSuccess(@RequestParam Map<String, String> params) {
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Object> paymentSuccess(@RequestParam Map<String, String> params) {
         try {
             Map<String, Object> result = paymentService.handleCallback(params);
-            return redirectToFrontend(result);
+            return (ResponseEntity<Object>) (ResponseEntity<?>) redirectToFrontend(result);
         } catch (Exception e) {
             log.error("[PayU] Success callback processing error: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
@@ -109,10 +115,11 @@ public class PaymentController {
      */
     @CrossOrigin(origins = "*", allowCredentials = "false")
     @PostMapping("/callback/failure")
-    public ResponseEntity<?> paymentFailure(@RequestParam Map<String, String> params) {
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Object> paymentFailure(@RequestParam Map<String, String> params) {
         try {
             Map<String, Object> result = paymentService.handleCallback(params);
-            return redirectToFrontend(result);
+            return (ResponseEntity<Object>) (ResponseEntity<?>) redirectToFrontend(result);
         } catch (Exception e) {
             log.error("[PayU] Failure callback processing error: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
@@ -131,11 +138,11 @@ public class PaymentController {
     public ResponseEntity<Map<String, Object>> paymentWebhook(@RequestParam Map<String, String> params) {
         try {
             paymentService.handleWebhook(params);
-            return ResponseEntity.ok(Map.of("status", "OK"));
+            return ResponseEntity.ok(Map.of(KEY_STATUS, "OK"));
         } catch (Exception e) {
             // Log but still return 200 to avoid PayU retrying
             log.error("[PayU Webhook] Error: {}", e.getMessage(), e);
-            return ResponseEntity.ok(Map.of("status", "OK"));
+            return ResponseEntity.ok(Map.of(KEY_STATUS, "OK"));
         }
     }
 

@@ -2,6 +2,7 @@ package com.cyberlearnix.user.controller;
 
 import com.cyberlearnix.shared.entity.user.TeamCollaboration;
 import com.cyberlearnix.shared.repository.user.TeamCollaborationRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,7 +41,7 @@ public class TeamCollaborationController {
         if (team.getIsPrivate() && team.getAccessCode() == null) {
             team.setAccessCode(generateAccessCode());
         }
-        return ResponseEntity.ok(teamRepository.save(team));
+        return ResponseEntity.status(HttpStatus.CREATED).body(teamRepository.save(team));
     }
 
     private String generateAccessCode() {
