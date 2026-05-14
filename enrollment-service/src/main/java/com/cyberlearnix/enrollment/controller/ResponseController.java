@@ -123,6 +123,9 @@ public class ResponseController {
                         }
                     } catch (Exception ignored) { }
                 }
+                if (data.courseTitle == null) {
+                    data.courseTitle = config.getTitle();
+                }
             }
         } catch (Exception ignored) { }
         return data;
