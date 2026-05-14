@@ -293,35 +293,6 @@ public class PaymentService {
 
         // Status returned in the response reflects both PayU outcome and hash verification
         String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
-        if (txn.getFormResponseId() != null && payuSaysSuccess && hashVerified) {
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                r.setPaymentStatus("PAID");
-                r.setTransactionId(txnid);
-                r.setMihpayid(mihpayid);
-                r.setPaymentMode(resolvePaymentMode(mode));
-                r.setAmountPaid(Double.parseDouble(amount));
-                responseRepository.save(r);
-            });
-        } else if (txn.getFormResponseId() != null && payuSaysSuccess && !hashVerified) {
-            // PayU says success but hash didn't verify — mark PENDING so webhook can update
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                if (!"PAID".equals(r.getPaymentStatus())) {
-                    r.setPaymentStatus("PENDING");
-                    responseRepository.save(r);
-                }
-            });
-        } else if (txn.getFormResponseId() != null && !payuSaysSuccess) {
-            // Payment failed — mark form response as FAILED
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                if (!"PAID".equals(r.getPaymentStatus())) {
-                    r.setPaymentStatus("FAILED");
-                    responseRepository.save(r);
-                }
-            });
-        }
-
-        // Status returned in the response reflects both PayU outcome and hash verification
-        String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put(KEY_STATUS, redirectStatus);
