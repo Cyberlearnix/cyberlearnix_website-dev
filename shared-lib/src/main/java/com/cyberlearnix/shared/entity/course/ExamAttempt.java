@@ -85,7 +85,6 @@ public class ExamAttempt {
     private Boolean passed;
 
     @Column(name = "question_scores", columnDefinition = "TEXT")
-    private String questionScores;
     private String questionScores; // JSON map: { questionId: score }
 
     @Column(columnDefinition = "TEXT")
@@ -105,7 +104,6 @@ public class ExamAttempt {
     private Integer violationCount = 0;
 
     @Column(columnDefinition = "TEXT")
-    private String violations;
     private String violations; // JSON array of { type, timestamp, detail }
 
     // ─── Session info ─────────────────────────────────────────────────────────
@@ -120,7 +118,6 @@ public class ExamAttempt {
     private String deviceInfo;
 
     @Column(name = "attempt_metadata", columnDefinition = "TEXT")
-    private String attemptMetadata;
     private String attemptMetadata; // JSON for extra fields
 
     @PrePersist
