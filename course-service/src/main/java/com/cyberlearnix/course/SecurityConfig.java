@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/courses/progress/**").authenticated()
                         .requestMatchers("/api/course-management/**").authenticated()
                         .requestMatchers("/api/materials/upload/**").authenticated()
+                        .requestMatchers("/api/materials/drive/upload/**").authenticated()
                         .requestMatchers("/api/content-reviews", "/api/content-reviews/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtTokenFilter(jwtSecret), UsernamePasswordAuthenticationFilter.class);
