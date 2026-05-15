@@ -1,6 +1,5 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.service.CloudinaryService;
 import com.cyberlearnix.shared.service.GoogleDriveService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,9 +30,6 @@ public class MaterialUploadController {
     private static final String AUTH_REQUIRED = "Authentication required";
     private static final String KEY_ERROR = "error";
     private static final String KEY_SUCCESS = "success";
-
-    @Autowired
-    private GoogleDriveService googleDriveService;
 
     @Autowired
     private GoogleDriveService googleDriveService;
