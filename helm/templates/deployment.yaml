@@ -112,6 +112,20 @@ spec:
                   key: redis-password
                   optional: true
             {{- end }}
+            {{- if or (eq $name "course-service") (eq $name "cms-service") }}
+            - name: GOOGLE_DRIVE_CREDENTIALS_JSON_B64
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: google-drive-credentials-json-b64
+                  optional: true
+            - name: GOOGLE_DRIVE_FOLDER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: google-drive-folder-id
+                  optional: true
+            {{- end }}
 
           resources:
             {{- toYaml $svc.resources | nindent 12 }}

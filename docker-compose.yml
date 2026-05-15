@@ -170,6 +170,8 @@ services:
       - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
       - USER_SERVICE_URL=http://user-service:8081
       - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
+      - GOOGLE_DRIVE_CREDENTIALS_JSON_B64=${GOOGLE_DRIVE_CREDENTIALS_JSON_B64:-}
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -398,6 +400,8 @@ services:
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
       - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
+      - GOOGLE_DRIVE_CREDENTIALS_JSON_B64=${GOOGLE_DRIVE_CREDENTIALS_JSON_B64:-}
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
