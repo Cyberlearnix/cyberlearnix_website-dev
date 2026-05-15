@@ -1,6 +1,5 @@
 package com.cyberlearnix.course.controller;
 
-import com.cyberlearnix.shared.service.CloudinaryService;
 import com.cyberlearnix.shared.service.GoogleDriveService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,14 +14,14 @@ import java.io.InputStream;
 import java.util.Map;
 
 /**
- * Handles all media uploads (images, videos, documents) to Cloudinary.
- * All uploaded content is stored on Cloudinary CDN; only the secure_url
+ * Handles all media uploads (images, videos, documents) to Google Drive.
+ * All uploaded content is stored on Google Drive; the viewUrl / streamUrl
  * is returned and saved in the database.
  *
  * Upload Flow:
  *   1. Frontend sends multipart/form-data POST to /api/materials/upload
- *   2. Backend uploads to Cloudinary, gets secure_url
- *   3. Frontend uses that URL when saving course/lecture/profile data
+ *   2. Backend uploads to Google Drive, gets fileId + URLs
+ *   3. Frontend uses those URLs when saving course/lecture/profile data
  */
 @RestController
 @RequestMapping("/api/materials")
@@ -33,9 +32,6 @@ public class MaterialUploadController {
     private static final String KEY_SUCCESS = "success";
 
     @Autowired
-    private CloudinaryService cloudinaryService;
-
-    @Autowired
     private GoogleDriveService googleDriveService;
 
     /**
@@ -43,7 +39,7 @@ public class MaterialUploadController {
      * POST /api/materials/upload/thumbnail
      * Header: Authorization: Bearer <token>
      * Body: multipart/form-data { file: <image file> }
-     * Returns: { "success": true, "url": "https://res.cloudinary.com/..." }
+     * Returns: { "success": true, "url": "https://drive.google.com/uc?export=view&id=...", "fileId", "viewUrl", "streamUrl", "name", "folder" }
      */
     @PostMapping(value = "/upload/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadThumbnail(
@@ -53,6 +49,10 @@ public class MaterialUploadController {
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
+        }
+        if (!googleDriveService.isEnabled()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(KEY_ERROR, "Google Drive upload is not configured on this server"));
         }
 
         // Validate type
@@ -67,8 +67,17 @@ public class MaterialUploadController {
         }
 
         try {
-            String url = cloudinaryService.uploadImage(file, "cyberlearnix/thumbnails");
-            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url, "folder", "thumbnails"));
+            Map<String, String> result = googleDriveService.uploadFile(file);
+            String fileId = result.get("fileId");
+            return ResponseEntity.ok(Map.of(
+                    KEY_SUCCESS, true,
+                    "fileId",    fileId,
+                    "url",       "https://drive.google.com/uc?export=view&id=" + fileId,
+                    "viewUrl",   result.get("viewUrl"),
+                    "streamUrl", result.get("streamUrl"),
+                    "name",      result.get("name"),
+                    "folder",    "thumbnails"
+            ));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -81,10 +90,7 @@ public class MaterialUploadController {
      * POST /api/materials/upload/module-image
      * Header: Authorization: Bearer <token>  (any logged-in user)
      * Body: multipart/form-data { file: <image file> }
-     * Returns: { "success": true, "url": "https://res.cloudinary.com/dt6rxrpqr/image/upload/cyberlearnix/modules/...", "folder": "modules" }
-     *
-     * Images land in Cloudinary folder  cyberlearnix/modules/
-     * so the URL clearly shows it belongs to a chapter/sub-chapter, not a course thumbnail.
+     * Returns: { "success": true, "url": "https://drive.google.com/uc?export=view&id=...", "fileId", "viewUrl", "streamUrl", "name", "folder": "modules" }
      */
     @PostMapping(value = "/upload/module-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadModuleImage(
@@ -94,6 +100,10 @@ public class MaterialUploadController {
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
+        }
+        if (!googleDriveService.isEnabled()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(KEY_ERROR, "Google Drive upload is not configured on this server"));
         }
 
         String contentType = file.getContentType();
@@ -106,8 +116,17 @@ public class MaterialUploadController {
         }
 
         try {
-            String url = cloudinaryService.uploadImage(file, "cyberlearnix/modules");
-            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url, "folder", "modules"));
+            Map<String, String> result = googleDriveService.uploadFile(file);
+            String fileId = result.get("fileId");
+            return ResponseEntity.ok(Map.of(
+                    KEY_SUCCESS, true,
+                    "fileId",    fileId,
+                    "url",       "https://drive.google.com/uc?export=view&id=" + fileId,
+                    "viewUrl",   result.get("viewUrl"),
+                    "streamUrl", result.get("streamUrl"),
+                    "name",      result.get("name"),
+                    "folder",    "modules"
+            ));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -116,11 +135,11 @@ public class MaterialUploadController {
     }
 
     /**
-     * Upload a lecture video.
+     * Upload a lecture video to Google Drive.
      * POST /api/materials/upload/video
      * Header: Authorization: Bearer <token>
      * Body: multipart/form-data { file: <video file> }
-     * Returns: { "success": true, "url": "https://res.cloudinary.com/...", "duration": 120 }
+     * Returns: { "success": true, "fileId", "viewUrl", "streamUrl", "name" }
      */
     @PostMapping(value = "/upload/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadVideo(
@@ -136,6 +155,10 @@ public class MaterialUploadController {
         if (!"admin".equals(userRole) && !"teacher".equals(userRole) && !"dual".equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only teachers and admins can upload videos"));
         }
+        if (!googleDriveService.isEnabled()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(KEY_ERROR, "Google Drive upload is not configured on this server"));
+        }
 
         // Validate type
         String contentType = file.getContentType();
@@ -149,8 +172,14 @@ public class MaterialUploadController {
         }
 
         try {
-            String url = cloudinaryService.uploadVideo(file, "cyberlearnix/lectures");
-            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
+            Map<String, String> result = googleDriveService.uploadFile(file);
+            return ResponseEntity.ok(Map.of(
+                    KEY_SUCCESS, true,
+                    "fileId",    result.get("fileId"),
+                    "viewUrl",   result.get("viewUrl"),
+                    "streamUrl", result.get("streamUrl"),
+                    "name",      result.get("name")
+            ));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -159,11 +188,11 @@ public class MaterialUploadController {
     }
 
     /**
-     * Upload a document/attachment (PDF, ZIP, etc.)
+     * Upload a document/attachment (PDF, ZIP, etc.) to Google Drive.
      * POST /api/materials/upload/document
      * Header: Authorization: Bearer <token>
      * Body: multipart/form-data { file: <document file> }
-     * Returns: { "success": true, "url": "https://res.cloudinary.com/..." }
+     * Returns: { "success": true, "fileId", "viewUrl", "streamUrl", "name" }
      */
     @PostMapping(value = "/upload/document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadDocument(
@@ -178,15 +207,25 @@ public class MaterialUploadController {
         if (!"admin".equals(userRole) && !"teacher".equals(userRole) && !"dual".equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only teachers and admins can upload documents"));
         }
+        if (!googleDriveService.isEnabled()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(KEY_ERROR, "Google Drive upload is not configured on this server"));
+        }
 
-        // Max 50MB
-        if (file.getSize() > 50L * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Document must be under 50MB"));
+        // Max 100MB
+        if (file.getSize() > 100L * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Document must be under 100MB"));
         }
 
         try {
-            String url = cloudinaryService.uploadDocument(file, "cyberlearnix/attachments");
-            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
+            Map<String, String> result = googleDriveService.uploadFile(file);
+            return ResponseEntity.ok(Map.of(
+                    KEY_SUCCESS, true,
+                    "fileId",    result.get("fileId"),
+                    "viewUrl",   result.get("viewUrl"),
+                    "streamUrl", result.get("streamUrl"),
+                    "name",      result.get("name")
+            ));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -345,8 +384,9 @@ public class MaterialUploadController {
     }
 
     /**
-     * Upload a banner or promo image.
+     * Upload a banner or promo image to Google Drive.
      * POST /api/materials/upload/banner
+     * Returns: { "success": true, "url": "https://drive.google.com/uc?export=view&id=...", "fileId", "viewUrl", "streamUrl", "name" }
      */
     @PostMapping(value = "/upload/banner", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadBanner(
@@ -360,6 +400,10 @@ public class MaterialUploadController {
         if (!"admin".equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(KEY_ERROR, "Only admins can upload banners"));
         }
+        if (!googleDriveService.isEnabled()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(KEY_ERROR, "Google Drive upload is not configured on this server"));
+        }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
@@ -367,8 +411,16 @@ public class MaterialUploadController {
         }
 
         try {
-            String url = cloudinaryService.uploadImage(file, "cyberlearnix/banners");
-            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "url", url));
+            Map<String, String> result = googleDriveService.uploadFile(file);
+            String fileId = result.get("fileId");
+            return ResponseEntity.ok(Map.of(
+                    KEY_SUCCESS, true,
+                    "fileId",    fileId,
+                    "url",       "https://drive.google.com/uc?export=view&id=" + fileId,
+                    "viewUrl",   result.get("viewUrl"),
+                    "streamUrl", result.get("streamUrl"),
+                    "name",      result.get("name")
+            ));
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -67,6 +67,7 @@ appConfig:
   ADMIN_SERVICE_URL: "http://admin-service:8090"
   INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
   CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app"
+  SERVER_COOKIE_SECURE: "true"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
   # JVM heap size optimization for 4 CPU / 16GB server
