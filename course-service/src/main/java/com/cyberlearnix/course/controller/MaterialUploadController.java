@@ -41,7 +41,7 @@ public class MaterialUploadController {
      * Body: multipart/form-data { file: <image file> }
      * Returns: { "success": true, "url": "https://drive.google.com/uc?export=view&id=...", "fileId", "viewUrl", "streamUrl", "name", "folder" }
      */
-    @PostMapping(value = "/upload/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = {"/upload/thumbnail", "/drive/upload/thumbnail"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadThumbnail(
             @RequestParam("file") MultipartFile file,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
