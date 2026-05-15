@@ -427,4 +427,39 @@ public class MaterialUploadController {
                     .body(Map.of(KEY_SUCCESS, false, KEY_ERROR, "Banner upload failed: " + msg));
         }
     }
+
+    // ─── Drive-prefixed image upload aliases (matches frontend /drive/upload/* calls) ─
+
+    /**
+     * POST /api/materials/drive/upload/thumbnail  — alias for /upload/thumbnail
+     */
+    @PostMapping(value = "/drive/upload/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> driveUploadThumbnail(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        return uploadThumbnail(file, userId, userRole);
+    }
+
+    /**
+     * POST /api/materials/drive/upload/module-image  — alias for /upload/module-image
+     */
+    @PostMapping(value = "/drive/upload/module-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> driveUploadModuleImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        return uploadModuleImage(file, userId, userRole);
+    }
+
+    /**
+     * POST /api/materials/drive/upload/banner  — alias for /upload/banner
+     */
+    @PostMapping(value = "/drive/upload/banner", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> driveUploadBanner(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        return uploadBanner(file, userId, userRole);
+    }
 }
