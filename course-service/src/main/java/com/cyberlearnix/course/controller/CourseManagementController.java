@@ -17,6 +17,7 @@ import com.cyberlearnix.shared.entity.course.ContentReview;
 import com.cyberlearnix.shared.entity.course.ContentUpdate;
 import com.cyberlearnix.shared.entity.course.Banner;
 import com.cyberlearnix.shared.entity.course.PromoBanner;
+import com.cyberlearnix.shared.entity.course.LiveSessionContent;
 import com.cyberlearnix.shared.repository.course.*;
 import com.cyberlearnix.course.client.EnrollmentServiceClient;
 import com.cyberlearnix.course.client.UserServiceClient;
@@ -69,6 +70,9 @@ public class CourseManagementController {
 
     @Autowired
     private QuestionOptionRepository optionRepository;
+
+    @Autowired
+    private LiveSessionContentRepository liveSessionRepository;
 
     @Autowired
     private CourseManagementService courseService;
@@ -442,6 +446,9 @@ public class CourseManagementController {
             } else if (("LECTURE".equals(type) || "VIDEO".equals(type) || "IMAGE".equals(type) || "TEXT".equals(type)) && content instanceof LectureContent) {
                 LectureContent lect = (LectureContent) content;
                 if (contentDTO.getVideoUrl() != null) lect.setVideoUrl(contentDTO.getVideoUrl());
+                if (contentDTO.getVideoWidth() != null) lect.setVideoWidth(contentDTO.getVideoWidth());
+                if (contentDTO.getVideoHeight() != null) lect.setVideoHeight(contentDTO.getVideoHeight());
+                if (contentDTO.getVideoFrameHtml() != null) lect.setVideoFrameHtml(contentDTO.getVideoFrameHtml());
                 if (contentDTO.getImageUrl() != null) lect.setImageUrl(contentDTO.getImageUrl());
                 if (contentDTO.getContentText() != null) lect.setContentText(contentDTO.getContentText());
                 if (contentDTO.getContentBlocks() != null) lect.setContentBlocks(contentDTO.getContentBlocks());
@@ -456,6 +463,21 @@ public class CourseManagementController {
                 if (contentDTO.getPassingScore() != null) quiz.setPassingScore(contentDTO.getPassingScore());
                 if (contentDTO.getMaxAttempts() != null) quiz.setMaxAttempts(contentDTO.getMaxAttempts());
                 savedContent = quizRepository.save(quiz);
+            } else if ("LIVE".equals(type) && content instanceof LiveSessionContent) {
+                LiveSessionContent live = (LiveSessionContent) content;
+                if (contentDTO.getPlatform() != null) live.setPlatform(contentDTO.getPlatform());
+                if (contentDTO.getMeetingUrl() != null) live.setMeetingUrl(contentDTO.getMeetingUrl());
+                if (contentDTO.getMeetingId() != null) live.setMeetingId(contentDTO.getMeetingId());
+                if (contentDTO.getMeetingPassword() != null) live.setMeetingPassword(contentDTO.getMeetingPassword());
+                if (contentDTO.getAgenda() != null) live.setAgenda(contentDTO.getAgenda());
+                if (contentDTO.getRecordSession() != null) live.setRecordSession(contentDTO.getRecordSession());
+                if (contentDTO.getSessionAt() != null) {
+                    try {
+                        live.setSessionAt(LocalDateTime.parse(contentDTO.getSessionAt()));
+                    } catch (Exception ignored) {}
+                }
+                if (contentDTO.getDurationMinutes() != null) live.setDurationMinutes(contentDTO.getDurationMinutes());
+                savedContent = liveSessionRepository.save(live);
             } else {
                 savedContent = contentRepository.save(content);
             }
@@ -836,6 +858,9 @@ public class CourseManagementController {
         } else if ("LECTURE".equals(type) || "VIDEO".equals(type)) {
             LectureContent lect = new LectureContent();
             lect.setVideoUrl(contentDTO.getVideoUrl());
+            lect.setVideoWidth(contentDTO.getVideoWidth());
+            lect.setVideoHeight(contentDTO.getVideoHeight());
+            lect.setVideoFrameHtml(contentDTO.getVideoFrameHtml());
             lect.setContentText(contentDTO.getContentText());
             lect.setIsPreview(contentDTO.getIsPreview() != null ? contentDTO.getIsPreview() : false);
             lect.setAttachmentUrl(contentDTO.getAttachmentUrl());
@@ -864,6 +889,21 @@ public class CourseManagementController {
             quiz.setPassingScore(contentDTO.getPassingScore());
             quiz.setMaxAttempts(contentDTO.getMaxAttempts());
             return quiz;
+        } else if ("LIVE".equals(type)) {
+            LiveSessionContent live = new LiveSessionContent();
+            live.setPlatform(contentDTO.getPlatform());
+            live.setMeetingUrl(contentDTO.getMeetingUrl());
+            live.setMeetingId(contentDTO.getMeetingId());
+            live.setMeetingPassword(contentDTO.getMeetingPassword());
+            live.setAgenda(contentDTO.getAgenda());
+            live.setRecordSession(contentDTO.getRecordSession() != null ? contentDTO.getRecordSession() : true);
+            if (contentDTO.getSessionAt() != null) {
+                try {
+                    live.setSessionAt(LocalDateTime.parse(contentDTO.getSessionAt()));
+                } catch (Exception ignored) {}
+            }
+            live.setDurationMinutes(contentDTO.getDurationMinutes());
+            return live;
         }
         return null;
     }
@@ -877,6 +917,8 @@ public class CourseManagementController {
             return lectureRepository.save((LectureContent) content);
         } else if (content instanceof QuizContent) {
             return quizRepository.save((QuizContent) content);
+        } else if (content instanceof LiveSessionContent) {
+            return liveSessionRepository.save((LiveSessionContent) content);
         }
         return contentRepository.save(content);
     }
@@ -945,6 +987,9 @@ public class CourseManagementController {
 
         if (content instanceof LectureContent lecture) {
             response.put("videoUrl", lecture.getVideoUrl());
+            response.put("videoWidth", lecture.getVideoWidth());
+            response.put("videoHeight", lecture.getVideoHeight());
+            response.put("videoFrameHtml", lecture.getVideoFrameHtml());
             response.put("imageUrl", lecture.getImageUrl());
             response.put("contentText", lecture.getContentText());
             response.put("contentBlocks", lecture.getContentBlocks());
@@ -979,6 +1024,15 @@ public class CourseManagementController {
             response.put("timeLimitMinutes", quiz.getTimeLimitMinutes());
             response.put("passingScore", quiz.getPassingScore());
             response.put("maxAttempts", quiz.getMaxAttempts());
+        } else if (content instanceof LiveSessionContent live) {
+            response.put("platform", live.getPlatform());
+            response.put("meetingUrl", live.getMeetingUrl());
+            response.put("meetingId", live.getMeetingId());
+            response.put("meetingPassword", live.getMeetingPassword());
+            response.put("agenda", live.getAgenda());
+            response.put("recordSession", live.getRecordSession());
+            response.put("sessionAt", live.getSessionAt());
+            response.put("durationMinutes", live.getDurationMinutes());
         }
 
         return response;

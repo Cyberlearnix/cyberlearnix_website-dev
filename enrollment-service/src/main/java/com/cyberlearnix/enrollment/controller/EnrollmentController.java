@@ -346,10 +346,14 @@ public class EnrollmentController {
                 if (profile != null) {
                     row.put("studentName", profile.getOrDefault("fullName", profile.getOrDefault("full_name", "Unknown")));
                     row.put("studentEmail", profile.getOrDefault("email", ""));
+                    row.put("studentPhone", profile.getOrDefault("phone", ""));
+                    row.put("studentAvatar", profile.getOrDefault("photoUrl", profile.getOrDefault("avatar_url", "")));
                 }
             } catch (Exception e) {
                 row.put("studentName", "Student #" + enrollment.getId());
                 row.put("studentEmail", "");
+                row.put("studentPhone", "");
+                row.put("studentAvatar", "");
             }
             studentProgress.add(row);
         }

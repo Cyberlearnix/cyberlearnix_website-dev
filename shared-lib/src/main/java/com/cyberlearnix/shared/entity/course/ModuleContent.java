@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
         @JsonSubTypes.Type(value = LectureContent.class, name = "IMAGE"),
         @JsonSubTypes.Type(value = LectureContent.class, name = "TEXT"),
         @JsonSubTypes.Type(value = QuizContent.class, name = "QUIZ"),
-        @JsonSubTypes.Type(value = QuizContent.class, name = "EXAM")
+        @JsonSubTypes.Type(value = QuizContent.class, name = "EXAM"),
+        @JsonSubTypes.Type(value = LiveSessionContent.class, name = "LIVE")
 })
 public abstract class ModuleContent {
     @Id

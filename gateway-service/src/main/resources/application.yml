@@ -191,7 +191,7 @@ spring:
         - id: admin-service
           uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
           predicates:
-            - Path=/api/admin/**
+            - Path=/api/admin/**, /api/meetings/**
 
         # Instructor Service
         - id: instructor-service

@@ -125,7 +125,7 @@ public class PaymentService {
         double discountAmount = 0.0;
         String appliedCoupon = null;
         if (couponCode != null && !couponCode.isBlank()) {
-            discountAmount = couponService.applyAndConsume(couponCode, resolvedAmount);
+            discountAmount = couponService.calculateDiscount(couponCode, resolvedAmount);
             resolvedAmount = Math.max(1.0, resolvedAmount - discountAmount);
             appliedCoupon = couponCode.trim().toUpperCase();
         } else if (config.isDiscountEnabled() && config.getDiscountValue() != null && config.getDiscountValue() > 0) {
@@ -318,6 +318,8 @@ public class PaymentService {
                 r.setMihpayid(mihpayid);
                 r.setPaymentMode(resolvePaymentMode(mode));
                 r.setAmountPaid(Double.parseDouble(amount));
+                r.setCouponCode(txn.getCouponCode());
+                r.setDiscountAmount(txn.getDiscountAmount());
                 responseRepository.save(r);
             });
         } else if (payuSaysSuccess) {
@@ -431,6 +433,8 @@ public class PaymentService {
                     r.setPaymentMode(resolvePaymentMode(mode));
                     r.setAmountPaid(Double.parseDouble(amount));
                     r.setBankRefNum(bankRefNum);
+                    r.setCouponCode(txn.getCouponCode());
+                    r.setDiscountAmount(txn.getDiscountAmount());
                 }
                 try { r.setPayuResponse(objectMapper.writeValueAsString(params)); } catch (Exception ignored) {}
                 responseRepository.save(r);
@@ -438,7 +442,12 @@ public class PaymentService {
         }
 
         if (isSuccess) {
-            // 7. Create student enrollment
+            // 7. Consume coupon usage (only if it's the first time marking this as PAID)
+            if (txn.getCouponCode() != null && !"FORM-DISCOUNT".equals(txn.getCouponCode())) {
+                couponService.consumeCoupon(txn.getCouponCode());
+            }
+
+            // 8. Create student enrollment
             enrollStudentFromWebhook(txn, txnid);
 
             // 8. Send success email with PDF receipt
@@ -499,9 +508,15 @@ public class PaymentService {
                 return;
             }
 
+            // Also check effectiveCourseIds (multi-course support)
+            List<Long> allCourses = config.getEffectiveCourseIds();
+            if (allCourses.isEmpty()) {
+                allCourses = List.of(config.getCourseId());
+            }
+
             String tempPassword = "Welcome@" + UUID.randomUUID().toString().substring(0, 8);
             Map<String, Object> regReq = Map.of(
-                    KEY_EMAIL, txn.getStudentEmail(),
+                    "email", txn.getStudentEmail(),
                     "password", tempPassword,
                     "role", "student");
             Map<String, Object> createdUser = userClient.registerUser("", regReq);
@@ -509,12 +524,9 @@ public class PaymentService {
                     ? (String) createdUser.get("id") : null;
 
             if (studentUuid != null) {
-                enrollmentService.bulkAssign(studentUuid, courseIdsToEnroll);
+                enrollmentService.bulkAssign(studentUuid, allCourses);
                 log.info("[PayU Webhook] Enrolled student {} in {} course(s): {}",
-                        txn.getStudentEmail(), courseIdsToEnroll.size(), courseIdsToEnroll);
-                enrollmentService.bulkAssign(studentUuid, List.of(config.getCourseId()));
-                log.info("[PayU Webhook] Created enrollment for student: {}, course: {}",
-                        txn.getStudentEmail(), config.getCourseId());
+                        txn.getStudentEmail(), allCourses.size(), allCourses);
             } else {
                 log.warn("[PayU Webhook] registerUser did not return id for: {}", txn.getStudentEmail());
             }
