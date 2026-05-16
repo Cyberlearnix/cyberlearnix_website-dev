@@ -210,9 +210,22 @@ public class TeamsService {
         entity.setRecurrenceEndDate(null);
         entity.setCreatedBy(adminId);
         entity.setStatus("SCHEDULED");
+        entity.setCourseId(request.getCourseId());
+        entity.setBatchId(request.getBatchId());
         entity.setInviteesJson(serializeInvitees(request.getInvitees()));
 
         return toResponse(meetingRepository.save(entity));
+    }
+
+    /**
+     * Returns meetings for a specific course (student-facing).
+     */
+    public List<TeamsMeetingResponse> getMeetingsByCourseId(Long courseId) {
+        return meetingRepository.findAllByCourseIdOrderByStartDateTimeAsc(courseId)
+                .stream()
+                .filter(m -> !"CANCELLED".equals(m.getStatus()))
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -316,6 +329,8 @@ public class TeamsService {
         meeting.setRepeatType(null);
         meeting.setRepeatEvery(null);
         meeting.setRecurrenceEndDate(null);
+        meeting.setCourseId(request.getCourseId());
+        meeting.setBatchId(request.getBatchId());
         // Only update invitees when the field is explicitly included in the request.
         // - Omit "invitees" in JSON  → existing invitee list is preserved
         // - Send "invitees": []       → all invitees removed
@@ -431,6 +446,8 @@ public class TeamsService {
                 .description(m.getDescription())
                 .startDateTime(m.getStartDateTime())
                 .endDateTime(m.getEndDateTime())
+                .courseId(m.getCourseId())
+                .batchId(m.getBatchId())
                 .meetingId(m.getGraphMeetingId())
                 .joinUrl(m.getJoinUrl())
                 .password(m.getPassword())

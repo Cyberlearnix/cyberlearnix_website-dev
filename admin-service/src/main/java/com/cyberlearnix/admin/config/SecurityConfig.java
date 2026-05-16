@@ -30,6 +30,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/auth/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/meetings/course/**").hasAnyRole("ADMIN", "STUDENT", "TEACHER", "DUAL")
                         .anyRequest().hasRole("ADMIN")
                 )
                 .addFilterBefore(new JwtTokenFilter(jwtSecret), UsernamePasswordAuthenticationFilter.class)

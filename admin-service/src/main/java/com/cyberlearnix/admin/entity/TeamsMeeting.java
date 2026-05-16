@@ -56,9 +56,14 @@ public class TeamsMeeting {
     @Column(name = "end_date_time", nullable = false)
     private LocalDateTime endDateTime;
 
-    /** Optional description shown to participants */
     @Column(length = 2000)
     private String description;
+
+    @Column(name = "course_id")
+    private Long courseId;
+
+    @Column(name = "batch_id")
+    private String batchId;
 
     /** SCHEDULED | CANCELLED */
     @Column(nullable = false)

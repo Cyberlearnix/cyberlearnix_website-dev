@@ -14,6 +14,15 @@ public class LectureContent extends ModuleContent {
     @Column(name = "video_url")
     private String videoUrl;
 
+    @Column(name = "video_width")
+    private String videoWidth;
+
+    @Column(name = "video_height")
+    private String videoHeight;
+
+    @Column(name = "video_frame_html", columnDefinition = "TEXT")
+    private String videoFrameHtml;
+
     // For IMAGE content type: stores the image URL
     @Column(name = "image_url")
     private String imageUrl;
