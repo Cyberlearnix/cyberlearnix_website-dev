@@ -124,6 +124,9 @@ public class CourseManagementController {
         course.setDifficultyLevel(courseDTO.getDifficultyLevel());
         course.setDuration(courseDTO.getDuration());
         course.setActive(courseDTO.getIsActive() != null ? courseDTO.getIsActive() : true);
+        if (courseDTO.getCertificateEnabled() != null) course.setCertificateEnabled(courseDTO.getCertificateEnabled());
+        if (courseDTO.getInstructorName() != null) course.setInstructorName(courseDTO.getInstructorName());
+        if (courseDTO.getCertificateImageUrl() != null) course.setCertificateImageUrl(courseDTO.getCertificateImageUrl());
 
         course.setCreatedBy(userId);
         course.setCreatedAt(LocalDateTime.now());
@@ -179,6 +182,9 @@ public class CourseManagementController {
             if (courseDTO.getDifficultyLevel() != null) existingCourse.setDifficultyLevel(courseDTO.getDifficultyLevel());
             if (courseDTO.getDuration() != null) existingCourse.setDuration(courseDTO.getDuration());
             if (courseDTO.getIsActive() != null) existingCourse.setActive(courseDTO.getIsActive());
+            if (courseDTO.getCertificateEnabled() != null) existingCourse.setCertificateEnabled(courseDTO.getCertificateEnabled());
+            if (courseDTO.getInstructorName() != null) existingCourse.setInstructorName(courseDTO.getInstructorName());
+            if (courseDTO.getCertificateImageUrl() != null) existingCourse.setCertificateImageUrl(courseDTO.getCertificateImageUrl());
             existingCourse.setUpdatedAt(LocalDateTime.now());
 
             Course savedCourse = courseRepository.save(existingCourse);

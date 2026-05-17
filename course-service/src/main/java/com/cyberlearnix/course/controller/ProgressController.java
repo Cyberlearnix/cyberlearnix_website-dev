@@ -1,10 +1,15 @@
 package com.cyberlearnix.course.controller;
 
+import com.cyberlearnix.shared.entity.course.Certificate;
 import com.cyberlearnix.shared.entity.course.ContentProgress;
+import com.cyberlearnix.shared.entity.course.Course;
 import com.cyberlearnix.shared.entity.course.ModuleContent;
+import com.cyberlearnix.shared.repository.course.CertificateRepository;
 import com.cyberlearnix.shared.repository.course.ContentProgressRepository;
+import com.cyberlearnix.shared.repository.course.CourseRepository;
 import com.cyberlearnix.shared.repository.course.ModuleContentRepository;
 import com.cyberlearnix.course.client.EnrollmentServiceClient;
+import com.cyberlearnix.course.client.UserServiceClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +30,16 @@ public class ProgressController {
     private ModuleContentRepository contentRepository;
 
     @Autowired
+    private CourseRepository courseRepository;
+
+    @Autowired
+    private CertificateRepository certificateRepository;
+
+    @Autowired
     private EnrollmentServiceClient enrollmentServiceClient;
+
+    @Autowired
+    private UserServiceClient userServiceClient;
 
     @PostMapping("/update")
     public ResponseEntity<?> updateProgress(@RequestBody Map<String, Object> payload,
@@ -109,6 +123,53 @@ public class ProgressController {
             }
             enrollmentServiceClient.updateProgress(progressUpdate);
         } catch (Exception ignored) {
+        }
+
+        // Auto-issue certificate when course is completed (100%) if certificate is enabled
+        if (percentage >= 100) {
+            try {
+                courseRepository.findById(courseId).ifPresent(course -> {
+                    if (Boolean.TRUE.equals(course.getCertificateEnabled())) {
+                        // Only issue once — skip if already issued
+                        boolean alreadyIssued = certificateRepository
+                                .findByStudentIdAndCourseId(studentId, courseId)
+                                .isPresent();
+                        if (!alreadyIssued) {
+                            String studentName = resolveStudentName(studentId);
+                            Certificate cert = new Certificate();
+                            cert.setStudentId(studentId);
+                            cert.setStudentName(studentName);
+                            cert.setCourseId(courseId);
+                            cert.setCourseTitle(course.getTitle());
+                            cert.setInstructorName(course.getInstructorName() != null
+                                    ? course.getInstructorName()
+                                    : "CyberLearnix Instructor");
+                            cert.setCertificateImageUrl(course.getCertificateImageUrl());
+                            cert.setType(Certificate.CertificateType.CERTIFICATE);
+                            cert.setIssuedAt(LocalDateTime.now());
+                            cert.setCreatedAt(LocalDateTime.now());
+                            cert.setCertificateId("CLX-" + courseId + "-" + studentId.replaceAll("[^a-zA-Z0-9]", "").substring(0, Math.min(8, studentId.length())) + "-" + System.currentTimeMillis());
+                            certificateRepository.save(cert);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                // Certificate issuance failure must NOT break progress update
+                System.err.println("[CertificateAutoIssue] Failed for student=" + studentId + " course=" + courseId + ": " + e.getMessage());
+            }
+        }
+    }
+
+    private String resolveStudentName(String studentId) {
+        try {
+            Map<String, Object> profile = userServiceClient.getUserProfile(studentId);
+            if (profile == null) return studentId;
+            Object name = profile.get("fullName");
+            if (name == null) name = profile.get("full_name");
+            if (name == null) name = profile.get("name");
+            return name != null ? name.toString() : studentId;
+        } catch (Exception e) {
+            return studentId;
         }
     }
 }

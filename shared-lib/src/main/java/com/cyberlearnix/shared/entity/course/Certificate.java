@@ -27,6 +27,15 @@ public class Certificate {
     
     @Column(name = "course_title")
     private String courseTitle;
+
+    @Column(name = "student_name")
+    private String studentName;
+
+    @Column(name = "instructor_name")
+    private String instructorName;
+
+    @Column(name = "certificate_image_url", length = 1000)
+    private String certificateImageUrl;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "type")
