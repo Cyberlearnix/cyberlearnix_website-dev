@@ -1737,7 +1737,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8083/actuator/health",
+              "raw": "https://cyberlearnix.com/actuator/health",
               "protocol": "http",
               "host": ["localhost"],
               "port": "8083",
