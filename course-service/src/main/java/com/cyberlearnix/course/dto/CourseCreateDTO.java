@@ -15,4 +15,7 @@ public class CourseCreateDTO {
     private Integer gstPercent;
     private Double finalPrice;
     private Boolean isActive;
+    private Boolean certificateEnabled;
+    private String instructorName;
+    private String certificateImageUrl;
 }

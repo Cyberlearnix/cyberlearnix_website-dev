@@ -66,4 +66,19 @@ public class CertificateController {
             return ResponseEntity.ok(templateRepository.save(template));
         }).orElse(ResponseEntity.notFound().build());
     }
+
+    /** Public endpoint — no auth required — used by QR verify link on the certificate */
+    @GetMapping("/verify/{credentialId}")
+    public ResponseEntity<?> verifyCertificate(@PathVariable String credentialId) {
+        return certificateRepository.findByCertificateId(credentialId)
+                .map(cert -> ResponseEntity.ok(Map.of(
+                        "valid", true,
+                        "credentialId", cert.getCertificateId(),
+                        "studentName", cert.getStudentName() != null ? cert.getStudentName() : "",
+                        "courseTitle", cert.getCourseTitle() != null ? cert.getCourseTitle() : "",
+                        "instructorName", cert.getInstructorName() != null ? cert.getInstructorName() : "",
+                        "issuedAt", cert.getIssuedAt() != null ? cert.getIssuedAt().toString() : ""
+                )))
+                .orElse(ResponseEntity.ok(Map.of("valid", false)));
+    }
 }
