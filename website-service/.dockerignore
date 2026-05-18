@@ -1,0 +1,35 @@
+# Development & build artifacts
+node_modules/
+dist/
+.env
+.env.*
+*.local
+
+# Frontend source (not needed in the backend image)
+src/
+public/
+scripts/
+shop/
+forms/
+admin/
+
+# HTML pages (served by the frontend, not server.js)
+*.html
+
+# Documentation
+documentation-archive/
+
+# Frontend tooling configs
+vite.config.js
+eslint.config.js
+write-css.cjs
+
+# Kubernetes manifests (not needed inside the image)
+k8s/
+
+# Misc
+.git/
+.squad/
+*.bat
+*.sh
+*.md
