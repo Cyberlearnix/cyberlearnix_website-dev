@@ -54,13 +54,13 @@ jobs:
     outputs:
       matrix: ${{ steps.decide.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
       # Path-based filtering so we only rebuild services that actually changed.
       # shared-lib changes trigger a full rebuild of all services.
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -136,10 +136,10 @@ jobs:
       matrix:
         service: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -161,7 +161,7 @@ jobs:
           comment_mode: off
 
       - name: Upload test report on failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-report-deploy-${{ matrix.service }}
@@ -180,11 +180,11 @@ jobs:
       matrix:
         service: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Cache Gradle dependency downloads — shaves 2-4 min off every build
       - name: Cache Gradle packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -234,7 +234,7 @@ jobs:
           mkdir -p /tmp/image-tags
           echo "${{ steps.meta.outputs.short-sha }}" > /tmp/image-tags/${{ matrix.service }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: image-tag-${{ matrix.service }}
           path: /tmp/image-tags/${{ matrix.service }}
@@ -254,12 +254,12 @@ jobs:
       (needs.build-push.result == 'success' || needs.build-push.result == 'skipped') &&
       needs.changes.result == 'success'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Collect the per-service {sha} files written above.
       # continue-on-error because the matrix may have been empty (nothing rebuilt).
       - name: Download image tag artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: image-tag-*
