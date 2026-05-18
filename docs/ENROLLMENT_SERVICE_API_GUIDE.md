@@ -1,6 +1,6 @@
 # Enrollment Service — Frontend API Guide
 
-**Base URL:** `http://localhost:8083`  
+**Base URL:** `https://cyberlearnix.com`  
 **Service:** enrollment-service  
 **Total APIs:** 36  
 
@@ -44,10 +44,10 @@ Fetches a form configuration linked to a formId.
 
 ```bash
 # Without token (public form)
-curl -X GET "http://localhost:8083/api/enrollments/config?formId=form_abc123"
+curl -X GET "https://cyberlearnix.com/api/enrollments/config?formId=form_abc123"
 
 # With token (private form)
-curl -X GET "http://localhost:8083/api/enrollments/config?formId=form_abc123&token=secret_token"
+curl -X GET "https://cyberlearnix.com/api/enrollments/config?formId=form_abc123&token=secret_token"
 ```
 
 **Success Response (200):**
@@ -94,7 +94,7 @@ Returns enrollments based on the caller's role. Role is detected from `X-User-Ro
 
 ```bash
 # Student: fetch their own enrollments
-curl -X GET "http://localhost:8083/api/enrollments" \
+curl -X GET "https://cyberlearnix.com/api/enrollments" \
   -H "X-User-Id: student123" \
   -H "X-User-Role: student"
 ```
@@ -125,7 +125,7 @@ curl -X GET "http://localhost:8083/api/enrollments" \
 
 ```bash
 # Admin: fetch ALL enrollments in the system
-curl -X GET "http://localhost:8083/api/enrollments" \
+curl -X GET "https://cyberlearnix.com/api/enrollments" \
   -H "X-User-Id: admin1" \
   -H "X-User-Role: admin"
 ```
@@ -139,14 +139,14 @@ curl -X GET "http://localhost:8083/api/enrollments" \
 
 ```bash
 # Teacher: fetch enrollments for their course
-curl -X GET "http://localhost:8083/api/enrollments?courseId=10" \
+curl -X GET "https://cyberlearnix.com/api/enrollments?courseId=10" \
   -H "X-User-Id: teacher1" \
   -H "X-User-Role: teacher"
 ```
 
 ```bash
 # Check if a specific student is enrolled in a specific course
-curl -X GET "http://localhost:8083/api/enrollments?studentId=student123&courseId=10" \
+curl -X GET "https://cyberlearnix.com/api/enrollments?studentId=student123&courseId=10" \
   -H "X-User-Id: student123" \
   -H "X-User-Role: student"
 ```
@@ -181,7 +181,7 @@ Directly creates an enrollment record. Used after admin approval or for free cou
 ```
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments" \
+curl -X POST "https://cyberlearnix.com/api/enrollments" \
   -H "Content-Type: application/json" \
   -d '{
     "studentId": "student123",
@@ -222,7 +222,7 @@ Updates the progress percentage of a specific enrollment. When progress reaches 
 
 ```bash
 # Update progress only
-curl -X PUT "http://localhost:8083/api/enrollments/5" \
+curl -X PUT "https://cyberlearnix.com/api/enrollments/5" \
   -H "Content-Type: application/json" \
   -d '{
     "progress": 75
@@ -245,7 +245,7 @@ curl -X PUT "http://localhost:8083/api/enrollments/5" \
 
 ```bash
 # Mark as completed with a specific timestamp
-curl -X PUT "http://localhost:8083/api/enrollments/5" \
+curl -X PUT "https://cyberlearnix.com/api/enrollments/5" \
   -H "Content-Type: application/json" \
   -d '{
     "progress": 100,
@@ -272,7 +272,7 @@ Same as PUT above but uses `studentId` + `courseId` instead of enrollment ID. Mo
 | `completedAt` | string (ISO datetime) | No | Manual completion timestamp |
 
 ```bash
-curl -X PATCH "http://localhost:8083/api/enrollments/progress" \
+curl -X PATCH "https://cyberlearnix.com/api/enrollments/progress" \
   -H "Content-Type: application/json" \
   -d '{
     "studentId": "student123",
@@ -323,7 +323,7 @@ Admin approves or rejects a payment for an enrollment application.
 
 ```bash
 # Approve a payment
-curl -X POST "http://localhost:8083/api/enrollments/verify-payment" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/verify-payment" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..." \
   -H "X-User-Id: admin1" \
@@ -334,7 +334,7 @@ curl -X POST "http://localhost:8083/api/enrollments/verify-payment" \
   }'
 
 # Reject a payment with a reason
-curl -X POST "http://localhost:8083/api/enrollments/verify-payment" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/verify-payment" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..." \
   -H "X-User-Id: admin1" \
@@ -371,7 +371,7 @@ Admin assigns a student to multiple courses at once (e.g., after offline payment
 | `courseIds` | array of numbers | Yes | List of course IDs to enroll in |
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/bulk-assign" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/bulk-assign" \
   -H "Content-Type: application/json" \
   -H "X-User-Role: admin" \
   -d '{
@@ -416,10 +416,10 @@ Admin creates and manages the application forms that students fill out to enroll
 
 ```bash
 # Get all active forms
-curl -X GET "http://localhost:8083/api/enrollments/forms"
+curl -X GET "https://cyberlearnix.com/api/enrollments/forms"
 
 # Get trashed (deleted) forms
-curl -X GET "http://localhost:8083/api/enrollments/forms?view=trash"
+curl -X GET "https://cyberlearnix.com/api/enrollments/forms?view=trash"
 ```
 
 **Success Response (200):**
@@ -459,10 +459,10 @@ curl -X GET "http://localhost:8083/api/enrollments/forms?view=trash"
 
 ```bash
 # Public form
-curl -X GET "http://localhost:8083/api/enrollments/forms/form_abc123"
+curl -X GET "https://cyberlearnix.com/api/enrollments/forms/form_abc123"
 
 # Private/token-protected form
-curl -X GET "http://localhost:8083/api/enrollments/forms/form_abc123?token=mySecretToken"
+curl -X GET "https://cyberlearnix.com/api/enrollments/forms/form_abc123?token=mySecretToken"
 ```
 
 **Success Response (200):** Single form object (same structure as list above).  
@@ -489,7 +489,7 @@ curl -X GET "http://localhost:8083/api/enrollments/forms/form_abc123?token=mySec
 | `endTime` | string (ISO) | No | Form closes at this time |
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/forms" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/forms" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "AI Masterclass Application",
@@ -534,7 +534,7 @@ curl -X POST "http://localhost:8083/api/enrollments/forms" \
 Replaces form fields. Send the complete updated form object.
 
 ```bash
-curl -X PUT "http://localhost:8083/api/enrollments/forms/form_abc123" \
+curl -X PUT "https://cyberlearnix.com/api/enrollments/forms/form_abc123" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Updated Course Application",
@@ -564,10 +564,10 @@ curl -X PUT "http://localhost:8083/api/enrollments/forms/form_abc123" \
 
 ```bash
 # Soft delete (recommended — moves to trash, can be restored)
-curl -X DELETE "http://localhost:8083/api/enrollments/forms/form_abc123"
+curl -X DELETE "https://cyberlearnix.com/api/enrollments/forms/form_abc123"
 
 # Permanent delete (cannot be undone)
-curl -X DELETE "http://localhost:8083/api/enrollments/forms/form_abc123?permanent=true"
+curl -X DELETE "https://cyberlearnix.com/api/enrollments/forms/form_abc123?permanent=true"
 ```
 
 **Success Response (200):**
@@ -581,7 +581,7 @@ curl -X DELETE "http://localhost:8083/api/enrollments/forms/form_abc123?permanen
 `POST /api/enrollments/forms/{id}/restore`
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/forms/form_abc123/restore"
+curl -X POST "https://cyberlearnix.com/api/enrollments/forms/form_abc123/restore"
 ```
 
 **Success Response (200):**
@@ -598,12 +598,12 @@ Enable or disable a form (open/close applications).
 
 ```bash
 # Disable form (stop accepting responses)
-curl -X PATCH "http://localhost:8083/api/enrollments/forms/form_abc123/active" \
+curl -X PATCH "https://cyberlearnix.com/api/enrollments/forms/form_abc123/active" \
   -H "Content-Type: application/json" \
   -d '{ "active": false }'
 
 # Enable form
-curl -X PATCH "http://localhost:8083/api/enrollments/forms/form_abc123/active" \
+curl -X PATCH "https://cyberlearnix.com/api/enrollments/forms/form_abc123/active" \
   -H "Content-Type: application/json" \
   -d '{ "active": true }'
 ```
@@ -621,7 +621,7 @@ curl -X PATCH "http://localhost:8083/api/enrollments/forms/form_abc123/active" \
 Creates a copy of the form with a new ID.
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/forms/form_abc123/duplicate"
+curl -X POST "https://cyberlearnix.com/api/enrollments/forms/form_abc123/duplicate"
 ```
 
 **Success Response (200):** New form object (copy of original with a new `id`).
@@ -647,10 +647,10 @@ A response is created each time a student submits an enrollment form. This is th
 
 ```bash
 # All active responses
-curl -X GET "http://localhost:8083/api/enrollments/responses"
+curl -X GET "https://cyberlearnix.com/api/enrollments/responses"
 
 # Trashed responses
-curl -X GET "http://localhost:8083/api/enrollments/responses?view=trash"
+curl -X GET "https://cyberlearnix.com/api/enrollments/responses?view=trash"
 ```
 
 **Success Response (200):**
@@ -690,7 +690,7 @@ curl -X GET "http://localhost:8083/api/enrollments/responses?view=trash"
 | `email` | Yes | Student's email |
 
 ```bash
-curl -X GET "http://localhost:8083/api/enrollments/responses/check?formId=form_abc123&email=rahul@example.com"
+curl -X GET "https://cyberlearnix.com/api/enrollments/responses/check?formId=form_abc123&email=rahul@example.com"
 ```
 
 **Success Response (200):**
@@ -718,7 +718,7 @@ Called when a student submits the enrollment application form.
 | `studentData` | string (JSON) | Yes | Stringified field values from the form |
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/responses" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/responses" \
   -H "Content-Type: application/json" \
   -d '{
     "formId": "form_abc123",
@@ -751,7 +751,7 @@ curl -X POST "http://localhost:8083/api/enrollments/responses" \
 Submit multiple student responses at once (import use case).
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/responses/bulk" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/responses/bulk" \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -785,7 +785,7 @@ Called after a successful PayU payment to mark the response as paid and trigger 
 | `amount` | number | Yes | Amount paid |
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/responses/101/finalize" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/responses/101/finalize" \
   -H "Content-Type: application/json" \
   -d '{
     "transactionId": "TXN1713340800000",
@@ -814,7 +814,7 @@ curl -X POST "http://localhost:8083/api/enrollments/responses/101/finalize" \
 Update student data, payment status, or transaction ID on an existing response.
 
 ```bash
-curl -X PUT "http://localhost:8083/api/enrollments/responses/101" \
+curl -X PUT "https://cyberlearnix.com/api/enrollments/responses/101" \
   -H "Content-Type: application/json" \
   -d '{
     "paymentStatus": "PAID",
@@ -833,7 +833,7 @@ curl -X PUT "http://localhost:8083/api/enrollments/responses/101" \
 Update a response using the PayU transaction ID (used in payment webhooks/callbacks).
 
 ```bash
-curl -X PUT "http://localhost:8083/api/enrollments/responses/by-txn/TXN1713340800000" \
+curl -X PUT "https://cyberlearnix.com/api/enrollments/responses/by-txn/TXN1713340800000" \
   -H "Content-Type: application/json" \
   -d '{
     "paymentStatus": "PAID",
@@ -858,10 +858,10 @@ curl -X PUT "http://localhost:8083/api/enrollments/responses/by-txn/TXN171334080
 
 ```bash
 # Soft delete
-curl -X DELETE "http://localhost:8083/api/enrollments/responses/101"
+curl -X DELETE "https://cyberlearnix.com/api/enrollments/responses/101"
 
 # Permanent delete
-curl -X DELETE "http://localhost:8083/api/enrollments/responses/101?permanent=true"
+curl -X DELETE "https://cyberlearnix.com/api/enrollments/responses/101?permanent=true"
 ```
 
 **Success Response (200):**
@@ -881,7 +881,7 @@ curl -X DELETE "http://localhost:8083/api/enrollments/responses/101?permanent=tr
 | `legacy` | No | `false` | Use legacy submission table if `true` |
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/responses/101/restore"
+curl -X POST "https://cyberlearnix.com/api/enrollments/responses/101/restore"
 ```
 
 **Success Response (200):**
@@ -910,16 +910,16 @@ A simpler/legacy model for enrollment applications. Used in the admin "Applicati
 
 ```bash
 # All active submissions
-curl -X GET "http://localhost:8083/api/enrollments/submissions"
+curl -X GET "https://cyberlearnix.com/api/enrollments/submissions"
 
 # Only pending submissions
-curl -X GET "http://localhost:8083/api/enrollments/submissions?status=PENDING"
+curl -X GET "https://cyberlearnix.com/api/enrollments/submissions?status=PENDING"
 
 # Only verified (approved)
-curl -X GET "http://localhost:8083/api/enrollments/submissions?status=VERIFIED"
+curl -X GET "https://cyberlearnix.com/api/enrollments/submissions?status=VERIFIED"
 
 # Only rejected
-curl -X GET "http://localhost:8083/api/enrollments/submissions?status=REJECTED"
+curl -X GET "https://cyberlearnix.com/api/enrollments/submissions?status=REJECTED"
 ```
 
 **Success Response (200):**
@@ -956,7 +956,7 @@ curl -X GET "http://localhost:8083/api/enrollments/submissions?status=REJECTED"
 Creates a new enrollment application. Status is automatically set to `PENDING`.
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/submissions" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/submissions" \
   -H "Content-Type: application/json" \
   -d '{
     "fullName": "Rahul Singh",
@@ -1006,13 +1006,13 @@ curl -X POST "http://localhost:8083/api/enrollments/submissions" \
 
 ```bash
 # Approve (VERIFIED)
-curl -X PATCH "http://localhost:8083/api/enrollments/submissions/201/status" \
+curl -X PATCH "https://cyberlearnix.com/api/enrollments/submissions/201/status" \
   -H "Content-Type: application/json" \
   -H "X-User-Id: admin1" \
   -d '{ "status": "VERIFIED" }'
 
 # Reject with reason
-curl -X PATCH "http://localhost:8083/api/enrollments/submissions/201/status" \
+curl -X PATCH "https://cyberlearnix.com/api/enrollments/submissions/201/status" \
   -H "Content-Type: application/json" \
   -H "X-User-Id: admin1" \
   -d '{
@@ -1034,7 +1034,7 @@ curl -X PATCH "http://localhost:8083/api/enrollments/submissions/201/status" \
 `DELETE /api/enrollments/submissions/{id}`
 
 ```bash
-curl -X DELETE "http://localhost:8083/api/enrollments/submissions/201"
+curl -X DELETE "https://cyberlearnix.com/api/enrollments/submissions/201"
 ```
 
 **Success Response (200):**
@@ -1056,7 +1056,7 @@ Defines the multi-step process a student must complete to get enrolled (e.g., su
 `GET /api/enrollments/workflows`
 
 ```bash
-curl -X GET "http://localhost:8083/api/enrollments/workflows"
+curl -X GET "https://cyberlearnix.com/api/enrollments/workflows"
 ```
 
 **Success Response (200):**
@@ -1092,7 +1092,7 @@ curl -X GET "http://localhost:8083/api/enrollments/workflows"
 `GET /api/enrollments/workflows/{id}`
 
 ```bash
-curl -X GET "http://localhost:8083/api/enrollments/workflows/1"
+curl -X GET "https://cyberlearnix.com/api/enrollments/workflows/1"
 ```
 
 **Success Response (200):** Single workflow object.  
@@ -1117,7 +1117,7 @@ curl -X GET "http://localhost:8083/api/enrollments/workflows/1"
 | `courseId` | number | No | Restrict to a specific course |
 
 ```bash
-curl -X POST "http://localhost:8083/api/enrollments/workflows" \
+curl -X POST "https://cyberlearnix.com/api/enrollments/workflows" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Fast Track Enrollment",
@@ -1142,7 +1142,7 @@ curl -X POST "http://localhost:8083/api/enrollments/workflows" \
 `PUT /api/enrollments/workflows/{id}`
 
 ```bash
-curl -X PUT "http://localhost:8083/api/enrollments/workflows/1" \
+curl -X PUT "https://cyberlearnix.com/api/enrollments/workflows/1" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Standard Enrollment (Updated)",
@@ -1169,7 +1169,7 @@ curl -X PUT "http://localhost:8083/api/enrollments/workflows/1" \
 `DELETE /api/enrollments/workflows/{id}`
 
 ```bash
-curl -X DELETE "http://localhost:8083/api/enrollments/workflows/2"
+curl -X DELETE "https://cyberlearnix.com/api/enrollments/workflows/2"
 ```
 
 **Success Response (200):** Empty `200 OK`.
@@ -1182,7 +1182,7 @@ curl -X DELETE "http://localhost:8083/api/enrollments/workflows/2"
 Removes the default flag from all other workflows and sets this one as default.
 
 ```bash
-curl -X PATCH "http://localhost:8083/api/enrollments/workflows/2/default"
+curl -X PATCH "https://cyberlearnix.com/api/enrollments/workflows/2/default"
 ```
 
 **Success Response (200):** Updated workflow object with `"isDefault": true`.
@@ -1215,7 +1215,7 @@ Generates the payment hash and all required data to post to PayU's payment page.
 | `enrollmentFormResponseId` | number | Yes | The response ID returned after form submission |
 
 ```bash
-curl -X POST "http://localhost:8083/api/payu-payment" \
+curl -X POST "https://cyberlearnix.com/api/payu-payment" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 5000,
@@ -1298,7 +1298,7 @@ Revenue and enrollment statistics for the admin dashboard.
 | `Authorization` | `Bearer <admin_jwt_token>` |
 
 ```bash
-curl -X GET "http://localhost:8083/api/admin/stats/revenue" \
+curl -X GET "https://cyberlearnix.com/api/admin/stats/revenue" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..."
 ```
 

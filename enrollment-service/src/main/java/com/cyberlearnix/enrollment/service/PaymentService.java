@@ -38,7 +38,7 @@ public class PaymentService {
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    @Value("${app.backend.url:http://localhost:8083}")
+    @Value("${app.backend.url:https://cyberlearnix.com}")
     private String backendUrl;
 
     private final PaymentTransactionRepository transactionRepository;
