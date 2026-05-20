@@ -277,14 +277,6 @@ public class PaymentService {
         // We only update the DB to PAID here when hash also verifies (belt-and-suspenders).
         // We NEVER mark as FAILED from the browser callback — that would block the webhook.
         boolean payuSaysSuccess = "success".equals(status);
-        String txnStatus;
-        if (payuSaysSuccess && hashVerified) {
-            txnStatus = STATUS_SUCCESS;
-        } else if (payuSaysSuccess) {
-            txnStatus = "SUCCESS_PENDING_WEBHOOK";
-        } else {
-            txnStatus = STATUS_FAILURE;
-        }
         String txnStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS
                          : payuSaysSuccess ? "SUCCESS_PENDING_WEBHOOK"
                          : STATUS_FAILURE;
@@ -293,35 +285,6 @@ public class PaymentService {
 
         // 3. Update form response — only set PAID when verified; never set FAILED from browser
         updateFormResponseFromCallback(txn, txnid, mihpayid, mode, amount, payuSaysSuccess, hashVerified);
-
-        // Status returned in the response reflects both PayU outcome and hash verification
-        String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
-        if (txn.getFormResponseId() != null && payuSaysSuccess && hashVerified) {
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                r.setPaymentStatus("PAID");
-                r.setTransactionId(txnid);
-                r.setMihpayid(mihpayid);
-                r.setPaymentMode(resolvePaymentMode(mode));
-                r.setAmountPaid(Double.parseDouble(amount));
-                responseRepository.save(r);
-            });
-        } else if (txn.getFormResponseId() != null && payuSaysSuccess && !hashVerified) {
-            // PayU says success but hash didn't verify — mark PENDING so webhook can update
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                if (!"PAID".equals(r.getPaymentStatus())) {
-                    r.setPaymentStatus("PENDING");
-                    responseRepository.save(r);
-                }
-            });
-        } else if (txn.getFormResponseId() != null && !payuSaysSuccess) {
-            // Payment failed — mark form response as FAILED
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                if (!"PAID".equals(r.getPaymentStatus())) {
-                    r.setPaymentStatus("FAILED");
-                    responseRepository.save(r);
-                }
-            });
-        }
 
         // Status returned in the response reflects both PayU outcome and hash verification
         String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
