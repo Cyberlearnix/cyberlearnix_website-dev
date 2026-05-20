@@ -540,14 +540,7 @@ public class PaymentService {
                 return;
             }
 
-            // Also check effectiveCourseIds (multi-course support)
-            List<Long> allCourses = config.getEffectiveCourseIds();
-            if (allCourses.isEmpty()) {
-                allCourses = List.of(config.getCourseId());
-            }
-
-                return;
-            }
+            // Also check effectiveCourseIds (multi-course support) — already captured in courseIdsToEnroll
 
             String tempPassword = "Welcome@" + UUID.randomUUID().toString().substring(0, 8);
             Map<String, Object> regReq = Map.of(
@@ -559,9 +552,6 @@ public class PaymentService {
                     ? (String) createdUser.get("id") : null;
 
             if (studentUuid != null) {
-                enrollmentService.bulkAssign(studentUuid, allCourses);
-                log.info("[PayU Webhook] Enrolled student {} in {} course(s): {}",
-                        txn.getStudentEmail(), allCourses.size(), allCourses);
                 enrollmentService.bulkAssign(studentUuid, courseIdsToEnroll);
                 log.info("[PayU Webhook] Enrolled student {} in {} course(s): {}",
                         txn.getStudentEmail(), courseIdsToEnroll.size(), courseIdsToEnroll);

@@ -122,31 +122,6 @@ public class ResponseController {
                             data.courseTitle = info.get("title").toString();
                         }
                     } catch (Exception ignored) { }
-            // Resolve course info from form config, then fetch actual course name
-            String courseTitle = null;
-            Long courseId = null;
-            List<Long> courseIds = null;
-            Double coursePrice = null;
-            try {
-                EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
-                if (config != null) {
-                    courseId = config.getCourseId();
-                    courseIds = config.getEffectiveCourseIds();
-                    coursePrice = config.getPaymentAmount();
-                    // Fetch real course name — use first effective courseId
-                    Long primaryCourseId = (courseIds != null && !courseIds.isEmpty()) ? courseIds.get(0) : courseId;
-                    if (primaryCourseId != null) {
-                        try {
-                            java.util.Map<String, Object> courseInfo = courseServiceClient.getCourseInfo(primaryCourseId);
-                            if (courseInfo != null && courseInfo.get("title") != null) {
-                                courseTitle = courseInfo.get("title").toString();
-                            }
-                        } catch (Exception ignored) { }
-                    }
-                    // Fall back to form title if course lookup fails
-                    if (courseTitle == null) {
-                        courseTitle = config.getTitle();
-                    }
                 }
                 if (data.courseTitle == null) {
                     data.courseTitle = config.getTitle();
@@ -155,33 +130,6 @@ public class ResponseController {
         } catch (Exception ignored) { }
         return data;
     }
-            } catch (Exception ignored) { }
-
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", r.getId());            // alias for frontend compatibility
-            item.put("responseId", r.getId());
-            item.put("formId", r.getFormId());    // needed for approve/reject actions
-            item.put("studentEmail", r.getStudentEmail());
-            item.put("studentName", studentName);
-            item.put("studentData", r.getStudentData()); // raw JSON for Eye modal
-            item.put("courseTitle", courseTitle);
-            item.put("courseId", courseId);
-            item.put("courseIds", courseIds);      // all linked courses for multi-enrollment
-            item.put("coursePrice", coursePrice);  // original price from form config
-            item.put("amountPaid", r.getAmountPaid() != null ? r.getAmountPaid() : coursePrice);
-            item.put("paymentStatus", r.getPaymentStatus());
-            item.put("transactionId", r.getTransactionId());
-            item.put("initiatedTxnId", initiatedTxnId); // txnid from payment_transactions
-            item.put("paymentMode", txnMode);
-            item.put("mihpayid", txnMihpayid);
-            item.put("bankRefNum", bankRefNum);
-            item.put("txnTableStatus", txnStatus);
-            item.put("createdAt", r.getCreatedAt());
-            item.put("reviewedAt", r.getReviewedAt());
-            item.put("reviewedBy", r.getReviewedBy());
-            item.put("createdUserId", r.getCreatedUserId()); // for re-enroll without user lookup
-            result.add(item);
-        }
 
     private static final class TxnData {
         String txnMode;
