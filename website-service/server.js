@@ -134,6 +134,42 @@ async function initDB() {
             ALTER TABLE student_enrollments ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ;
         `);
 
+        // Extend courses table with richer admin fields
+        await pool.query(`
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT '';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS difficulty_level VARCHAR(50) DEFAULT 'BEGINNER';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS duration VARCHAR(100) DEFAULT '';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS base_price NUMERIC(10,2) DEFAULT 0;
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS gst_percent INTEGER DEFAULT 18;
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS final_price NUMERIC(10,2) DEFAULT 0;
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS content_url TEXT DEFAULT '';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS certificate_enabled BOOLEAN DEFAULT false;
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_name VARCHAR(255) DEFAULT '';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS certificate_image_url TEXT DEFAULT '';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS prerequisites TEXT DEFAULT '';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS syllabus TEXT DEFAULT '';
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS created_by VARCHAR(255) DEFAULT '';
+        `);
+
+        // Module contents table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS course_module_contents (
+                id SERIAL PRIMARY KEY,
+                module_id INTEGER REFERENCES course_modules(id) ON DELETE CASCADE,
+                course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+                title VARCHAR(255) NOT NULL,
+                content_type VARCHAR(50) DEFAULT 'video',
+                content_url TEXT DEFAULT '',
+                description TEXT DEFAULT '',
+                duration_minutes INTEGER DEFAULT 0,
+                order_index INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+
         console.log('✅ Database tables ready');
     } catch (err) {
         console.error('❌ DB init error:', err.message);
@@ -143,6 +179,39 @@ async function initDB() {
 // Helper to generate slug from title
 function slugify(title) {
     return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// Normalise a raw DB course row to camelCase frontend-friendly shape
+function mapCourse(row) {
+    const basePrice = Number(row.base_price ?? row.price ?? 0);
+    const gstPercent = Number(row.gst_percent ?? 18);
+    const finalPrice = Number(row.final_price ?? (basePrice * (1 + gstPercent / 100)));
+    return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description || '',
+        shortDescription: row.short_description || '',
+        category: row.category || '',
+        difficultyLevel: row.difficulty_level || row.difficulty || 'BEGINNER',
+        duration: row.duration || '',
+        basePrice,
+        price: basePrice,
+        gstPercent,
+        finalPrice,
+        contentUrl: row.content_url || '',
+        thumbnailUrl: row.thumbnail_url || '',
+        isActive: row.is_active !== null && row.is_active !== undefined ? row.is_active : (row.is_published ?? true),
+        isPublished: row.is_published ?? row.is_active ?? true,
+        certificateEnabled: row.certificate_enabled ?? false,
+        instructorName: row.instructor_name || '',
+        certificateImageUrl: row.certificate_image_url || '',
+        prerequisites: row.prerequisites || '',
+        syllabus: row.syllabus || '',
+        createdBy: row.created_by || '',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+    };
 }
 
 // ─── COURSE MANAGEMENT (Admin) ───────────────────────────────────────────────
@@ -261,15 +330,262 @@ app.delete('/api/course-management/:courseId/modules/:moduleId', async (req, res
     }
 });
 
+// ─── COURSE MANAGEMENT v2 — /courses/* routes (frontend-expected URL structure) ───
+
+// GET /api/course-management/courses/:id/full — course + all modules + contents
+app.get('/api/course-management/courses/:id/full', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM courses WHERE id = $1 AND deleted_at IS NULL', [req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Course not found' });
+        const modulesResult = await pool.query(
+            'SELECT * FROM course_modules WHERE course_id = $1 ORDER BY order_index ASC', [req.params.id]
+        );
+        const modules = await Promise.all(modulesResult.rows.map(async (mod) => {
+            const contentsResult = await pool.query(
+                'SELECT * FROM course_module_contents WHERE module_id = $1 ORDER BY order_index ASC', [mod.id]
+            );
+            return {
+                id: mod.id,
+                title: mod.title,
+                description: mod.description || '',
+                orderIndex: mod.order_index,
+                isActive: mod.is_active !== undefined ? mod.is_active : true,
+                contents: contentsResult.rows.map(c => ({
+                    id: c.id,
+                    title: c.title,
+                    contentType: c.content_type,
+                    contentUrl: c.content_url,
+                    description: c.description || '',
+                    durationMinutes: c.duration_minutes,
+                    orderIndex: c.order_index,
+                    isActive: c.is_active,
+                })),
+            };
+        }));
+        res.json({ success: true, course: mapCourse(result.rows[0]), modules });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/course-management/courses — create course (frontend CourseModal)
+app.post('/api/course-management/courses', async (req, res) => {
+    const { title, description, category, difficultyLevel, duration, basePrice,
+            gstPercent, finalPrice, contentUrl, thumbnailUrl, isActive,
+            certificateEnabled, instructorName, certificateImageUrl } = req.body;
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    const slug = slugify(title) + '-' + Date.now();
+    const bp = Number(basePrice ?? 0);
+    const gst = Number(gstPercent ?? 18);
+    const fp = Number(finalPrice ?? (bp * (1 + gst / 100)));
+    try {
+        const result = await pool.query(
+            `INSERT INTO courses
+             (title, slug, description, price, difficulty, thumbnail_url, is_published,
+              category, difficulty_level, duration, base_price, gst_percent, final_price,
+              content_url, is_active, certificate_enabled, instructor_name, certificate_image_url)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+             RETURNING *`,
+            [title, slug, description || '', bp, difficultyLevel || 'BEGINNER', thumbnailUrl || '',
+             isActive !== false, category || '', difficultyLevel || 'BEGINNER', duration || '',
+             bp, gst, fp, contentUrl || '', isActive !== false,
+             certificateEnabled ?? false, instructorName || '', certificateImageUrl || '']
+        );
+        res.status(201).json({ success: true, course: mapCourse(result.rows[0]) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/course-management/courses/:id — update course (frontend CourseModal + toggleCourseStatus)
+app.put('/api/course-management/courses/:id', async (req, res) => {
+    const { title, description, category, difficultyLevel, duration, basePrice,
+            gstPercent, finalPrice, contentUrl, thumbnailUrl, isActive,
+            certificateEnabled, instructorName, certificateImageUrl } = req.body;
+    try {
+        const result = await pool.query(
+            `UPDATE courses SET
+                title             = COALESCE($1, title),
+                description       = COALESCE($2, description),
+                category          = COALESCE($3, category),
+                difficulty_level  = COALESCE($4, difficulty_level),
+                difficulty        = COALESCE($4, difficulty),
+                duration          = COALESCE($5, duration),
+                base_price        = COALESCE($6, base_price),
+                price             = COALESCE($6, price),
+                gst_percent       = COALESCE($7, gst_percent),
+                final_price       = COALESCE($8, final_price),
+                content_url       = COALESCE($9, content_url),
+                thumbnail_url     = COALESCE($10, thumbnail_url),
+                is_active         = COALESCE($11, is_active),
+                is_published      = COALESCE($11, is_published),
+                certificate_enabled    = COALESCE($12, certificate_enabled),
+                instructor_name        = COALESCE($13, instructor_name),
+                certificate_image_url  = COALESCE($14, certificate_image_url),
+                updated_at        = NOW()
+             WHERE id = $15 AND deleted_at IS NULL RETURNING *`,
+            [title, description, category, difficultyLevel, duration,
+             basePrice != null ? Number(basePrice) : null,
+             gstPercent != null ? Number(gstPercent) : null,
+             finalPrice != null ? Number(finalPrice) : null,
+             contentUrl, thumbnailUrl, isActive, certificateEnabled, instructorName,
+             certificateImageUrl, req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Course not found' });
+        res.json({ success: true, course: mapCourse(result.rows[0]) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/course-management/courses/:courseId/modules
+app.post('/api/course-management/courses/:courseId/modules', async (req, res) => {
+    const { title, description, orderIndex } = req.body;
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    try {
+        const result = await pool.query(
+            'INSERT INTO course_modules (course_id, title, description, order_index) VALUES ($1,$2,$3,$4) RETURNING *',
+            [req.params.courseId, title, description || '', orderIndex ?? 0]
+        );
+        res.status(201).json({ success: true, module: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/course-management/modules/:moduleId
+app.delete('/api/course-management/modules/:moduleId', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM course_modules WHERE id = $1', [req.params.moduleId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/course-management/modules/:moduleId/contents
+app.post('/api/course-management/modules/:moduleId/contents', async (req, res) => {
+    const { title, contentType, contentUrl, description, durationMinutes, orderIndex, courseId } = req.body;
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    try {
+        // resolve course_id from module if not supplied
+        let cid = courseId;
+        if (!cid) {
+            const m = await pool.query('SELECT course_id FROM course_modules WHERE id = $1', [req.params.moduleId]);
+            cid = m.rows[0]?.course_id;
+        }
+        const result = await pool.query(
+            `INSERT INTO course_module_contents
+             (module_id, course_id, title, content_type, content_url, description, duration_minutes, order_index)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+            [req.params.moduleId, cid, title, contentType || 'video', contentUrl || '',
+             description || '', durationMinutes ?? 0, orderIndex ?? 0]
+        );
+        res.status(201).json({ success: true, content: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/course-management/contents/:contentId
+app.delete('/api/course-management/contents/:contentId', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM course_module_contents WHERE id = $1', [req.params.contentId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── PUBLIC COURSES ───────────────────────────────────────────────────────────
 
-// GET /api/courses — public list
+// GET /api/courses — returns all non-deleted courses; callers filter client-side
 app.get('/api/courses', async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT * FROM courses WHERE is_published = true ORDER BY created_at DESC'
+            'SELECT * FROM courses WHERE deleted_at IS NULL ORDER BY created_at DESC'
         );
-        res.json(result.rows);
+        res.json(result.rows.map(mapCourse));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/courses — create course (generic; accepts both Spring-style and simple field names)
+app.post('/api/courses', async (req, res) => {
+    const {
+        title, description, syllabus, duration,
+        price, basePrice,
+        level, difficultyLevel,
+        prerequisites,
+        thumbnail, thumbnailUrl,
+        category, gstPercent, finalPrice, contentUrl,
+        isActive, certificateEnabled, instructorName, certificateImageUrl,
+    } = req.body;
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    const slug = slugify(title) + '-' + Date.now();
+    const bp = Number(basePrice ?? price ?? 0);
+    const gst = Number(gstPercent ?? 18);
+    const fp = Number(finalPrice ?? (bp * (1 + gst / 100)));
+    const diff = difficultyLevel || level || 'BEGINNER';
+    const thumb = thumbnailUrl || thumbnail || '';
+    try {
+        const result = await pool.query(
+            `INSERT INTO courses
+             (title, slug, description, short_description, price, difficulty, thumbnail_url, is_published,
+              category, difficulty_level, duration, base_price, gst_percent, final_price,
+              content_url, is_active, certificate_enabled, instructor_name, certificate_image_url,
+              prerequisites, syllabus)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+             RETURNING *`,
+            [title, slug, description || '', syllabus || '', bp, diff, thumb,
+             isActive !== false, category || '', diff, duration || '', bp, gst, fp,
+             contentUrl || '', isActive !== false, certificateEnabled ?? false,
+             instructorName || '', certificateImageUrl || '', prerequisites || '', syllabus || '']
+        );
+        res.status(201).json({ success: true, course: mapCourse(result.rows[0]) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/courses/trash — trashed courses (must be BEFORE /:slugOrId)
+app.get('/api/courses/trash', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM courses WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC'
+        );
+        res.json({ success: true, courses: result.rows.map(mapCourse) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PATCH /api/courses/:id/restore
+app.patch('/api/courses/:id/restore', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'UPDATE courses SET deleted_at = NULL, updated_at = NOW() WHERE id = $1 RETURNING *',
+            [req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Course not found' });
+        res.json({ success: true, course: mapCourse(result.rows[0]) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/courses/:id — soft delete
+app.delete('/api/courses/:id', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'UPDATE courses SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 RETURNING id',
+            [req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Course not found' });
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -281,7 +597,9 @@ app.get('/api/courses/:slugOrId', async (req, res) => {
     try {
         const isId = /^\d+$/.test(slugOrId);
         const result = await pool.query(
-            isId ? 'SELECT * FROM courses WHERE id = $1' : 'SELECT * FROM courses WHERE slug = $1',
+            isId
+                ? 'SELECT * FROM courses WHERE id = $1 AND deleted_at IS NULL'
+                : 'SELECT * FROM courses WHERE slug = $1 AND deleted_at IS NULL',
             [slugOrId]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -290,7 +608,7 @@ app.get('/api/courses/:slugOrId', async (req, res) => {
             'SELECT * FROM course_modules WHERE course_id = $1 ORDER BY order_index ASC',
             [course.id]
         );
-        res.json({ ...course, modules: modules.rows });
+        res.json({ ...mapCourse(course), modules: modules.rows });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
