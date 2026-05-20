@@ -14,6 +14,10 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
     // Cloudinary SDK for image/video uploads
     api 'com.cloudinary:cloudinary-http44:1.39.0'
+    // Google Drive SDK for video/document uploads
+    api 'com.google.apis:google-api-services-drive:v3-rev20231128-2.0.0'
+    api 'com.google.auth:google-auth-library-oauth2-http:1.23.0'
+    api 'com.google.http-client:google-http-client-gson:1.44.1'
     api 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

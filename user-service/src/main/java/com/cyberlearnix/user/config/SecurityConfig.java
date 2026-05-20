@@ -79,7 +79,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/refresh-token").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/refresh-token", "/api/auth/request-login-otp", "/api/auth/verify-otp-login").permitAll()
                         .requestMatchers("/api/auth/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/careers", "/api/careers/**").permitAll()
@@ -118,7 +118,7 @@ public class SecurityConfig {
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .toList();
-        config.setAllowedOrigins(origins);
+        config.setAllowedOriginPatterns(origins);
         
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
         config.setAllowedHeaders(List.of("*"));

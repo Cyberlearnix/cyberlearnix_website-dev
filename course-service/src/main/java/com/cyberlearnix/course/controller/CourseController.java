@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cyberlearnix.course.client.EnrollmentServiceClient;
 import com.cyberlearnix.course.client.UserServiceClient;
 import com.cyberlearnix.course.dto.*;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -167,7 +168,7 @@ public class CourseController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createCourse(@RequestBody CourseCreateDTO courseDTO,
+    public ResponseEntity<?> createCourse(@Valid @RequestBody CourseCreateDTO courseDTO,
             @RequestHeader(value = "X-User-Id", required = true) String userId,
             @RequestHeader(value = "X-User-Role", required = true) String userRole) {
 
@@ -218,7 +219,7 @@ public class CourseController {
 
     // PUT — full replace, all required fields must be provided
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> replaceCourse(@PathVariable Long id, @RequestBody CourseUpdateDTO courseDTO,
+    public ResponseEntity<Map<String, Object>> replaceCourse(@PathVariable Long id, @Valid @RequestBody CourseUpdateDTO courseDTO,
             @RequestHeader("X-User-Id") String userId, @RequestHeader("X-User-Role") String userRole) {
         return courseRepository.findById(id).map(course -> {
             boolean isAdmin = "admin".equals(userRole);
@@ -537,6 +538,45 @@ public class CourseController {
         }
 
         return map;
+    }
+
+    /**
+     * GET /api/courses/teacher/{userId}
+     * Returns all courses assigned to or created by the given teacher.
+     * Used by teacher dashboard to list manageable courses.
+     */
+    @GetMapping("/teacher/{userId}")
+    public ResponseEntity<?> getCoursesByTeacher(@PathVariable String userId,
+            @RequestHeader(value = "X-User-Id", required = false) String callerId,
+            @RequestHeader(value = "X-User-Role", required = false) String callerRole) {
+        List<Long> ownIds = courseRepository.findByCreatedBy(userId).stream()
+                .map(Course::getId).collect(Collectors.toList());
+        List<Long> assignedIds = courseTeacherRepository.findByTeacherId(userId).stream()
+                .map(CourseTeacher::getCourseId).collect(Collectors.toList());
+        List<Long> allIds = new ArrayList<>();
+        allIds.addAll(ownIds);
+        allIds.addAll(assignedIds);
+        allIds = allIds.stream().distinct().collect(Collectors.toList());
+        if (allIds.isEmpty()) {
+            return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "courses", List.of()));
+        }
+        List<Course> courses = courseRepository.findByIdIn(allIds,
+                org.springframework.data.domain.PageRequest.of(0, 500)).getContent();
+        List<Map<String, Object>> result = courses.stream().map(c -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", c.getId());
+            map.put("title", c.getTitle());
+            map.put("description", c.getDescription());
+            map.put("thumbnailUrl", c.getThumbnailUrl());
+            map.put("category", c.getCategory());
+            map.put(KEY_DIFFICULTY_LEVEL, c.getDifficultyLevel());
+            map.put("isActive", c.getActive());
+            map.put("status", c.getStatus());
+            map.put("createdBy", c.getCreatedBy());
+            map.put("createdAt", c.getCreatedAt());
+            return map;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(Map.of(KEY_SUCCESS, true, "courses", result));
     }
 
     /**

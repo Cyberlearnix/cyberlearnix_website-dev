@@ -16,6 +16,8 @@ public class TeamsMeetingResponse {
     private String description;
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;
+    private Long courseId;
+    private String batchId;
 
     /** Zoho meeting key shown as Meeting ID to participants */
     private String meetingId;

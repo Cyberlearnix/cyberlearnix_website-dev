@@ -3,6 +3,7 @@ package com.cyberlearnix.enrollment.controller;
 import com.cyberlearnix.shared.entity.enrollment.Enrollment;
 import com.cyberlearnix.shared.repository.enrollment.EnrollmentRepository;
 import com.cyberlearnix.enrollment.client.CourseServiceClient;
+import com.cyberlearnix.enrollment.client.UserClient;
 import com.cyberlearnix.enrollment.service.EnrollmentService;
 import com.cyberlearnix.enrollment.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +44,9 @@ public class EnrollmentController {
 
     @Autowired
     private CourseServiceClient courseServiceClient;
+
+    @Autowired
+    private UserClient userClient;
 
     @GetMapping
     public ResponseEntity<?> getEnrollments(@RequestParam(required = false) String studentId,
@@ -185,6 +192,23 @@ public class EnrollmentController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getEnrollmentById(@PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        return enrollmentRepository.findById(id).map(enrollment -> {
+            // SEC: admin sees all; student sees only their own; teacher check deferred to business layer
+            boolean isAdmin = ROLE_ADMIN.equals(userRole);
+            boolean isSelf = enrollment.getStudentId() != null && enrollment.getStudentId().equals(userId);
+            boolean isTeacher = "teacher".equals(userRole) || "dual".equals(userRole);
+            if (!isAdmin && !isSelf && !isTeacher) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .<Object>body(Map.of("error", "Access denied"));
+            }
+            return ResponseEntity.ok((Object) enrollment);
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping("/verify-payment")
     public ResponseEntity<?> verifyPayment(@RequestBody PaymentVerificationRequest verificationRequest,
             @RequestHeader(value = "Authorization") String token,
@@ -217,5 +241,131 @@ public class EnrollmentController {
 
         return ResponseEntity
                 .ok(Map.of("success", true, "enrollments", enrollmentService.bulkAssign(studentId, longCourseIds)));
+    }
+
+    /**
+     * GET /api/enrollments/course/{courseId}/students
+     * Returns enrollments for a course enriched with student profile info (name, email, avatar).
+     * Accessible by: admin, teacher/dual assigned to the course.
+     */
+    @GetMapping("/course/{courseId}/students")
+    public ResponseEntity<?> getEnrolledStudents(
+            @PathVariable Long courseId,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+
+        boolean isAdmin = ROLE_ADMIN.equals(userRole);
+        boolean isTeacher = "teacher".equals(userRole) || "dual".equals(userRole);
+
+        if (!isAdmin && !isTeacher) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access denied"));
+        }
+
+        // Teachers can only see students for courses they are assigned to
+        if (isTeacher && !isAdmin) {
+            boolean assigned = false;
+            try {
+                assigned = courseServiceClient.teacherExistsForCourse(userId, courseId);
+            } catch (Exception ignored) {}
+            if (!assigned) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "You are not assigned to this course"));
+            }
+        }
+
+        List<Enrollment> enrollments = enrollmentRepository.findByCourseId(courseId);
+        List<Map<String, Object>> enriched = new ArrayList<>();
+
+        for (Enrollment enrollment : enrollments) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", enrollment.getId());
+            row.put("studentId", enrollment.getStudentId());
+            row.put("courseId", enrollment.getCourseId());
+            row.put("progress", enrollment.getProgress() != null ? enrollment.getProgress() : 0);
+            row.put("enrolledAt", enrollment.getEnrolledAt());
+            row.put("completedAt", enrollment.getCompletedAt());
+            row.put("started", enrollment.getProgress() != null && enrollment.getProgress() > 0);
+
+            // Enrich with student profile from user-service
+            Map<String, Object> studentProfile = new HashMap<>();
+            try {
+                Map<String, Object> profile = userClient.getUserProfile(enrollment.getStudentId());
+                if (profile != null) {
+                    studentProfile.put("full_name", profile.getOrDefault("fullName", profile.getOrDefault("full_name", "Unknown")));
+                    studentProfile.put("email", profile.getOrDefault("email", ""));
+                    studentProfile.put("avatar_url", profile.getOrDefault("photoUrl", profile.getOrDefault("avatar_url", null)));
+                    studentProfile.put("phone", profile.getOrDefault("phone", ""));
+                }
+            } catch (Exception e) {
+                studentProfile.put("full_name", "Student " + enrollment.getStudentId().substring(0, Math.min(6, enrollment.getStudentId().length())));
+                studentProfile.put("email", "");
+                studentProfile.put("avatar_url", null);
+            }
+            row.put("student", studentProfile);
+            enriched.add(row);
+        }
+
+        return ResponseEntity.ok(Map.of("success", true, "enrollments", enriched, "total", enriched.size()));
+    }
+
+    /**
+     * GET /api/enrollments/admin/course-progress?courseId={courseId}
+     * Admin monitoring: which students started, completed, labs submitted.
+     * Accessible by: admin only.
+     */
+    @GetMapping("/admin/course-progress")
+    public ResponseEntity<?> getAdminCourseProgress(
+            @RequestParam Long courseId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+
+        if (!ROLE_ADMIN.equals(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Admin access required"));
+        }
+
+        List<Enrollment> enrollments = enrollmentRepository.findByCourseId(courseId);
+
+        long notStarted = enrollments.stream().filter(e -> e.getProgress() == null || e.getProgress() == 0).count();
+        long inProgress = enrollments.stream().filter(e -> e.getProgress() != null && e.getProgress() > 0 && e.getProgress() < 100).count();
+        long completed = enrollments.stream().filter(e -> e.getProgress() != null && e.getProgress() >= 100).count();
+
+        List<Map<String, Object>> studentProgress = new ArrayList<>();
+        for (Enrollment enrollment : enrollments) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("studentId", enrollment.getStudentId());
+            row.put("progress", enrollment.getProgress() != null ? enrollment.getProgress() : 0);
+            row.put("started", enrollment.getProgress() != null && enrollment.getProgress() > 0);
+            row.put("completed", enrollment.getProgress() != null && enrollment.getProgress() >= 100);
+            row.put("enrolledAt", enrollment.getEnrolledAt());
+            row.put("completedAt", enrollment.getCompletedAt());
+
+            // Enrich with student name
+            try {
+                Map<String, Object> profile = userClient.getUserProfile(enrollment.getStudentId());
+                if (profile != null) {
+                    row.put("studentName", profile.getOrDefault("fullName", profile.getOrDefault("full_name", "Unknown")));
+                    row.put("studentEmail", profile.getOrDefault("email", ""));
+                    row.put("studentPhone", profile.getOrDefault("phone", ""));
+                    row.put("studentAvatar", profile.getOrDefault("photoUrl", profile.getOrDefault("avatar_url", "")));
+                }
+            } catch (Exception e) {
+                row.put("studentName", "Student #" + enrollment.getId());
+                row.put("studentEmail", "");
+                row.put("studentPhone", "");
+                row.put("studentAvatar", "");
+            }
+            studentProgress.add(row);
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("courseId", courseId);
+        summary.put("totalEnrolled", enrollments.size());
+        summary.put("notStarted", notStarted);
+        summary.put("inProgress", inProgress);
+        summary.put("completed", completed);
+        summary.put("students", studentProgress);
+
+        return ResponseEntity.ok(Map.of("success", true, "data", summary));
     }
 }

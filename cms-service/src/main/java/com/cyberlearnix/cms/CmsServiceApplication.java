@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.util.TimeZone;
 
-@SpringBootApplication(scanBasePackages = "com.cyberlearnix.cms")
+@SpringBootApplication(scanBasePackages = {"com.cyberlearnix.cms", "com.cyberlearnix.shared.service"})
 @EntityScan("com.cyberlearnix.shared.entity.cms")
 @EnableJpaRepositories("com.cyberlearnix.shared.repository.cms")
 public class CmsServiceApplication {

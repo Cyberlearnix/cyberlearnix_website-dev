@@ -6,6 +6,7 @@ import com.cyberlearnix.course.dto.PromoDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -25,12 +26,8 @@ public class PromoController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createPromo(@RequestBody PromoDTO promoDTO,
-                                        @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage promos"));
-        }
-
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createPromo(@RequestBody PromoDTO promoDTO) {
         PromoBanner promo = new PromoBanner();
         promo.setTitle(promoDTO.getTitle());
         promo.setDescription(promoDTO.getDescription());
@@ -43,13 +40,9 @@ public class PromoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updatePromo(@PathVariable Long id, 
-                                        @RequestBody PromoDTO promoDTO,
-                                        @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage promos"));
-        }
-
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updatePromo(@PathVariable Long id,
+                                        @RequestBody PromoDTO promoDTO) {
         return promoRepository.findById(id).map(promo -> {
             if (promoDTO.getTitle() != null) promo.setTitle(promoDTO.getTitle());
             if (promoDTO.getDescription() != null) promo.setDescription(promoDTO.getDescription());
@@ -62,16 +55,12 @@ public class PromoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deletePromo(@PathVariable Long id,
-                                        @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage promos"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deletePromo(@PathVariable Long id) {
+        if (!promoRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
-
-        if (promoRepository.existsById(id)) {
-            promoRepository.deleteById(id);
-            return ResponseEntity.ok(Map.of("success", true));
-        }
-        return ResponseEntity.notFound().build();
+        promoRepository.deleteById(id);
+        return ResponseEntity.ok(Map.of("success", true));
     }
 }

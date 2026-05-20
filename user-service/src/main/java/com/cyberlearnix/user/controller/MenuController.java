@@ -2,6 +2,7 @@ package com.cyberlearnix.user.controller;
 
 import com.cyberlearnix.shared.entity.user.MenuItem;
 import com.cyberlearnix.shared.repository.user.MenuItemRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,7 +53,7 @@ public class MenuController {
         menu.setCreatedAt(java.time.LocalDateTime.now());
         menu.setUpdatedAt(java.time.LocalDateTime.now());
         MenuItem saved = menuItemRepository.save(menu);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping("/{id}")

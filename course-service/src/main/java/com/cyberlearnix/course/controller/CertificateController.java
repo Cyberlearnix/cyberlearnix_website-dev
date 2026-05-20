@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.entity.course.CertificateTemplate;
 import com.cyberlearnix.shared.repository.course.CertificateRepository;
 import com.cyberlearnix.shared.repository.course.CertificateTemplateRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,7 +40,7 @@ public class CertificateController {
         if (certificate.getIssuedAt() == null) {
             certificate.setIssuedAt(java.time.LocalDateTime.now());
         }
-        return ResponseEntity.ok(certificateRepository.save(certificate));
+        return ResponseEntity.status(HttpStatus.CREATED).body(certificateRepository.save(certificate));
     }
 
     @DeleteMapping("/{id}")
@@ -64,5 +65,20 @@ public class CertificateController {
             }
             return ResponseEntity.ok(templateRepository.save(template));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    /** Public endpoint — no auth required — used by QR verify link on the certificate */
+    @GetMapping("/verify/{credentialId}")
+    public ResponseEntity<?> verifyCertificate(@PathVariable String credentialId) {
+        return certificateRepository.findByCertificateId(credentialId)
+                .map(cert -> ResponseEntity.ok(Map.of(
+                        "valid", true,
+                        "credentialId", cert.getCertificateId(),
+                        "studentName", cert.getStudentName() != null ? cert.getStudentName() : "",
+                        "courseTitle", cert.getCourseTitle() != null ? cert.getCourseTitle() : "",
+                        "instructorName", cert.getInstructorName() != null ? cert.getInstructorName() : "",
+                        "issuedAt", cert.getIssuedAt() != null ? cert.getIssuedAt().toString() : ""
+                )))
+                .orElse(ResponseEntity.ok(Map.of("valid", false)));
     }
 }

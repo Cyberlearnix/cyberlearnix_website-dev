@@ -40,6 +40,15 @@ public class Course {
     @Column(name = "is_active", columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean isActive = true;
 
+    @Column(name = "certificate_enabled", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean certificateEnabled = false;
+
+    @Column(name = "instructor_name")
+    private String instructorName;
+
+    @Column(name = "certificate_image_url", length = 1000)
+    private String certificateImageUrl;
+
     @Column(name = "created_by")
     private String createdBy; // Reference to user_profiles.id
 

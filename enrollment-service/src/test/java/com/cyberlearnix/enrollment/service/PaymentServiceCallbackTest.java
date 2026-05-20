@@ -52,7 +52,7 @@ class PaymentServiceCallbackTest {
         ReflectionTestUtils.setField(paymentService, "merchantSalt", "test-salt");
         ReflectionTestUtils.setField(paymentService, "payuBaseUrl",  "https://secure.payu.in");
         ReflectionTestUtils.setField(paymentService, "frontendUrl",  "http://localhost:3000");
-        ReflectionTestUtils.setField(paymentService, "backendUrl",  "http://localhost:8083");
+        ReflectionTestUtils.setField(paymentService, "backendUrl",  "https://cyberlearnix.com");
     }
 
     // ── Shared helpers ────────────────────────────────────────────────────────

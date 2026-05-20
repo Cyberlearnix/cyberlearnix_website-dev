@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.repository.user.SiteSettingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -35,12 +36,8 @@ public class SiteSettingsController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createOrUpdateSetting(@RequestBody SiteSetting setting, 
-                                                 @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage site settings"));
-        }
-
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createOrUpdateSetting(@RequestBody SiteSetting setting) {
         Optional<SiteSetting> existing = siteSettingRepository.findBySettingKey(setting.getSettingKey());
         if (existing.isPresent()) {
             SiteSetting s = existing.get();
@@ -58,12 +55,8 @@ public class SiteSettingsController {
     }
 
     @DeleteMapping("/{key}")
-    public ResponseEntity<?> deleteSetting(@PathVariable String key, 
-                                         @RequestHeader("X-User-Role") String userRole) {
-        if (!"admin".equalsIgnoreCase(userRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only admins can manage site settings"));
-        }
-
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteSetting(@PathVariable String key) {
         return siteSettingRepository.findBySettingKey(key).map(s -> {
             siteSettingRepository.delete(s);
             return ResponseEntity.ok(Map.of("success", true));

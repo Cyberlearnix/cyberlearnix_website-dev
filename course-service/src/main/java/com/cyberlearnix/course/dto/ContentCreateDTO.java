@@ -19,6 +19,9 @@ public class ContentCreateDTO {
     private Integer maxScore;
     
     private String videoUrl;
+    private String videoWidth;
+    private String videoHeight;
+    private String videoFrameHtml;
     private String contentText;
     private Boolean isPreview;
     private String attachmentUrl;
@@ -34,4 +37,13 @@ public class ContentCreateDTO {
     private Integer timeLimitMinutes;
     private Integer passingScore;
     private Integer maxAttempts;
+
+    // LIVE type
+    private String platform;
+    private String meetingUrl;
+    private String meetingId;
+    private String meetingPassword;
+    private String agenda;
+    private Boolean recordSession;
+    private String sessionAt; // ISO String
 }

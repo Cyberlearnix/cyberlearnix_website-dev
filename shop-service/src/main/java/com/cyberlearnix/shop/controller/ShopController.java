@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.repository.shop.ShopSettingsRepository;
 import com.cyberlearnix.shop.dto.ShopSettingsDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -24,8 +25,8 @@ public class ShopController {
     }
 
     @PutMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateShopSettings(@RequestBody ShopSettingsDTO settingsDTO) {
-        // Auth check for admin role should be implemented here or in a Filter
         return shopSettingsRepository.findFirstByOrderByIdAsc().map(existing -> {
             if (settingsDTO.getEnabled() != null) existing.setEnabled(settingsDTO.getEnabled());
             if (settingsDTO.getShopUrl() != null) existing.setShopUrl(settingsDTO.getShopUrl());

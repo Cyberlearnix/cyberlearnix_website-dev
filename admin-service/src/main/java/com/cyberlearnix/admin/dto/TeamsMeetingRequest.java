@@ -27,6 +27,9 @@ public class TeamsMeetingRequest {
     /** Optional description or agenda visible to participants */
     private String description;
 
+    private Long courseId;
+    private String batchId;
+
     /**
      * Optional list of participants to invite. Zoho sends each invitee an
      * email with a personalised join link (panelist role).

@@ -6,6 +6,7 @@ import com.cyberlearnix.form.dto.SubmissionResponseDTO;
 import com.cyberlearnix.form.service.FormService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,24 +28,20 @@ public class FormController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or #token != null")
     public ResponseEntity<FormResponseDTO> getForm(
             @PathVariable String id,
             @RequestParam(required = false) String token) {
         if (token != null) {
             return ResponseEntity.ok(formService.getFormPublic(id, token));
         }
-        return getAdminForm(id);
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<FormResponseDTO> getAdminForm(@PathVariable String id) {
         return ResponseEntity.ok(formService.getForm(id));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public FormResponseDTO createForm(@Valid @RequestBody FormRequestDTO form) {
-        return formService.createForm(form);
+    public ResponseEntity<FormResponseDTO> createForm(@Valid @RequestBody FormRequestDTO form) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(formService.createForm(form));
     }
 
     @PutMapping("/{id}")

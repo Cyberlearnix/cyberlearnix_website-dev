@@ -38,7 +38,7 @@ public class PaymentService {
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    @Value("${app.backend.url:http://localhost:8083}")
+    @Value("${app.backend.url:https://cyberlearnix.com}")
     private String backendUrl;
 
     private final PaymentTransactionRepository transactionRepository;
@@ -64,10 +64,13 @@ public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final String KEY_SUCCESS_VAL = "success";
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String STATUS_FAILURE = "FAILURE";
     private static final String KEY_HASH_VERIFIED = "hashVerified";
     private static final String KEY_TXNID = "txnid";
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_EMAIL = "email";
 
     public PaymentService(PaymentTransactionRepository transactionRepository,
                           EnrollmentFormResponseRepository responseRepository,
@@ -122,7 +125,7 @@ public class PaymentService {
         double discountAmount = 0.0;
         String appliedCoupon = null;
         if (couponCode != null && !couponCode.isBlank()) {
-            discountAmount = couponService.applyAndConsume(couponCode, resolvedAmount);
+            discountAmount = couponService.calculateDiscount(couponCode, resolvedAmount);
             resolvedAmount = Math.max(1.0, resolvedAmount - discountAmount);
             appliedCoupon = couponCode.trim().toUpperCase();
         } else if (config.isDiscountEnabled() && config.getDiscountValue() != null && config.getDiscountValue() > 0) {
@@ -195,7 +198,7 @@ public class PaymentService {
         paymentData.put("amount", amount);
         paymentData.put("productinfo", productInfo);
         paymentData.put("firstname", firstname);
-        paymentData.put("email", email);
+        paymentData.put(KEY_EMAIL, email);
         paymentData.put("phone", phone);
         paymentData.put("surl", surl);
         paymentData.put("furl", furl);
@@ -203,7 +206,7 @@ public class PaymentService {
         paymentData.put("action", payuBaseUrl + "/_payment");
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
+        result.put(KEY_SUCCESS_VAL, true);
         result.put(KEY_TXNID, txnid);
         result.put("paymentData", paymentData);
         return result;
@@ -217,14 +220,14 @@ public class PaymentService {
      */
     @Transactional
     public Map<String, Object> handleCallback(Map<String, String> params) {
-        String status = params.getOrDefault("status", "failure").toLowerCase();
+        String status = params.getOrDefault(KEY_STATUS, "failure").toLowerCase();
         String txnid = params.get(KEY_TXNID);
         String payuTxnid = params.get(KEY_TXNID);
         String mihpayid = params.getOrDefault("mihpayid", "");
         String amount = params.getOrDefault("amount", "0");
         String productinfo = params.getOrDefault("productinfo", "");
         String firstname = params.getOrDefault("firstname", "");
-        String email = params.getOrDefault("email", "");
+        String email = params.getOrDefault(KEY_EMAIL, "");
         String receivedHash = params.getOrDefault("hash", "");
         String mode = params.getOrDefault("mode", "");
         String bankRefNum = params.getOrDefault("bank_ref_num", "");
@@ -250,6 +253,7 @@ public class PaymentService {
             log.warn("[PayU Callback] Hash mismatch for txnid={}. reverseInput=[{}]", txnid, reverseHashString);
         }
 
+
         // 2. Load and update transaction
         Optional<PaymentTransaction> txnOpt = transactionRepository.findByTxnid(txnid);
         PaymentTransaction txn;
@@ -273,6 +277,14 @@ public class PaymentService {
         // We only update the DB to PAID here when hash also verifies (belt-and-suspenders).
         // We NEVER mark as FAILED from the browser callback — that would block the webhook.
         boolean payuSaysSuccess = "success".equals(status);
+        String txnStatus;
+        if (payuSaysSuccess && hashVerified) {
+            txnStatus = STATUS_SUCCESS;
+        } else if (payuSaysSuccess) {
+            txnStatus = "SUCCESS_PENDING_WEBHOOK";
+        } else {
+            txnStatus = STATUS_FAILURE;
+        }
         String txnStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS
                          : payuSaysSuccess ? "SUCCESS_PENDING_WEBHOOK"
                          : STATUS_FAILURE;
@@ -280,6 +292,10 @@ public class PaymentService {
         transactionRepository.save(txn);
 
         // 3. Update form response — only set PAID when verified; never set FAILED from browser
+        updateFormResponseFromCallback(txn, txnid, mihpayid, mode, amount, payuSaysSuccess, hashVerified);
+
+        // Status returned in the response reflects both PayU outcome and hash verification
+        String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
         if (txn.getFormResponseId() != null && payuSaysSuccess && hashVerified) {
             responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
                 r.setPaymentStatus("PAID");
@@ -311,6 +327,7 @@ public class PaymentService {
         String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
 
         Map<String, Object> result = new LinkedHashMap<>();
+        result.put(KEY_STATUS, redirectStatus);
         result.put("status", redirectStatus);
         result.put(KEY_TXNID, txnid);
         result.put("mihpayid", mihpayid);
@@ -318,8 +335,42 @@ public class PaymentService {
         result.put("message", payuSaysSuccess ? "Payment successful" : "Payment failed");
         result.put("formId", txn.getFormId() != null ? txn.getFormId() : "");
         result.put("responseId", txn.getFormResponseId() != null ? String.valueOf(txn.getFormResponseId()) : "");
+        result.put(KEY_EMAIL, txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
         result.put("email", txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
         return result;
+    }
+
+    private void updateFormResponseFromCallback(PaymentTransaction txn, String txnid, String mihpayid,
+            String mode, String amount, boolean payuSaysSuccess, boolean hashVerified) {
+        if (txn.getFormResponseId() == null) return;
+        if (payuSaysSuccess && hashVerified) {
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                r.setPaymentStatus("PAID");
+                r.setTransactionId(txnid);
+                r.setMihpayid(mihpayid);
+                r.setPaymentMode(resolvePaymentMode(mode));
+                r.setAmountPaid(Double.parseDouble(amount));
+                r.setCouponCode(txn.getCouponCode());
+                r.setDiscountAmount(txn.getDiscountAmount());
+                responseRepository.save(r);
+            });
+        } else if (payuSaysSuccess) {
+            // PayU says success but hash didn't verify — mark PENDING so webhook can update
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                if (!"PAID".equals(r.getPaymentStatus())) {
+                    r.setPaymentStatus("PENDING");
+                    responseRepository.save(r);
+                }
+            });
+        } else {
+            // Payment failed — mark form response as FAILED
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                if (!"PAID".equals(r.getPaymentStatus())) {
+                    r.setPaymentStatus("FAILED");
+                    responseRepository.save(r);
+                }
+            });
+        }
     }
 
     // ── PayU Webhook (server-to-server) ──────────────────────────────────────
@@ -332,12 +383,12 @@ public class PaymentService {
     @Transactional
     public void handleWebhook(Map<String, String> params) {
         String txnid     = params.getOrDefault("txnid", "");
-        String status    = params.getOrDefault("status", "").toLowerCase();
+        String status    = params.getOrDefault(KEY_STATUS, "").toLowerCase();
         String mihpayid  = params.getOrDefault("mihpayid", "");
         String amount    = params.getOrDefault("amount", "0");
         String productinfo = params.getOrDefault("productinfo", "");
         String firstname = params.getOrDefault("firstname", "");
-        String email     = params.getOrDefault("email", "");
+        String email     = params.getOrDefault(KEY_EMAIL, "");
         String mode      = params.getOrDefault("mode", "");
         String bankRefNum = params.getOrDefault("bank_ref_num", "");
         String errorMsg  = params.getOrDefault("error_Message", "");
@@ -377,6 +428,7 @@ public class PaymentService {
         PaymentTransaction txn = txnOpt.get();
 
         // 4. Idempotency check — also skip if browser callback already set SUCCESS
+        // 4. Idempotency check
         if ("PAID".equals(txn.getStatus()) || "FAILED".equals(txn.getStatus())) {
             log.info("[PayU Webhook] Already processed txnid: {}, status: {}", txnid, txn.getStatus());
             return;
@@ -413,6 +465,8 @@ public class PaymentService {
                     r.setPaymentMode(resolvePaymentMode(mode));
                     r.setAmountPaid(Double.parseDouble(amount));
                     r.setBankRefNum(bankRefNum);
+                    r.setCouponCode(txn.getCouponCode());
+                    r.setDiscountAmount(txn.getDiscountAmount());
                 }
                 try { r.setPayuResponse(objectMapper.writeValueAsString(params)); } catch (Exception ignored) {}
                 responseRepository.save(r);
@@ -420,7 +474,12 @@ public class PaymentService {
         }
 
         if (isSuccess) {
-            // 7. Create student enrollment
+            // 7. Consume coupon usage (only if it's the first time marking this as PAID)
+            if (txn.getCouponCode() != null && !"FORM-DISCOUNT".equals(txn.getCouponCode())) {
+                couponService.consumeCoupon(txn.getCouponCode());
+            }
+
+            // 8. Create student enrollment
             enrollStudentFromWebhook(txn, txnid);
 
             // 8. Send success email with PDF receipt
@@ -476,6 +535,20 @@ public class PaymentService {
                 return;
             }
 
+            if (config == null || config.getCourseId() == null) {
+                log.warn("[PayU Webhook] No course linked to form, skipping enrollment for txnid: {}", txnid);
+                return;
+            }
+
+            // Also check effectiveCourseIds (multi-course support)
+            List<Long> allCourses = config.getEffectiveCourseIds();
+            if (allCourses.isEmpty()) {
+                allCourses = List.of(config.getCourseId());
+            }
+
+                return;
+            }
+
             String tempPassword = "Welcome@" + UUID.randomUUID().toString().substring(0, 8);
             Map<String, Object> regReq = Map.of(
                     "email", txn.getStudentEmail(),
@@ -486,6 +559,9 @@ public class PaymentService {
                     ? (String) createdUser.get("id") : null;
 
             if (studentUuid != null) {
+                enrollmentService.bulkAssign(studentUuid, allCourses);
+                log.info("[PayU Webhook] Enrolled student {} in {} course(s): {}",
+                        txn.getStudentEmail(), allCourses.size(), allCourses);
                 enrollmentService.bulkAssign(studentUuid, courseIdsToEnroll);
                 log.info("[PayU Webhook] Enrolled student {} in {} course(s): {}",
                         txn.getStudentEmail(), courseIdsToEnroll.size(), courseIdsToEnroll);
@@ -504,7 +580,7 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Transaction not found: " + txnid));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put(KEY_TXNID, txn.getTxnid());
-        result.put("status", txn.getStatus());
+        result.put(KEY_STATUS, txn.getStatus());
         result.put("amount", txn.getAmount());
         result.put("currency", txn.getCurrency());
         result.put("mihpayid", txn.getMihpayid());
@@ -523,13 +599,13 @@ public class PaymentService {
         if (txn.isPresent()) {
             result.put("found", true);
             result.put(KEY_TXNID, txn.get().getTxnid());
-            result.put("status", txn.get().getStatus());
+            result.put(KEY_STATUS, txn.get().getStatus());
             result.put("amount", txn.get().getAmount());
             result.put("mihpayid", txn.get().getMihpayid());
             result.put(KEY_HASH_VERIFIED, txn.get().isHashVerified());
         } else {
             result.put("found", false);
-            result.put("status", "NOT_INITIATED");
+            result.put(KEY_STATUS, "NOT_INITIATED");
         }
         return result;
     }

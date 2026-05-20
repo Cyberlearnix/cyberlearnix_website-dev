@@ -64,7 +64,8 @@ public class CouponService {
         result.put("code", code.trim().toUpperCase());
         result.put("orderTotal", orderTotal);
 
-        var opt = couponRepository.findByCodeIgnoreCase(code);
+        String cleanCode = code != null ? code.trim() : "";
+        var opt = couponRepository.findByCodeIgnoreCase(cleanCode);
         if (opt.isEmpty()) {
             result.put("valid", false);
             result.put("message", "Coupon code not found.");
@@ -101,22 +102,38 @@ public class CouponService {
         return result;
     }
 
-    // ── Internal: apply (called during payment initiation) ───────────────────
-
     /**
-     * Validates the coupon, increments its usage count, and returns the discount amount.
-     * Throws IllegalArgumentException if the coupon is invalid.
+     * Validates the coupon and returns the discount amount without incrementing usage.
      */
-    @Transactional
-    public double applyAndConsume(String code, double orderTotal) {
+    public double calculateDiscount(String code, double orderTotal) {
         Map<String, Object> v = validate(code, orderTotal);
         if (!Boolean.TRUE.equals(v.get("valid"))) {
             throw new IllegalArgumentException((String) v.get("message"));
         }
-        // Increment usage
-        Coupon c = couponRepository.findByCodeIgnoreCase(code).orElseThrow();
-        c.setUsageCount(c.getUsageCount() + 1);
-        couponRepository.save(c);
         return ((Number) v.get("discountAmount")).doubleValue();
+    }
+
+    /**
+     * Increments the usage count of a coupon. Called only after successful payment confirmation.
+     */
+    @Transactional
+    public void consumeCoupon(String code) {
+        if (code == null || code.isBlank()) return;
+        couponRepository.findByCodeIgnoreCase(code.trim().toUpperCase()).ifPresent(c -> {
+            c.setUsageCount(c.getUsageCount() + 1);
+            couponRepository.save(c);
+        });
+    }
+
+    /**
+     * Validates the coupon, increments its usage count, and returns the discount amount.
+     * @deprecated Use calculateDiscount during initiation and consumeCoupon after payment success.
+     */
+    @Deprecated
+    @Transactional
+    public double applyAndConsume(String code, double orderTotal) {
+        double discount = calculateDiscount(code, orderTotal);
+        consumeCoupon(code);
+        return discount;
     }
 }

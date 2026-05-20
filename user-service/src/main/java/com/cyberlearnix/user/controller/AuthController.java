@@ -38,6 +38,9 @@ public class AuthController {
     @Value("${jwt.expiration:3600000}")
     private long jwtExpiration;
 
+    @Value("${server.cookie.secure:false}")
+    private boolean cookieSecure;
+
     /**
      * Secure login endpoint with httpOnly cookie for refresh token
      * Returns access token in body and refresh token in httpOnly cookie
@@ -65,7 +68,7 @@ public class AuthController {
             ResponseCookie refreshTokenCookie = ResponseCookie
                     .from("refreshToken", refreshToken)
                     .httpOnly(true)
-                    .secure(false) // TODO: Switch to true for HTTPS production
+                    .secure(cookieSecure)
                     .path("/api/auth")
                     .maxAge(7200) // 2 hours
                     .sameSite("Strict")
@@ -121,7 +124,7 @@ public class AuthController {
             ResponseCookie clearCookie = ResponseCookie
                     .from("refreshToken", "")
                     .httpOnly(true)
-                    .secure(false) // TODO: Switch to true for HTTPS production
+                    .secure(cookieSecure)
                     .path("/api/auth")
                     .maxAge(0) // Delete the cookie
                     .sameSite("Strict")
@@ -203,7 +206,7 @@ public class AuthController {
             ResponseCookie refreshTokenCookie = ResponseCookie
                     .from("refreshToken", refreshToken)
                     .httpOnly(true)
-                    .secure(false) // TODO: Switch to true for HTTPS production
+                    .secure(cookieSecure)
                     .path("/api/auth")
                     .maxAge(7200)
                     .sameSite("Strict")

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,6 +19,7 @@ public class EmailNotificationService {
     private static final String ADMIN_EMAIL = "cyberlearnix@gmail.com";
     private static final String AUTH_EMAIL = "cyberlearnixprivatelimited@gmail.com";
 
+    @Async
     public void sendAdminInquiryNotification(String name, String email, String phone, String message) {
         String subject = "New Inquiry from " + name;
 

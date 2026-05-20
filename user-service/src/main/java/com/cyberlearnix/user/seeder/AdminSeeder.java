@@ -40,11 +40,13 @@ public class AdminSeeder implements CommandLineRunner {
             userRepository.save(admin);
             System.out.println("[AdminSeeder] Created default admin user: " + adminEmail);
         } else {
+            // Admin user already exists — preserve existing password, only ensure role
             User admin = existingAdmin.get();
-            admin.setPasswordHash(passwordEncoder.encode("Shivam$179"));
-            admin.setRole("admin"); // Ensure role is still admin
-            userRepository.save(admin);
-            System.out.println("[AdminSeeder] Updated password for existing admin: " + adminEmail);
+            if (!"admin".equals(admin.getRole())) {
+                admin.setRole("admin");
+                userRepository.save(admin);
+            }
+            System.out.println("[AdminSeeder] Admin user already exists, no changes made: " + adminEmail);
         }
 
         // Ensure UserProfile exists

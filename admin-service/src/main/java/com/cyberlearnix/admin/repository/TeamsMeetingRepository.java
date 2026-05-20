@@ -14,6 +14,7 @@ import java.util.Optional;
 public interface TeamsMeetingRepository extends JpaRepository<TeamsMeeting, Long> {
 
     List<TeamsMeeting> findAllByStatusOrderByStartDateTimeAsc(String status);
+    List<TeamsMeeting> findAllByCourseIdOrderByStartDateTimeAsc(Long courseId);
 
     Optional<TeamsMeeting> findByGraphMeetingId(String graphMeetingId);
 

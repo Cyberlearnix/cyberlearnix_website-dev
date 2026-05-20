@@ -3,6 +3,7 @@ package com.cyberlearnix.course.controller;
 import com.cyberlearnix.shared.entity.course.CourseAssignment;
 import com.cyberlearnix.shared.repository.course.CourseAssignmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +32,7 @@ public class AssignmentController {
     public ResponseEntity<CourseAssignment> createAssignment(@RequestBody CourseAssignment assignment) {
         assignment.setCreatedAt(LocalDateTime.now());
         assignment.setUpdatedAt(LocalDateTime.now());
-        return ResponseEntity.ok(assignmentRepository.save(assignment));
+        return ResponseEntity.status(HttpStatus.CREATED).body(assignmentRepository.save(assignment));
     }
 
     @GetMapping("/course/{courseId}")

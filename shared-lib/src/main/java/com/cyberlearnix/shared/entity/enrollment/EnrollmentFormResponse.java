@@ -27,6 +27,12 @@ public class EnrollmentFormResponse {
     @Column(name = "amount_paid")
     private Double amountPaid;
 
+    @Column(name = "coupon_code")
+    private String couponCode;
+
+    @Column(name = "discount_amount")
+    private Double discountAmount;
+
     @Column(name = "transaction_id")
     private String transactionId;
 
