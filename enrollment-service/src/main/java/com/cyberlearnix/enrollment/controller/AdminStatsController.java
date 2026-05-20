@@ -229,8 +229,6 @@ public class AdminStatsController {
         if (val == null) return 0.0;
         if (val instanceof BigDecimal bd) return bd.doubleValue();
         if (val instanceof Number n) return n.doubleValue();
-        if (val instanceof BigDecimal) return ((BigDecimal) val).doubleValue();
-        if (val instanceof Number) return ((Number) val).doubleValue();
         try { return Double.parseDouble(val.toString()); } catch (Exception e) { return 0.0; }
     }
 }

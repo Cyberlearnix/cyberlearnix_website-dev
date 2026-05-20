@@ -277,14 +277,9 @@ public class PaymentService {
         // We only update the DB to PAID here when hash also verifies (belt-and-suspenders).
         // We NEVER mark as FAILED from the browser callback — that would block the webhook.
         boolean payuSaysSuccess = "success".equals(status);
-        String txnStatus;
-        if (payuSaysSuccess && hashVerified) {
-            txnStatus = STATUS_SUCCESS;
-        } else if (payuSaysSuccess) {
-            txnStatus = "SUCCESS_PENDING_WEBHOOK";
-        } else {
-            txnStatus = STATUS_FAILURE;
-        }
+        String txnStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS
+                         : payuSaysSuccess ? "SUCCESS_PENDING_WEBHOOK"
+                         : STATUS_FAILURE;
         txn.setStatus(txnStatus);
         transactionRepository.save(txn);
 
@@ -508,11 +503,7 @@ public class PaymentService {
                 return;
             }
 
-            // Also check effectiveCourseIds (multi-course support)
-            List<Long> allCourses = config.getEffectiveCourseIds();
-            if (allCourses.isEmpty()) {
-                allCourses = List.of(config.getCourseId());
-            }
+            // Also check effectiveCourseIds (multi-course support) — already captured in courseIdsToEnroll
 
             String tempPassword = "Welcome@" + UUID.randomUUID().toString().substring(0, 8);
             Map<String, Object> regReq = Map.of(
@@ -524,9 +515,9 @@ public class PaymentService {
                     ? (String) createdUser.get("id") : null;
 
             if (studentUuid != null) {
-                enrollmentService.bulkAssign(studentUuid, allCourses);
+                enrollmentService.bulkAssign(studentUuid, courseIdsToEnroll);
                 log.info("[PayU Webhook] Enrolled student {} in {} course(s): {}",
-                        txn.getStudentEmail(), allCourses.size(), allCourses);
+                        txn.getStudentEmail(), courseIdsToEnroll.size(), courseIdsToEnroll);
             } else {
                 log.warn("[PayU Webhook] registerUser did not return id for: {}", txn.getStudentEmail());
             }
