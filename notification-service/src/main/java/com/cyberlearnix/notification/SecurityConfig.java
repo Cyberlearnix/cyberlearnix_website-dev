@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @EnableWebSecurity
@@ -20,6 +21,11 @@ public class SecurityConfig {
     private String jwtSecret;
 
     @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
@@ -27,10 +33,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/notifications/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Legacy email action endpoint — no auth required (called by other services directly)
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/notifications").permitAll()
+                        // Internal service-to-service inbox creation — protected by X-Internal-Service header
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/notifications/inbox").permitAll()
+                        // SSE stream — JWT may arrive as ?token= query param (EventSource limitation)
+                        // Resolved manually in InAppNotificationController.stream()
+                        .requestMatchers("/api/notifications/inbox/stream").permitAll()
+                        // All other inbox endpoints require authentication
+                        .requestMatchers("/api/notifications/inbox/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtTokenFilter(jwtSecret), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 }
+

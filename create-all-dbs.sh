@@ -35,6 +35,10 @@ SELECT 'CREATE DATABASE cyberlearnix_gateway'
 SELECT 'CREATE DATABASE cyberlearnix_instructor'
   WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cyberlearnix_instructor')\gexec
 
+-- notification-service persistent inbox store
+SELECT 'CREATE DATABASE cyberlearnix_notifications'
+  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cyberlearnix_notifications')\gexec
+
 -- List all databases to confirm
 \l cyberlearnix*
 SQL
