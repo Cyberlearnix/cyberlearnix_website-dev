@@ -53,6 +53,7 @@ public class TeamsService {
     private final RestTemplate restTemplate;
     private final ZohoTokenService tokenService;
     private final TeamsMeetingRepository meetingRepository;
+    private final com.cyberlearnix.admin.client.NotificationClient notificationClient;
 
     @Value("${zoho.org-id}")
     private String orgId;
@@ -214,7 +215,26 @@ public class TeamsService {
         entity.setBatchId(request.getBatchId());
         entity.setInviteesJson(serializeInvitees(request.getInvitees()));
 
-        return toResponse(meetingRepository.save(entity));
+        TeamsMeetingResponse saved = toResponse(meetingRepository.save(entity));
+
+        // Notify enrolled students about the new live session
+        try {
+            if (request.getCourseId() != null) {
+                java.util.Map<String, Object> notifReq = new java.util.HashMap<>();
+                notifReq.put("courseId", request.getCourseId());
+                notifReq.put("type", "LIVE_SESSION");
+                notifReq.put("title", "New Live Session Scheduled: " + request.getSubject());
+                notifReq.put("body", "A live session has been scheduled for your course. "
+                        + "Starts at " + request.getStartDateTime().format(
+                                java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a", java.util.Locale.ENGLISH)) + ".");
+                notifReq.put("link", "/meetings");
+                notificationClient.createInAppNotification("true", notifReq);
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to create LIVE_SESSION in-app notification: {}", ex.getMessage());
+        }
+
+        return saved;
     }
 
     /**

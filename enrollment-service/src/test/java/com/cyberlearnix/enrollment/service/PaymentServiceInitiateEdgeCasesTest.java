@@ -149,7 +149,7 @@ class PaymentServiceInitiateEdgeCasesTest {
         EnrollmentFormConfig config = buildConfig("form-1", "Test Course", true, 1000.0);
         when(responseRepository.findById(1L)).thenReturn(Optional.of(response));
         when(configRepository.findById("form-1")).thenReturn(Optional.of(config));
-        when(couponService.calculateDiscount("DISC20", 1000.0)).thenReturn(200.0);
+        when(couponService.applyAndConsume("DISC20", 1000.0)).thenReturn(200.0);
 
         Map<String, Object> result = paymentService.initiatePayment(
                 1L, "Alice", "alice@test.com", "9876543210", "DISC20");

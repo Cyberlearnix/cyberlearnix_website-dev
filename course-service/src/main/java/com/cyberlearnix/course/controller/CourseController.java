@@ -9,6 +9,7 @@ import com.cyberlearnix.shared.entity.course.ContentPartner;
 import com.cyberlearnix.shared.entity.course.CourseSuggestion;
 import com.cyberlearnix.shared.entity.course.LabContent;
 import com.cyberlearnix.shared.entity.course.LectureContent;
+import com.cyberlearnix.shared.entity.course.LiveSessionContent;
 import com.cyberlearnix.shared.entity.course.QuizContent;
 import com.cyberlearnix.shared.entity.course.QuizQuestion;
 import com.cyberlearnix.shared.entity.course.QuestionOption;
@@ -436,6 +437,7 @@ public class CourseController {
 
     // Student View: Full Curriculum (Modules & Content Titles)
     @GetMapping("/{id}/curriculum")
+    @Transactional
     public ResponseEntity<?> getCourseCurriculum(@PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = true) String userId,
             @RequestHeader(value = "X-User-Role", required = true) String userRole) {
@@ -528,13 +530,44 @@ public class CourseController {
             map.put("latePenaltyPercent", ass.getLatePenaltyPercent());
             map.put("rubric", ass.getRubric());
             map.put("plagiarismCheck", ass.getPlagiarismCheck());
+        } else if (content instanceof LiveSessionContent) {
+            LiveSessionContent live = (LiveSessionContent) content;
+            map.put("platform", live.getPlatform());
+            map.put("meetingUrl", live.getMeetingUrl());
+            map.put("meetingId", live.getMeetingId());
+            map.put("meetingPassword", live.getMeetingPassword());
+            map.put("agenda", live.getAgenda());
+            map.put("recordSession", live.getRecordSession());
+            map.put("sessionAt", live.getSessionAt());
+            map.put("durationMinutes", live.getDurationMinutes());
         } else if (content instanceof QuizContent) {
             QuizContent quiz = (QuizContent) content;
             map.put("quizId", quiz.getQuizId());
             map.put("timeLimitMinutes", quiz.getTimeLimitMinutes());
             map.put("passingScore", quiz.getPassingScore());
             map.put("maxAttempts", quiz.getMaxAttempts());
-            // Don't include questions here to avoid lazy loading issues
+            if (quiz.getQuestions() != null) {
+                map.put("questions", quiz.getQuestions().stream()
+                    .sorted(java.util.Comparator.comparing(q -> q.getOrderIndex() != null ? q.getOrderIndex() : 0))
+                    .map(q -> {
+                        Map<String, Object> qMap = new LinkedHashMap<>();
+                        qMap.put("id", q.getId());
+                        qMap.put("questionText", q.getQuestionText());
+                        qMap.put("questionType", q.getQuestionType());
+                        qMap.put("points", q.getPoints());
+                        qMap.put("explanation", q.getExplanation());
+                        if (q.getOptions() != null) {
+                            qMap.put("options", q.getOptions().stream().map(o -> {
+                                Map<String, Object> oMap = new LinkedHashMap<>();
+                                oMap.put("id", o.getId());
+                                oMap.put("optionText", o.getOptionText());
+                                oMap.put("isCorrect", o.getIsCorrect());
+                                return oMap;
+                            }).collect(Collectors.toList()));
+                        }
+                        return qMap;
+                    }).collect(Collectors.toList()));
+            }
         }
 
         return map;

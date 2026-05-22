@@ -38,7 +38,7 @@ public class PaymentService {
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    @Value("${app.backend.url:https://cyberlearnix.com}")
+    @Value("${app.backend.url:http://localhost:8083}")
     private String backendUrl;
 
     private final PaymentTransactionRepository transactionRepository;
@@ -64,13 +64,10 @@ public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String KEY_SUCCESS_VAL = "success";
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String STATUS_FAILURE = "FAILURE";
     private static final String KEY_HASH_VERIFIED = "hashVerified";
     private static final String KEY_TXNID = "txnid";
-    private static final String KEY_STATUS = "status";
-    private static final String KEY_EMAIL = "email";
 
     public PaymentService(PaymentTransactionRepository transactionRepository,
                           EnrollmentFormResponseRepository responseRepository,
@@ -125,7 +122,7 @@ public class PaymentService {
         double discountAmount = 0.0;
         String appliedCoupon = null;
         if (couponCode != null && !couponCode.isBlank()) {
-            discountAmount = couponService.calculateDiscount(couponCode, resolvedAmount);
+            discountAmount = couponService.applyAndConsume(couponCode, resolvedAmount);
             resolvedAmount = Math.max(1.0, resolvedAmount - discountAmount);
             appliedCoupon = couponCode.trim().toUpperCase();
         } else if (config.isDiscountEnabled() && config.getDiscountValue() != null && config.getDiscountValue() > 0) {
@@ -198,7 +195,7 @@ public class PaymentService {
         paymentData.put("amount", amount);
         paymentData.put("productinfo", productInfo);
         paymentData.put("firstname", firstname);
-        paymentData.put(KEY_EMAIL, email);
+        paymentData.put("email", email);
         paymentData.put("phone", phone);
         paymentData.put("surl", surl);
         paymentData.put("furl", furl);
@@ -206,7 +203,7 @@ public class PaymentService {
         paymentData.put("action", payuBaseUrl + "/_payment");
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put(KEY_SUCCESS_VAL, true);
+        result.put("success", true);
         result.put(KEY_TXNID, txnid);
         result.put("paymentData", paymentData);
         return result;
@@ -220,39 +217,28 @@ public class PaymentService {
      */
     @Transactional
     public Map<String, Object> handleCallback(Map<String, String> params) {
-        String status = params.getOrDefault(KEY_STATUS, "failure").toLowerCase();
+        String status = params.getOrDefault("status", "failure").toLowerCase();
         String txnid = params.get(KEY_TXNID);
         String payuTxnid = params.get(KEY_TXNID);
         String mihpayid = params.getOrDefault("mihpayid", "");
         String amount = params.getOrDefault("amount", "0");
         String productinfo = params.getOrDefault("productinfo", "");
         String firstname = params.getOrDefault("firstname", "");
-        String email = params.getOrDefault(KEY_EMAIL, "");
+        String email = params.getOrDefault("email", "");
         String receivedHash = params.getOrDefault("hash", "");
         String mode = params.getOrDefault("mode", "");
         String bankRefNum = params.getOrDefault("bank_ref_num", "");
         String errorMessage = params.getOrDefault("error_Message", "");
 
-        // Read all udf fields explicitly from PayU's callback params
+        // 1. Verify reverse hash
+        // Formula: sha512(salt|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key)
+        // With udf5..udf2 always empty: salt|status|||||udf1|email|...
+        // PayU reverse hash uses: salt|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
         String udf1 = params.getOrDefault("udf1", "");
-        String udf2 = params.getOrDefault("udf2", "");
-        String udf3 = params.getOrDefault("udf3", "");
-        String udf4 = params.getOrDefault("udf4", "");
-        String udf5 = params.getOrDefault("udf5", "");
-
-        // PayU reverse hash: SALT|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
-        String reverseHashString = merchantSalt + "|" + status + "|"
-                + udf5 + "|" + udf4 + "|" + udf3 + "|" + udf2 + "|" + udf1 + "|"
-                + email + "|" + firstname + "|" + productinfo + "|"
-                + amount + "|" + txnid + "|" + merchantKey;
+        String reverseHashString = merchantSalt + "|" + status + "|||||" + udf1 + "|" + email + "|"
+                + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
         String computedHash = sha512(reverseHashString);
         boolean hashVerified = computedHash.equalsIgnoreCase(receivedHash);
-
-        log.info("[PayU Callback] txnid={} payuStatus={} hashVerified={}", txnid, status, hashVerified);
-        if (!hashVerified) {
-            log.warn("[PayU Callback] Hash mismatch for txnid={}. reverseInput=[{}]", txnid, reverseHashString);
-        }
-
 
         // 2. Load and update transaction
         Optional<PaymentTransaction> txnOpt = transactionRepository.findByTxnid(txnid);
@@ -260,6 +246,7 @@ public class PaymentService {
         if (txnOpt.isPresent()) {
             txn = txnOpt.get();
         } else {
+            // Fallback: create record if webhook arrived before callback
             txn = new PaymentTransaction();
             txn.setTxnid(txnid);
         }
@@ -272,68 +259,34 @@ public class PaymentService {
         txn.setHashVerified(hashVerified);
         txn.setCompletedAt(LocalDateTime.now());
 
-        // IMPORTANT: The browser callback is NOT a security boundary — the webhook is.
-        // For the redirect URL we trust PayU's own 'status' param directly.
-        // We only update the DB to PAID here when hash also verifies (belt-and-suspenders).
-        // We NEVER mark as FAILED from the browser callback — that would block the webhook.
-        boolean payuSaysSuccess = "success".equals(status);
-        String txnStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS
-                         : payuSaysSuccess ? "SUCCESS_PENDING_WEBHOOK"
-                         : STATUS_FAILURE;
-        txn.setStatus(txnStatus);
+        String normalizedStatus = "success".equals(status) && hashVerified ? STATUS_SUCCESS : STATUS_FAILURE;
+        txn.setStatus(normalizedStatus);
         transactionRepository.save(txn);
 
-        // 3. Update form response — only set PAID when verified; never set FAILED from browser
-        updateFormResponseFromCallback(txn, txnid, mihpayid, mode, amount, payuSaysSuccess, hashVerified);
-
-        // Status returned in the response reflects both PayU outcome and hash verification
-        String redirectStatus = (payuSaysSuccess && hashVerified) ? STATUS_SUCCESS : STATUS_FAILURE;
+        // 3. Update form response payment status
+        if (txn.getFormResponseId() != null) {
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                r.setPaymentStatus(STATUS_SUCCESS.equals(normalizedStatus) ? "PAID" : "FAILED");
+                // SEC: Only persist payment details when hash is verified and payment succeeded.
+                // Setting transactionId on a tampered/failed callback would be a security risk.
+                if (STATUS_SUCCESS.equals(normalizedStatus)) {
+                    r.setTransactionId(txnid);
+                    r.setMihpayid(mihpayid);
+                    r.setPaymentMode(resolvePaymentMode(mode));
+                    r.setAmountPaid(Double.parseDouble(amount));
+                }
+                responseRepository.save(r);
+            });
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put(KEY_STATUS, redirectStatus);
-        result.put("status", redirectStatus);
+        result.put("status", normalizedStatus);
         result.put(KEY_TXNID, txnid);
         result.put("mihpayid", mihpayid);
         result.put(KEY_HASH_VERIFIED, hashVerified);
-        result.put("message", payuSaysSuccess ? "Payment successful" : "Payment failed");
-        result.put("formId", txn.getFormId() != null ? txn.getFormId() : "");
-        result.put("responseId", txn.getFormResponseId() != null ? String.valueOf(txn.getFormResponseId()) : "");
-        result.put(KEY_EMAIL, txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
-        result.put("email", txn.getStudentEmail() != null ? txn.getStudentEmail() : email);
+        result.put("message", STATUS_SUCCESS.equals(normalizedStatus)
+                ? "Payment successful" : "Payment failed or hash mismatch");
         return result;
-    }
-
-    private void updateFormResponseFromCallback(PaymentTransaction txn, String txnid, String mihpayid,
-            String mode, String amount, boolean payuSaysSuccess, boolean hashVerified) {
-        if (txn.getFormResponseId() == null) return;
-        if (payuSaysSuccess && hashVerified) {
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                r.setPaymentStatus("PAID");
-                r.setTransactionId(txnid);
-                r.setMihpayid(mihpayid);
-                r.setPaymentMode(resolvePaymentMode(mode));
-                r.setAmountPaid(Double.parseDouble(amount));
-                r.setCouponCode(txn.getCouponCode());
-                r.setDiscountAmount(txn.getDiscountAmount());
-                responseRepository.save(r);
-            });
-        } else if (payuSaysSuccess) {
-            // PayU says success but hash didn't verify — mark PENDING so webhook can update
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                if (!"PAID".equals(r.getPaymentStatus())) {
-                    r.setPaymentStatus("PENDING");
-                    responseRepository.save(r);
-                }
-            });
-        } else {
-            // Payment failed — mark form response as FAILED
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                if (!"PAID".equals(r.getPaymentStatus())) {
-                    r.setPaymentStatus("FAILED");
-                    responseRepository.save(r);
-                }
-            });
-        }
     }
 
     // ── PayU Webhook (server-to-server) ──────────────────────────────────────
@@ -346,21 +299,17 @@ public class PaymentService {
     @Transactional
     public void handleWebhook(Map<String, String> params) {
         String txnid     = params.getOrDefault("txnid", "");
-        String status    = params.getOrDefault(KEY_STATUS, "").toLowerCase();
+        String status    = params.getOrDefault("status", "").toLowerCase();
         String mihpayid  = params.getOrDefault("mihpayid", "");
         String amount    = params.getOrDefault("amount", "0");
         String productinfo = params.getOrDefault("productinfo", "");
         String firstname = params.getOrDefault("firstname", "");
-        String email     = params.getOrDefault(KEY_EMAIL, "");
+        String email     = params.getOrDefault("email", "");
         String mode      = params.getOrDefault("mode", "");
         String bankRefNum = params.getOrDefault("bank_ref_num", "");
         String errorMsg  = params.getOrDefault("error_Message", "");
         String receivedHash = params.getOrDefault("hash", "");
         String udf1      = params.getOrDefault("udf1", "");
-        String udf2      = params.getOrDefault("udf2", "");
-        String udf3      = params.getOrDefault("udf3", "");
-        String udf4      = params.getOrDefault("udf4", "");
-        String udf5      = params.getOrDefault("udf5", "");
 
         log.info("[PayU Webhook] Received for txnid: {}", txnid);
 
@@ -370,8 +319,8 @@ public class PaymentService {
             return;
         }
 
-        // 2. Verify hash: SALT|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
-        String hashString = merchantSalt + "|" + status + "|" + udf5 + "|" + udf4 + "|" + udf3 + "|" + udf2 + "|" + udf1 + "|" + email + "|"
+        // 2. Verify hash
+        String hashString = merchantSalt + "|" + status + "|||||" + udf1 + "|" + email + "|"
                 + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
         String calculatedHash = sha512(hashString);
         boolean hashVerified = calculatedHash.equalsIgnoreCase(receivedHash);
@@ -390,7 +339,6 @@ public class PaymentService {
         }
         PaymentTransaction txn = txnOpt.get();
 
-        // 4. Idempotency check — also skip if browser callback already set SUCCESS
         // 4. Idempotency check
         if ("PAID".equals(txn.getStatus()) || "FAILED".equals(txn.getStatus())) {
             log.info("[PayU Webhook] Already processed txnid: {}, status: {}", txnid, txn.getStatus());
@@ -428,8 +376,6 @@ public class PaymentService {
                     r.setPaymentMode(resolvePaymentMode(mode));
                     r.setAmountPaid(Double.parseDouble(amount));
                     r.setBankRefNum(bankRefNum);
-                    r.setCouponCode(txn.getCouponCode());
-                    r.setDiscountAmount(txn.getDiscountAmount());
                 }
                 try { r.setPayuResponse(objectMapper.writeValueAsString(params)); } catch (Exception ignored) {}
                 responseRepository.save(r);
@@ -437,12 +383,7 @@ public class PaymentService {
         }
 
         if (isSuccess) {
-            // 7. Consume coupon usage (only if it's the first time marking this as PAID)
-            if (txn.getCouponCode() != null && !"FORM-DISCOUNT".equals(txn.getCouponCode())) {
-                couponService.consumeCoupon(txn.getCouponCode());
-            }
-
-            // 8. Create student enrollment
+            // 7. Create student enrollment
             enrollStudentFromWebhook(txn, txnid);
 
             // 8. Send success email with PDF receipt
@@ -490,34 +431,26 @@ public class PaymentService {
         try {
             EnrollmentFormConfig config = txn.getFormId() != null
                     ? configRepository.findById(txn.getFormId()).orElse(null) : null;
-
-            // Collect all courses linked to this enrollment form (multi-course support)
-            List<Long> courseIdsToEnroll = (config != null) ? config.getEffectiveCourseIds() : List.of();
-            if (courseIdsToEnroll.isEmpty()) {
-                log.warn("[PayU Webhook] No courses linked to form, skipping enrollment for txnid: {}", txnid);
-                return;
-            }
-
             if (config == null || config.getCourseId() == null) {
                 log.warn("[PayU Webhook] No course linked to form, skipping enrollment for txnid: {}", txnid);
                 return;
             }
 
-            // Also check effectiveCourseIds (multi-course support) — already captured in courseIdsToEnroll
-
+            // Register or find student, then enroll
             String tempPassword = "Welcome@" + UUID.randomUUID().toString().substring(0, 8);
             Map<String, Object> regReq = Map.of(
                     "email", txn.getStudentEmail(),
                     "password", tempPassword,
                     "role", "student");
+            // Use an internal service token — empty string uses default internal auth
             Map<String, Object> createdUser = userClient.registerUser("", regReq);
             String studentUuid = (createdUser != null && createdUser.get("id") != null)
                     ? (String) createdUser.get("id") : null;
 
             if (studentUuid != null) {
-                enrollmentService.bulkAssign(studentUuid, courseIdsToEnroll);
-                log.info("[PayU Webhook] Enrolled student {} in {} course(s): {}",
-                        txn.getStudentEmail(), courseIdsToEnroll.size(), courseIdsToEnroll);
+                enrollmentService.bulkAssign(studentUuid, List.of(config.getCourseId()));
+                log.info("[PayU Webhook] Created enrollment for student: {}, course: {}",
+                        txn.getStudentEmail(), config.getCourseId());
             } else {
                 log.warn("[PayU Webhook] registerUser did not return id for: {}", txn.getStudentEmail());
             }
@@ -533,7 +466,7 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Transaction not found: " + txnid));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put(KEY_TXNID, txn.getTxnid());
-        result.put(KEY_STATUS, txn.getStatus());
+        result.put("status", txn.getStatus());
         result.put("amount", txn.getAmount());
         result.put("currency", txn.getCurrency());
         result.put("mihpayid", txn.getMihpayid());
@@ -552,13 +485,13 @@ public class PaymentService {
         if (txn.isPresent()) {
             result.put("found", true);
             result.put(KEY_TXNID, txn.get().getTxnid());
-            result.put(KEY_STATUS, txn.get().getStatus());
+            result.put("status", txn.get().getStatus());
             result.put("amount", txn.get().getAmount());
             result.put("mihpayid", txn.get().getMihpayid());
             result.put(KEY_HASH_VERIFIED, txn.get().isHashVerified());
         } else {
             result.put("found", false);
-            result.put(KEY_STATUS, "NOT_INITIATED");
+            result.put("status", "NOT_INITIATED");
         }
         return result;
     }

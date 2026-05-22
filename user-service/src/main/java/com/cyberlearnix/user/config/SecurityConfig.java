@@ -97,6 +97,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/stats/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/profile").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/profile").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/users/upload/photo").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/logout").authenticated()
                         .anyRequest().authenticated()

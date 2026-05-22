@@ -260,6 +260,24 @@ public class EnrollmentService {
             e.setProgress(0);
             enrollments.add(enrollmentRepository.save(e));
         });
+
+        // Notify student for each assigned course
+        if (studentId != null && !courseIds.isEmpty()) {
+            courseIds.forEach(courseId -> {
+                try {
+                    java.util.Map<String, Object> notifReq = new java.util.HashMap<>();
+                    notifReq.put("userId", studentId);
+                    notifReq.put("type", "COURSE_ASSIGNED");
+                    notifReq.put("title", "You've been enrolled in a new course!");
+                    notifReq.put("body", "A new course has been added to your learning dashboard. Start exploring now.");
+                    notifReq.put("link", "/courses/" + courseId);
+                    notificationClient.createInAppNotification("true", notifReq);
+                } catch (Exception ex) {
+                    log.warn("Failed to create COURSE_ASSIGNED in-app notification for student {}: {}", studentId, ex.getMessage());
+                }
+            });
+        }
+
         return enrollments;
     }
 
