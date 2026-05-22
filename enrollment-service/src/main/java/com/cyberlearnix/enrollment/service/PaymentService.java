@@ -231,10 +231,11 @@ public class PaymentService {
         String errorMessage = params.getOrDefault("error_Message", "");
 
         // 1. Verify reverse hash
-        // Formula: sha512(salt|status||||||udf1|email|firstname|productinfo|amount|txnid|key)
+        // Formula: sha512(salt|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key)
+        // With udf5..udf2 always empty: salt|status|||||udf1|email|...
         // PayU reverse hash uses: salt|status|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
         String udf1 = params.getOrDefault("udf1", "");
-        String reverseHashString = merchantSalt + "|" + status + "||||||" + udf1 + "|" + email + "|"
+        String reverseHashString = merchantSalt + "|" + status + "|||||" + udf1 + "|" + email + "|"
                 + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
         String computedHash = sha512(reverseHashString);
         boolean hashVerified = computedHash.equalsIgnoreCase(receivedHash);
@@ -319,7 +320,7 @@ public class PaymentService {
         }
 
         // 2. Verify hash
-        String hashString = merchantSalt + "|" + status + "||||||" + udf1 + "|" + email + "|"
+        String hashString = merchantSalt + "|" + status + "|||||" + udf1 + "|" + email + "|"
                 + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
         String calculatedHash = sha512(hashString);
         boolean hashVerified = calculatedHash.equalsIgnoreCase(receivedHash);
