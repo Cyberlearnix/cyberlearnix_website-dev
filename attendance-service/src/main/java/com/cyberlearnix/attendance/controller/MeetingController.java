@@ -21,7 +21,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Tag(name = "Meetings", description = "Meeting management APIs")
 @RestController
@@ -111,7 +110,7 @@ public class MeetingController {
             dto.setStatus("ACTIVE");
             dto.setLastHeartbeat(s.getLastHeartbeat());
             return dto;
-        }).collect(Collectors.toList());
+        }).toList();
         return ResponseEntity.ok(result);
     }
 

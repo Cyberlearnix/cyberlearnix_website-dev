@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -58,8 +59,8 @@ public class ZohoMeetingApiClient {
         HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                apiUrl + "/meetings", HttpMethod.POST, req, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                apiUrl + "/meetings", HttpMethod.POST, req, new ParameterizedTypeReference<>() {});
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> data = response.getBody();
                 ZohoMeetingResponse resp = new ZohoMeetingResponse();
@@ -94,7 +95,7 @@ public class ZohoMeetingApiClient {
         try {
             String url = accountsUrl + "/token?grant_type=refresh_token&client_id=" + clientId
                 + "&client_secret=" + clientSecret + "&refresh_token=" + refreshToken;
-            ResponseEntity<Map> resp = restTemplate.postForEntity(url, null, Map.class);
+            ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(url, HttpMethod.POST, null, new ParameterizedTypeReference<>() {});
             if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
                 accessToken = (String) resp.getBody().get("access_token");
                 Integer expiresIn = (Integer) resp.getBody().getOrDefault("expires_in", 3600);

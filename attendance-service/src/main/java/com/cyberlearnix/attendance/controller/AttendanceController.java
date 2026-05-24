@@ -1,6 +1,7 @@
 package com.cyberlearnix.attendance.controller;
 
 import com.cyberlearnix.attendance.dto.*;
+import com.cyberlearnix.attendance.entity.CertificateEligibility;
 import com.cyberlearnix.attendance.entity.FinalAttendance;
 import com.cyberlearnix.attendance.repository.CertificateEligibilityRepository;
 import com.cyberlearnix.attendance.repository.FinalAttendanceRepository;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Tag(name = "Attendance", description = "Student attendance APIs")
 @RestController
@@ -57,7 +57,7 @@ public class AttendanceController {
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     public ResponseEntity<List<AttendanceDto>> getMeetingAttendance(@PathVariable String meetingId) {
         List<FinalAttendance> records = finalAttRepo.findByMeetingIdOrderByStudentNameAsc(meetingId);
-        return ResponseEntity.ok(records.stream().map(this::toDto).collect(Collectors.toList()));
+        return ResponseEntity.ok(records.stream().map(this::toDto).toList());
     }
 
     @Operation(summary = "Get my attendance for a specific meeting")
@@ -74,7 +74,7 @@ public class AttendanceController {
     @Operation(summary = "Get certificate eligibility for a course")
     @GetMapping("/certificate/eligibility")
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN','TEACHER')")
-    public ResponseEntity<?> getCertificateEligibility(
+    public ResponseEntity<CertificateEligibility> getCertificateEligibility(
             @RequestParam String courseId,
             @RequestHeader("X-User-Id") String userId) {
         return certRepo.findByStudentIdAndCourseId(userId, courseId)

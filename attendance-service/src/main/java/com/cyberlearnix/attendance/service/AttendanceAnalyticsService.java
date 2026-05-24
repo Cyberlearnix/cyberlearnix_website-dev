@@ -64,7 +64,7 @@ public class AttendanceAnalyticsService {
                 tp.setPresentCount((int) e.getValue().stream().filter(r -> r.getStatus() != FinalAttendance.AttendanceStatus.ABSENT).count());
                 return tp;
             })
-            .collect(Collectors.toList());
+            .toList();
         dto.setDailyTrend(daily);
 
         // Per-student ranking
@@ -87,14 +87,14 @@ public class AttendanceAnalyticsService {
                 return rank;
             })
             .sorted(Comparator.comparingDouble(AttendanceAnalyticsDto.StudentRank::getAvgPercentage).reversed())
-            .collect(Collectors.toList());
+            .toList();
 
-        dto.setTopPerformers(ranks.stream().limit(10).collect(Collectors.toList()));
+        dto.setTopPerformers(ranks.stream().limit(10).toList());
         dto.setAtRiskStudents(ranks.stream()
             .filter(r -> r.getAvgPercentage() < 60.0)
             .sorted(Comparator.comparingDouble(AttendanceAnalyticsDto.StudentRank::getAvgPercentage))
             .limit(20)
-            .collect(Collectors.toList()));
+            .toList());
 
         // Meeting breakdown
         List<AttendanceAnalyticsDto.MeetingBreakdown> breakdowns = meetings.stream()
@@ -111,7 +111,7 @@ public class AttendanceAnalyticsService {
                 b.setAbsentCount(mRecords.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.ABSENT).count());
                 return b;
             })
-            .collect(Collectors.toList());
+            .toList();
         dto.setMeetingBreakdown(breakdowns);
 
         return dto;
@@ -152,7 +152,7 @@ public class AttendanceAnalyticsService {
         }
 
         // Map to DTOs
-        report.setSessions(records.stream().map(this::toDto).collect(Collectors.toList()));
+        report.setSessions(records.stream().map(this::toDto).toList());
         return report;
     }
 

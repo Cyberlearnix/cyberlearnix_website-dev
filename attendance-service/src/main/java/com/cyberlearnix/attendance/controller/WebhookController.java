@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,9 @@ import java.util.Map;
 @RequestMapping("/api/attendance/webhooks")
 @RequiredArgsConstructor
 public class WebhookController {
+
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_ERROR = "error";
 
     private final ZohoWebhookService webhookService;
     private final ObjectMapper objectMapper;
@@ -43,21 +47,21 @@ public class WebhookController {
         if (webhookToken != null && !webhookToken.isBlank()
                 && !webhookToken.equals(token)) {
             log.warn("Zoho webhook: invalid token from IP {}", request.getRemoteAddr());
-            return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, "unauthorized"));
         }
 
         try {
             ZohoWebhookEvent event = objectMapper.readValue(rawPayload, ZohoWebhookEvent.class);
             log.info("Received Zoho webhook event: {} from {}", event.getEvent(), request.getRemoteAddr());
             webhookService.processEvent(event, rawPayload, request.getRemoteAddr());
-            return ResponseEntity.ok(Map.of("status", "processed"));
+            return ResponseEntity.ok(Map.of(KEY_STATUS, "processed"));
         } catch (JsonProcessingException e) {
             log.error("Failed to parse Zoho webhook payload: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "invalid payload"));
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "invalid payload"));
         } catch (Exception e) {
             log.error("Error processing Zoho webhook: {}", e.getMessage(), e);
             // Return 200 to avoid Zoho retrying indefinitely
-            return ResponseEntity.ok(Map.of("status", "error logged"));
+            return ResponseEntity.ok(Map.of(KEY_STATUS, "error logged"));
         }
     }
 
@@ -67,6 +71,6 @@ public class WebhookController {
     @GetMapping("/zoho/verify")
     public ResponseEntity<Map<String, String>> verify(
             @RequestParam(required = false) String token) {
-        return ResponseEntity.ok(Map.of("status", "ok", "service", "cyberlearnix-attendance"));
+        return ResponseEntity.ok(Map.of(KEY_STATUS, "ok", "service", "cyberlearnix-attendance"));
     }
 }

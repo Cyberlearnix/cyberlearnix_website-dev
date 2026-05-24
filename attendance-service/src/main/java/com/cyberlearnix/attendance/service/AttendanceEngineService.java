@@ -5,7 +5,9 @@ import com.cyberlearnix.attendance.entity.*;
 import com.cyberlearnix.attendance.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,10 @@ public class AttendanceEngineService {
     private final AttendanceOverrideRepository overrideRepository;
     private final AuditLogRepository auditLogRepository;
     private final CertificateEligibilityService certService;
+
+    @Lazy
+    @Autowired
+    private AttendanceEngineService self;
 
     @Value("${attendance.min-present-percent:80}")
     private double minPresentPercent;
@@ -92,7 +98,7 @@ public class AttendanceEngineService {
 
         int rejoinCount = Math.max(0, sessions.size() - 1);
 
-        FinalAttendance.AttendanceStatus status = determineStatus(percentage, late, sessions);
+        FinalAttendance.AttendanceStatus status = determineStatus(percentage, late);
 
         // Get or create the record
         FinalAttendance fa = finalAttendanceRepository
@@ -150,7 +156,7 @@ public class AttendanceEngineService {
 
         for (String studentId : participantIds) {
             try {
-                calculateAndSave(meetingId, studentId);
+                self.calculateAndSave(meetingId, studentId);
             } catch (Exception e) {
                 log.error("Error calculating attendance for student {} in meeting {}", studentId, meetingId, e);
             }
@@ -210,9 +216,7 @@ public class AttendanceEngineService {
                 fa.setStatus(FinalAttendance.AttendanceStatus.EXCUSED);
                 fa.setCountsForCertificate(true);
             }
-            case "MARK_PARTIAL" -> {
-                fa.setStatus(FinalAttendance.AttendanceStatus.PARTIAL);
-            }
+            case "MARK_PARTIAL" -> fa.setStatus(FinalAttendance.AttendanceStatus.PARTIAL);
             case "EDIT_DURATION" -> {
                 if (request.getNewActiveSeconds() != null) {
                     fa.setTotalActiveSeconds(request.getNewActiveSeconds());
@@ -220,12 +224,12 @@ public class AttendanceEngineService {
                         ? Math.min(100.0, (double) request.getNewActiveSeconds() / fa.getMeetingDurationSeconds() * 100.0)
                         : 0.0;
                     fa.setAttendancePercentage(newPct);
-                    fa.setStatus(determineStatus(newPct, fa.getLate(), List.of()));
+                    fa.setStatus(determineStatus(newPct, fa.getLate()));
                     fa.setCountsForCertificate(newPct >= certificateMinPercent);
                 }
                 if (request.getNewPercentage() != null) {
                     fa.setAttendancePercentage(request.getNewPercentage());
-                    fa.setStatus(determineStatus(request.getNewPercentage(), fa.getLate(), List.of()));
+                    fa.setStatus(determineStatus(request.getNewPercentage(), fa.getLate()));
                     fa.setCountsForCertificate(request.getNewPercentage() >= certificateMinPercent);
                 }
             }
@@ -234,6 +238,7 @@ public class AttendanceEngineService {
                 fa.setLocked(false);
                 fa.setOverridden(false);
             }
+            default -> throw new IllegalArgumentException("Unknown override action: " + action);
         }
 
         if (request.getNewStatus() != null) {
@@ -274,7 +279,7 @@ public class AttendanceEngineService {
         return 3600L; // default 1 hour
     }
 
-    private FinalAttendance.AttendanceStatus determineStatus(double percentage, boolean late, List<MeetingSession> sessions) {
+    private FinalAttendance.AttendanceStatus determineStatus(double percentage, boolean late) {
         if (percentage <= 0) return FinalAttendance.AttendanceStatus.ABSENT;
         if (percentage >= minPresentPercent) {
             return late ? FinalAttendance.AttendanceStatus.LATE : FinalAttendance.AttendanceStatus.PRESENT;

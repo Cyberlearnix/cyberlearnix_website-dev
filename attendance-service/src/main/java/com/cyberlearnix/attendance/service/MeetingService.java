@@ -14,12 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MeetingService {
+
+    private static final String MEETING_NOT_FOUND = "Meeting not found: ";
 
     private final MeetingRepository meetingRepo;
     private final MeetingSessionRepository sessionRepo;
@@ -60,7 +61,7 @@ public class MeetingService {
 
     public MeetingDto getMeeting(String id) {
         Meeting meeting = meetingRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Meeting not found: " + id));
+            .orElseThrow(() -> new IllegalArgumentException(MEETING_NOT_FOUND + id));
         long live = sessionRepo.findActiveLiveParticipants(id).size();
         return toDto(meeting, live);
     }
@@ -76,7 +77,7 @@ public class MeetingService {
                 long live = sessionRepo.findActiveLiveParticipants(m.getId()).size();
                 return toDto(m, live);
             })
-            .collect(Collectors.toList());
+            .toList();
     }
 
     public List<MeetingDto> getUpcomingMeetings(int hours) {
@@ -84,13 +85,13 @@ public class MeetingService {
         LocalDateTime to = from.plusHours(hours);
         return meetingRepo.findUpcomingMeetings(from, to).stream()
             .map(m -> toDto(m, null))
-            .collect(Collectors.toList());
+            .toList();
     }
 
     @Transactional
     public MeetingDto updateMeeting(String id, CreateMeetingRequest req) {
         Meeting meeting = meetingRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Meeting not found: " + id));
+            .orElseThrow(() -> new IllegalArgumentException(MEETING_NOT_FOUND + id));
         if (req.getTitle() != null) meeting.setTitle(req.getTitle());
         if (req.getDescription() != null) meeting.setDescription(req.getDescription());
         if (req.getScheduledStart() != null) meeting.setScheduledStart(req.getScheduledStart());
@@ -103,7 +104,7 @@ public class MeetingService {
     @Transactional
     public void cancelMeeting(String id) {
         Meeting meeting = meetingRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Meeting not found: " + id));
+            .orElseThrow(() -> new IllegalArgumentException(MEETING_NOT_FOUND + id));
         meeting.setStatus(Meeting.MeetingStatus.CANCELLED);
         meetingRepo.save(meeting);
     }

@@ -8,7 +8,9 @@ import com.cyberlearnix.attendance.repository.FinalAttendanceRepository;
 import com.cyberlearnix.attendance.repository.MeetingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,10 @@ public class CertificateEligibilityService {
     private final CertificateEligibilityRepository certRepo;
     private final FinalAttendanceRepository finalAttRepo;
     private final MeetingRepository meetingRepo;
+
+    @Lazy
+    @Autowired
+    private CertificateEligibilityService self;
 
     @Value("${attendance.certificate-min-percent:80}")
     private double certMinPercent;
@@ -43,9 +49,8 @@ public class CertificateEligibilityService {
         Map<String, List<FinalAttendance>> byStudent = allAttendance.stream()
             .collect(Collectors.groupingBy(FinalAttendance::getStudentId));
 
-        byStudent.forEach((studentId, records) -> {
-            recalculateForStudentAndCourse(studentId, courseId, records, meetings.size(), (int) totalMandatory);
-        });
+        byStudent.forEach((studentId, records) ->
+            self.recalculateForStudentAndCourse(studentId, courseId, records, meetings.size(), (int) totalMandatory));
     }
 
     @Transactional

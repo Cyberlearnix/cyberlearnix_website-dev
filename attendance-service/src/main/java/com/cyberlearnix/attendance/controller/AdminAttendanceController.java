@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Tag(name = "Admin Attendance", description = "Admin attendance control APIs")
 @RestController
@@ -25,6 +24,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
 public class AdminAttendanceController {
+
+    private static final String ENTITY_TYPE_ATTENDANCE = "ATTENDANCE";
+    private static final String KEY_STATUS = "status";
 
     private final FinalAttendanceRepository finalAttRepo;
     private final AttendanceOverrideRepository overrideRepo;
@@ -54,7 +56,7 @@ public class AdminAttendanceController {
             @RequestHeader(value = "X-User-Name", defaultValue = "Admin") String adminName) {
         FinalAttendance result = engineService.applyAdminOverride(req, adminId, adminName);
         auditLog(adminId, adminName, "ATTENDANCE_OVERRIDE",
-            "ATTENDANCE", result.getId(),
+            ENTITY_TYPE_ATTENDANCE, result.getId(),
             "Override: " + req.getAction() + " for student " + req.getStudentId() + " in meeting " + req.getMeetingId());
         return ResponseEntity.ok(result);
     }
@@ -65,7 +67,8 @@ public class AdminAttendanceController {
             @RequestBody List<AttendanceOverrideRequest> requests,
             @RequestHeader("X-User-Id") String adminId,
             @RequestHeader(value = "X-User-Name", defaultValue = "Admin") String adminName) {
-        int success = 0, failed = 0;
+        int success = 0;
+        int failed = 0;
         for (AttendanceOverrideRequest req : requests) {
             try {
                 engineService.applyAdminOverride(req, adminId, adminName);
@@ -87,8 +90,8 @@ public class AdminAttendanceController {
             .orElseThrow(() -> new IllegalArgumentException("Attendance not found"));
         fa.setLocked(true);
         finalAttRepo.save(fa);
-        auditLog(adminId, adminName, "LOCK_ATTENDANCE", "ATTENDANCE", attendanceId, "Locked by admin");
-        return ResponseEntity.ok(Map.of("status", "locked"));
+        auditLog(adminId, adminName, "LOCK_ATTENDANCE", ENTITY_TYPE_ATTENDANCE, attendanceId, "Locked by admin");
+        return ResponseEntity.ok(Map.of(KEY_STATUS, "locked"));
     }
 
     @Operation(summary = "Unlock attendance record")
@@ -102,19 +105,19 @@ public class AdminAttendanceController {
         fa.setLocked(false);
         fa.setOverridden(false);
         finalAttRepo.save(fa);
-        auditLog(adminId, adminName, "UNLOCK_ATTENDANCE", "ATTENDANCE", attendanceId, "Unlocked by admin");
-        return ResponseEntity.ok(Map.of("status", "unlocked"));
+        auditLog(adminId, adminName, "UNLOCK_ATTENDANCE", ENTITY_TYPE_ATTENDANCE, attendanceId, "Unlocked by admin");
+        return ResponseEntity.ok(Map.of(KEY_STATUS, "unlocked"));
     }
 
     @Operation(summary = "Finalize attendance for a meeting")
     @PostMapping("/meetings/{meetingId}/finalize")
-    public ResponseEntity<Map<String, String>> finalize(
+    public ResponseEntity<Map<String, String>> finalizeAttendance(
             @PathVariable String meetingId,
             @RequestHeader("X-User-Id") String adminId,
             @RequestHeader(value = "X-User-Name", defaultValue = "Admin") String adminName) {
         engineService.finalizeAttendanceForMeeting(meetingId);
         auditLog(adminId, adminName, "FINALIZE_ATTENDANCE", "MEETING", meetingId, "Manual finalization by admin");
-        return ResponseEntity.ok(Map.of("status", "finalized", "meetingId", meetingId));
+        return ResponseEntity.ok(Map.of(KEY_STATUS, "finalized", "meetingId", meetingId));
     }
 
     @Operation(summary = "Get attendance override history")
