@@ -11,4 +11,5 @@ include 'form-service'
 include 'admin-service'
 include 'cms-service'
 include 'instructor-service'
+include 'attendance-service'
 

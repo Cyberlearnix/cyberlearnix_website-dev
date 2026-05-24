@@ -137,3 +137,23 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 - `@PreAuthorize` with parameter binding (`#token != null`) works for optional request params — useful when an endpoint has dual public/secured paths
 - `@Async` requires `@EnableAsync` on the Spring Boot main class — always check before adding @Async methods
 - When adding HttpStatus.CREATED to controllers that don't import HttpStatus yet, must add the import explicitly
+
+## attendance-service — Added 2026-05-23
+
+### New Service
+- Port: 8092, DB: `cyberlearnix_attendance`
+- Package root: `com.cyberlearnix.attendance`
+- Main class: `AttendanceServiceApplication` (no `@EnableFeignClients` — Zoho client uses RestTemplate)
+- 7 entities: `Meeting`, `MeetingSession`, `FinalAttendance`, `AttendanceLog`, `AttendanceOverride`, `CertificateEligibility`, `AuditLog`
+- 7 repos, 8 DTOs, 9 services, 5 controllers
+
+### Bugs Fixed During Code Review
+1. **`AttendanceEngineService` missing import** — `com.cyberlearnix.attendance.dto.AttendanceOverrideRequest` was not imported; entity wildcard doesn't cover dto package. Always import DTOs explicitly.
+2. **Invalid JPQL `JOIN ON`** — `FinalAttendance.findByCourseAndStudent` used `JOIN Meeting m ON fa.meetingId = m.id` which is invalid JPQL (only allowed for mapped relationships). Fixed with subquery: `WHERE fa.meetingId IN (SELECT m.id FROM Meeting m WHERE m.courseId = :courseId)`.
+3. **`@EnableFeignClients` pointing at non-existent package** — Removed since no `@FeignClient` interfaces exist; ZohoMeetingApiClient uses RestTemplate.
+
+### Conventions for This Service
+- All attendance calculation in `AttendanceEngineService` — never duplicate in controllers
+- `AttendanceOverrideRequest.action` is `@NotBlank` — must always be set before sending
+- Webhook endpoint `/api/attendance/webhooks/zoho` is public (no JWT) — validated by `X-Zoho-Meeting-Token` header
+- Scheduler tasks: finalize every 5min, disconnect detection every 2min, stale meetings every 1hr

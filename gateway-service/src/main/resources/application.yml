@@ -199,6 +199,12 @@ spring:
           predicates:
             - Path=/api/instructor/**
 
+        # Attendance Service
+        - id: attendance-service
+          uri: ${ATTENDANCE_SERVICE_URL:http://127.0.0.1:8092}
+          predicates:
+            - Path=/api/attendance/**,/ws/attendance/**
+
 server:
   port: 8080
 

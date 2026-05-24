@@ -84,6 +84,7 @@ services:
       - CMS_SERVICE_URL=http://cms-service:8089
       - ADMIN_SERVICE_URL=http://admin-service:8090
       - INSTRUCTOR_SERVICE_URL=http://instructor-service:8091
+      - ATTENDANCE_SERVICE_URL=http://attendance-service:8092
     depends_on:
       redis:
         condition: service_healthy
@@ -104,6 +105,8 @@ services:
       cms-service:
         condition: service_healthy
       instructor-service:
+        condition: service_healthy
+      attendance-service:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -409,6 +412,46 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8089/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  attendance-service:
+    build:
+      context: .
+      dockerfile: attendance-service/Dockerfile
+    container_name: attendance-service
+    ports:
+      - "127.0.0.1:8092:8092"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_attendance
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - USER_SERVICE_URL=http://user-service:8081
+      - COURSE_SERVICE_URL=http://course-service:8082
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
+      - ZOHO_CLIENT_ID=${ZOHO_CLIENT_ID:-}
+      - ZOHO_CLIENT_SECRET=${ZOHO_CLIENT_SECRET:-}
+      - ZOHO_REFRESH_TOKEN=${ZOHO_REFRESH_TOKEN:-}
+      - ZOHO_WEBHOOK_TOKEN=${ZOHO_WEBHOOK_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8092/actuator/health"]
       interval: 30s
       timeout: 10s
       start_period: 300s
