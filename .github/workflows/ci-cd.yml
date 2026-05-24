@@ -70,6 +70,8 @@ jobs:
               - 'cms-service/**'
             instructor-service:
               - 'instructor-service/**'
+            attendance-service:
+              - 'attendance-service/**'
 
       - name: Build service matrix
         id: build-matrix
@@ -77,7 +79,7 @@ jobs:
           FILTER_OUTPUTS: ${{ toJson(steps.filter.outputs) }}
           SHARED_CHANGED: ${{ steps.filter.outputs.shared }}
         run: |
-          ALL='["gateway-service","user-service","course-service","enrollment-service","notification-service","shop-service","form-service","admin-service","cms-service","instructor-service"]'
+          ALL='["gateway-service","user-service","course-service","enrollment-service","notification-service","shop-service","form-service","admin-service","cms-service","instructor-service","attendance-service"]'
 
           if [[ "$SHARED_CHANGED" == "true" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             MATRIX="$ALL"
@@ -111,6 +113,7 @@ jobs:
           - admin-service
           - cms-service
           - instructor-service
+          - attendance-service
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
