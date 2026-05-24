@@ -25,3 +25,23 @@
 ### Open Questions
 - Are there any direct service-to-service calls (feign/rest template) bypassing the gateway?
 - Is Flyway or Liquibase used for DB migrations, or manual init scripts only?
+
+## attendance-service — Architecture Decision 2026-05-23
+
+### ADR: New Microservice Added
+- **Decision**: Added `attendance-service` at port 8092 as the 12th microservice.
+- **Reason**: Attendance tracking and Zoho Meeting integration require a dedicated bounded context; mixing into course-service or enrollment-service would violate data ownership.
+- **Gateway routes**: `/api/attendance/**` and `/ws/attendance/**` → `ATTENDANCE_SERVICE_URL:http://127.0.0.1:8092`
+- **DB**: `cyberlearnix_attendance` — added to `docker/postgres/init/01-create-service-dbs.sql`
+- **WebSocket**: STOMP over SockJS at `/ws/attendance`. In-memory broker (no external broker needed for current scale).
+- **Auth**: JWT via shared-lib `JwtTokenFilter`. Zoho webhook endpoint is public, protected by `X-Zoho-Meeting-Token` header.
+- **settings.gradle**: `include 'attendance-service'` added.
+
+### Srini Sign-Off Checklist
+- [x] New service inclusion in settings.gradle
+- [x] Gateway routing updated
+- [x] Docker Compose service block added
+- [x] PostgreSQL init script updated
+- [x] Port collision check (8092 is next after instructor-service at 8091)
+- [x] Shared-lib NOT modified (attendance entities are service-local)
+- [x] BUILD SUCCESSFUL — `./gradlew :attendance-service:compileJava` passes

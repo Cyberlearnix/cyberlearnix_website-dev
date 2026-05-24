@@ -28,3 +28,6 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cyberlearnix_gateway'
 
 SELECT 'CREATE DATABASE cyberlearnix_instructor'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cyberlearnix_instructor')\gexec
+
+SELECT 'CREATE DATABASE cyberlearnix_attendance'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cyberlearnix_attendance')\gexec
