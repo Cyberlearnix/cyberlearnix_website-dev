@@ -94,7 +94,31 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --wait --timeout 3m
 ok "NGINX Ingress Controller installed (hostNetwork mode — binds to port 80/443 on VPS)"
 
-# ── 5. Install ArgoCD ─────────────────────────────────────────────────────────
+# ── 5. Install cert-manager ───────────────────────────────────────────────────
+log "Installing cert-manager (for Let's Encrypt TLS certs)..."
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm upgrade --install cert-manager jetstack/cert-manager \
+  --namespace cert-manager --create-namespace \
+  --set crds.enabled=true \
+  --wait --timeout 3m
+ok "cert-manager installed"
+
+log "Applying Let's Encrypt ClusterIssuers..."
+kubectl apply -f "$REPO_DIR/k8s/cluster-issuer.yaml"
+# Wait for ClusterIssuer to become ready
+for i in $(seq 1 12); do
+  STAGING_READY=$(kubectl get clusterissuer letsencrypt-staging -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+  PROD_READY=$(kubectl get clusterissuer letsencrypt-prod -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+  if [[ "$STAGING_READY" == "True" && "$PROD_READY" == "True" ]]; then
+    ok "ClusterIssuers are ready"
+    break
+  fi
+  echo "  waiting for ClusterIssuers... ($i/12)"
+  sleep 5
+done
+ok "cert-manager + ClusterIssuers configured"
+
+# ── 6. Install ArgoCD ─────────────────────────────────────────────────────────
 log "Installing ArgoCD..."
 kubectl create namespace argocd 2>/dev/null || true
 kubectl apply -n argocd --server-side \
@@ -187,3 +211,4 @@ echo ""
 echo "  From now on: every git push to main triggers ArgoCD"
 echo "  to automatically deploy your updated services."
 echo "============================================================"
+
