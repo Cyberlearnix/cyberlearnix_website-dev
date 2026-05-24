@@ -137,6 +137,42 @@ public class EmailController {
                 : ResponseEntity.internalServerError().body(Map.of("error", "Failed to send inquiry"));
     }
 
+    @PostMapping("/send-enrollment-credentials")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> sendEnrollmentCredentials(@RequestBody Map<String, String> payload) {
+        String studentEmail = payload.get("studentEmail");
+        String studentName = payload.get("studentName");
+        String temporaryPassword = payload.get("temporaryPassword");
+        String courseName = payload.get("courseName");
+        String loginUrl = payload.get("loginUrl");
+
+        if (studentEmail == null || temporaryPassword == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "studentEmail and temporaryPassword are required"));
+        }
+
+        String subject = "Your Cyberlearnix Account & Course Access";
+        String content = "<h3>Welcome to Cyberlearnix, " + (studentName != null ? studentName : "Student") + "!</h3>" +
+                "<p>Your account has been created and you have been enrolled in <strong>" + courseName + "</strong>.</p>" +
+                "<p>Here are your login credentials:</p>" +
+                "<div style='background:#f0f4ff;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #0057FF;'>" +
+                "<p style='margin:4px 0'><strong>Email:</strong> " + studentEmail + "</p>" +
+                "<p style='margin:4px 0'><strong>Temporary Password:</strong> <code style='background:#fff;padding:2px 8px;border-radius:4px;font-size:15px;letter-spacing:1px'>" + temporaryPassword + "</code></p>" +
+                "</div>" +
+                "<p>Please <a href='" + (loginUrl != null ? loginUrl : "https://cyberlearnix.com/login") + "' style='color:#0057FF;font-weight:600'>log in here</a> and change your password after your first login.</p>" +
+                "<p style='color:#718096;font-size:13px'>If you have any issues, reply to this email or contact our support team.</p>";
+
+        String htmlContent = wrapInTemplate(subject, content);
+
+        boolean success = resendService.sendEmail(studentEmail, subject, htmlContent);
+        if (!success) {
+            success = sendViaSmtp(studentEmail, subject, htmlContent);
+        }
+
+        return success
+                ? ResponseEntity.ok(Map.of("success", true, "message", "Credentials email sent"))
+                : ResponseEntity.internalServerError().body(Map.of("error", "Failed to send credentials email"));
+    }
+
     private String wrapInTemplate(String title, String content) {
         return "<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);\">"
                 +
