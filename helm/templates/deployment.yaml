@@ -132,6 +132,7 @@ spec:
                 secretKeyRef:
                   name: cyberlearnix-secrets
                   key: mail-password
+                  optional: true
                   optional: false
             {{- end }}
             {{- if eq $name "user-service" }}
@@ -140,6 +141,7 @@ spec:
                 secretKeyRef:
                   name: cyberlearnix-secrets
                   key: resend-api-key
+                  optional: true
                   optional: false
             {{- end }}
 
