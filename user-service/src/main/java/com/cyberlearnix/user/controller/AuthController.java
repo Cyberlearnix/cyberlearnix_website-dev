@@ -310,22 +310,26 @@ public class AuthController {
         }
         email = email.trim().toLowerCase();
 
-        if (otpService.isOtpRateLimited(email)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of(KEY_ERROR, "Too many OTP requests. Please wait 15 minutes before trying again."));
-        }
-
-        // Check if user exists
-        if (userRepository.findByEmail(email).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(KEY_ERROR, "No account found with this email address."));
-        }
-
         try {
+            if (otpService.isOtpRateLimited(email)) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(Map.of(KEY_ERROR, "Too many OTP requests. Please wait 15 minutes before trying again."));
+            }
+
+            // Check if user exists
+            if (userRepository.findByEmail(email).isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of(KEY_ERROR, "No account found with this email address."));
+            }
+
             String sessionId = otpService.generateAndSendOtp(email);
             return ResponseEntity.ok(Map.of("message", "OTP sent", "sessionId", sessionId));
+        } catch (org.springframework.mail.MailAuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(KEY_ERROR, "Email service is not configured. Please contact support."));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(KEY_ERROR, e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(KEY_ERROR, "Failed to send OTP. Please try again later."));
         }
     }
 

@@ -27,21 +27,27 @@ public class OtpService {
     private JavaMailSender mailSender;
 
     public boolean isOtpRateLimited(String email) {
-        String key = REDIS_RATE_LIMIT_PREFIX + email.toLowerCase().trim();
-        String currentCount = redisTemplate.opsForValue().get(key);
-        
-        if (currentCount == null) {
-            redisTemplate.opsForValue().set(key, "1", OTP_RATE_WINDOW_MINUTES, TimeUnit.MINUTES);
+        try {
+            String key = REDIS_RATE_LIMIT_PREFIX + email.toLowerCase().trim();
+            String currentCount = redisTemplate.opsForValue().get(key);
+
+            if (currentCount == null) {
+                redisTemplate.opsForValue().set(key, "1", OTP_RATE_WINDOW_MINUTES, TimeUnit.MINUTES);
+                return false;
+            }
+
+            int count = Integer.parseInt(currentCount);
+            if (count >= MAX_OTP_REQUESTS) {
+                return true;
+            }
+
+            redisTemplate.opsForValue().increment(key);
+            return false;
+        } catch (Exception e) {
+            // Redis unavailable — allow the request rather than blocking the user
+            System.err.println("OTP rate-limit Redis check failed (allowing request): " + e.getMessage());
             return false;
         }
-        
-        int count = Integer.parseInt(currentCount);
-        if (count >= MAX_OTP_REQUESTS) {
-            return true;
-        }
-        
-        redisTemplate.opsForValue().increment(key);
-        return false;
     }
 
     public String generateAndSendOtp(String email) throws Exception {
