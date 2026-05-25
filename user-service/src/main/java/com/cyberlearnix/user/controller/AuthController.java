@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
 import java.util.Map;
 
 @Slf4j
@@ -369,6 +370,33 @@ public class AuthController {
             log.warn("Password reset failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(KEY_ERROR, e.getMessage()));
         }
+    }
+
+    @PostMapping("/admin-reset-credentials")
+    public ResponseEntity<?> adminResetCredentials(@RequestBody Map<String, String> request) {
+        String userId = request.get("userId");
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "userId is required"));
+        }
+        try {
+            String tempPassword = generateTempPassword();
+            authService.updatePassword(userId, tempPassword);
+            log.info("Admin reset credentials for userId: {}", userId);
+            return ResponseEntity.ok(Map.of("success", true, "password", tempPassword));
+        } catch (Exception e) {
+            log.warn("Admin credential reset failed for userId {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(KEY_ERROR, e.getMessage()));
+        }
+    }
+
+    private String generateTempPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb + "A1!";
     }
 
     @PostMapping("/change-password")
