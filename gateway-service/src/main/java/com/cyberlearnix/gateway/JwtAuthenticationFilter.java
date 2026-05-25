@@ -115,10 +115,19 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return false;
         }
 
-        if (path.startsWith("/api/auth/") || 
+        if (path.startsWith("/api/auth/") ||
             path.startsWith("/api/careers") ||
-            path.startsWith("/api/contact-submissions") || 
-            path.startsWith("/api/shop")) {
+            path.startsWith("/api/contact-submissions") ||
+            path.startsWith("/api/shop") ||
+            path.startsWith("/api/menus") ||
+            path.startsWith("/api/teams") ||
+            path.startsWith("/api/site-settings") ||
+            path.startsWith("/api/chatbot") ||
+            path.startsWith("/api/updates") ||
+            path.startsWith("/api/banners") ||
+            path.startsWith("/api/promos") ||
+            path.startsWith("/api/partners") ||
+            path.startsWith("/api/suggestions")) {
             return true;
         }
 
