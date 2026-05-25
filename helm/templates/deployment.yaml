@@ -126,6 +126,14 @@ spec:
                   key: google-drive-folder-id
                   optional: true
             {{- end }}
+            {{- if eq $name "user-service" }}
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: mail-password
+                  optional: false
+            {{- end }}
 
           resources:
             {{- toYaml $svc.resources | nindent 12 }}
