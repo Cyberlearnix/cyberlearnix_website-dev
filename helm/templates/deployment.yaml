@@ -126,6 +126,22 @@ spec:
                   key: google-drive-folder-id
                   optional: true
             {{- end }}
+            {{- if or (eq $name "user-service") (eq $name "notification-service") }}
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: mail-password
+                  optional: false
+            {{- end }}
+            {{- if eq $name "user-service" }}
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: resend-api-key
+                  optional: false
+            {{- end }}
 
           resources:
             {{- toYaml $svc.resources | nindent 12 }}

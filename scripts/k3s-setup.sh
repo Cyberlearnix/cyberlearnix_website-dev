@@ -11,6 +11,8 @@
 #   JWT_SECRET      — JWT signing secret
 #   GITHUB_REPO     — e.g. "Cyberlearnix/cyberlearnix_website-dev"
 #   REDIS_PASSWORD  — (optional) Redis password
+#   MAIL_PASSWORD   — Gmail App Password for OTP email sending
+#   RESEND_API_KEY   — Resend API key for transactional email notifications
 #
 # Usage from local Mac:
 #   export GHCR_TOKEN=... GHCR_USERNAME=Cyberlearnix DB_PASSWORD=... JWT_SECRET=... GITHUB_REPO=Cyberlearnix/cyberlearnix_website-dev
@@ -25,6 +27,8 @@ set -euo pipefail
 : "${JWT_SECRET:?Set JWT_SECRET}"
 : "${GITHUB_REPO:?Set GITHUB_REPO (e.g. Cyberlearnix/cyberlearnix_website-dev)}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+MAIL_PASSWORD="${MAIL_PASSWORD:-}"
+RESEND_API_KEY="${RESEND_API_KEY:-}"
 
 log() { echo -e "\n\033[1;34m==> $*\033[0m"; }
 ok()  { echo -e "\033[1;32m    ✓ $*\033[0m"; }
@@ -170,6 +174,8 @@ kubectl create secret generic cyberlearnix-secrets \
   --from-literal=db-password="$DB_PASSWORD" \
   --from-literal=jwt-secret="$JWT_SECRET" \
   --from-literal=redis-password="$REDIS_PASSWORD" \
+  --from-literal=mail-password="$MAIL_PASSWORD" \
+  --from-literal=resend-api-key="$RESEND_API_KEY" \
   --namespace cyberlearnix \
   --dry-run=client -o yaml | kubectl apply -f -
 ok "Application secrets created"
