@@ -42,4 +42,10 @@ public interface FinalAttendanceRepository extends JpaRepository<FinalAttendance
 
     @Query("SELECT fa FROM FinalAttendance fa WHERE fa.meetingId IN (SELECT m.id FROM Meeting m WHERE m.courseId = :courseId) AND fa.studentId = :studentId ORDER BY fa.createdAt DESC")
     List<FinalAttendance> findByCourseAndStudent(@Param("courseId") String courseId, @Param("studentId") String studentId);
+
+    @Query("SELECT fa FROM FinalAttendance fa WHERE fa.studentId IN :studentIds ORDER BY fa.studentName ASC, fa.createdAt DESC")
+    List<FinalAttendance> findByStudentIdIn(@Param("studentIds") List<String> studentIds);
+
+    @Query("SELECT fa FROM FinalAttendance fa WHERE fa.studentId IN :studentIds AND fa.meetingId IN (SELECT m.id FROM Meeting m WHERE m.courseId = :courseId) ORDER BY fa.studentName ASC, fa.createdAt DESC")
+    List<FinalAttendance> findByCourseAndStudentIds(@Param("courseId") String courseId, @Param("studentIds") List<String> studentIds);
 }

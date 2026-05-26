@@ -56,6 +56,20 @@ public class EnrollmentController {
 
         String targetStudentId = (studentId != null) ? studentId : userId;
 
+        // ── Admin: courseId filter → return all enrollments for that course ──────
+        // Must be checked FIRST, before the generic studentId+courseId branch,
+        // because X-User-Id header populates targetStudentId with the admin's own UUID
+        // which would otherwise cause a spurious 404 (admin not enrolled in course).
+        if (ROLE_ADMIN.equals(userRole) && courseId != null && studentId == null) {
+            return ResponseEntity.ok(
+                Map.of("success", true, "enrollments", enrollmentRepository.findByCourseId(courseId)));
+        }
+
+        // ── Admin: no filters → return all ──────────────────────────────────────
+        if (ROLE_ADMIN.equals(userRole) && courseId == null && studentId == null) {
+            return ResponseEntity.ok(Map.of("success", true, "enrollments", enrollmentRepository.findAll()));
+        }
+
         if (targetStudentId != null && courseId != null) {
             return enrollmentRepository.findByStudentIdAndCourseId(targetStudentId, courseId)
                     .map(ResponseEntity::ok)

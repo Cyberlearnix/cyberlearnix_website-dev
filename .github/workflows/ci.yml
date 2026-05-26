@@ -131,6 +131,7 @@ jobs:
         with:
           files: ${{ matrix.service }}/build/test-results/**/*.xml
           check_name: "Tests — ${{ matrix.service }}"
+          comment_mode: off
 
       - name: Upload test reports
         uses: actions/upload-artifact@v4
