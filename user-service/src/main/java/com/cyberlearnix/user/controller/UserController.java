@@ -39,6 +39,9 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponseDTO>> getAllUsersRoot(
             @RequestParam(required = false) String role) {
+        if (role != null && !role.isBlank()) {
+            return ResponseEntity.ok(userService.getUsersByRole(role));
+        }
         return ResponseEntity.ok(userService.getAllUsers());
     }
 

@@ -16,4 +16,7 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     @Query("SELECT COUNT(u) FROM User u WHERE LOWER(u.role) IN :roles")
     long countByRolesIgnoreCase(@Param("roles") java.util.List<String> roles);
+
+    @Query("SELECT u FROM User u WHERE LOWER(u.role) = LOWER(:role)")
+    java.util.List<User> findByRoleIgnoreCase(@Param("role") String role);
 }

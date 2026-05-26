@@ -26,6 +26,7 @@ public class AdminStatsController {
         stats.put("totalStudents", userRepository.countByRoleIgnoreCase("STUDENT"));
         stats.put("totalTeachers", userRepository.countByRoleIgnoreCase("TEACHER"));
         stats.put("totalAdmins", userRepository.countByRoleIgnoreCase("ADMIN"));
+        stats.put("totalInterns", userRepository.countByRoleIgnoreCase("INTERN"));
         return ResponseEntity.ok(stats);
     }
 }

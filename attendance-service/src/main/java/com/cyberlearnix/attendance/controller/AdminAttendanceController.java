@@ -1,6 +1,7 @@
 package com.cyberlearnix.attendance.controller;
 
 import com.cyberlearnix.attendance.dto.*;
+import com.cyberlearnix.attendance.dto.InternAttendanceDto;
 import com.cyberlearnix.attendance.entity.*;
 import com.cyberlearnix.attendance.repository.*;
 import com.cyberlearnix.attendance.service.*;
@@ -156,6 +157,49 @@ public class AdminAttendanceController {
     @GetMapping("/live/meetings")
     public ResponseEntity<List<Meeting>> getLiveMeetings() {
         return ResponseEntity.ok(meetingRepo.findLiveMeetings());
+    }
+
+    // ─── Intern Attendance APIs ───────────────────────────────────────────────
+
+    @Operation(summary = "Get enriched attendance records for a list of intern student IDs")
+    @PostMapping("/interns/attendance")
+    public ResponseEntity<List<InternAttendanceDto>> getInternAttendance(
+            @RequestBody List<String> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<FinalAttendance> records = finalAttRepo.findByStudentIdIn(studentIds);
+        List<InternAttendanceDto> result = records.stream()
+            .map(fa -> {
+                return meetingRepo.findById(fa.getMeetingId())
+                    .map(m -> InternAttendanceDto.from(fa, m.getTitle(), m.getCourseId()))
+                    .orElse(InternAttendanceDto.from(fa, fa.getMeetingId(), null));
+            }).toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get enriched attendance records for interns filtered by course")
+    @PostMapping("/interns/attendance/course/{courseId}")
+    public ResponseEntity<List<InternAttendanceDto>> getInternAttendanceByCourse(
+            @PathVariable String courseId,
+            @RequestBody List<String> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<FinalAttendance> records = finalAttRepo.findByCourseAndStudentIds(courseId, studentIds);
+        List<InternAttendanceDto> result = records.stream()
+            .map(fa -> {
+                return meetingRepo.findById(fa.getMeetingId())
+                    .map(m -> InternAttendanceDto.from(fa, m.getTitle(), m.getCourseId()))
+                    .orElse(InternAttendanceDto.from(fa, fa.getMeetingId(), courseId));
+            }).toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all meetings for a specific course (for intern attendance view)")
+    @GetMapping("/interns/meetings/course/{courseId}")
+    public ResponseEntity<List<Meeting>> getMeetingsByCourseForInterns(@PathVariable String courseId) {
+        return ResponseEntity.ok(meetingRepo.findByCourseIdOrderByScheduledStartDesc(courseId));
     }
 
     private void auditLog(String actorId, String actorName, String action, String entityType, String entityId, String desc) {

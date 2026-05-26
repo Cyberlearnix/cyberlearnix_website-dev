@@ -76,4 +76,25 @@ public class UserService {
 
         return result;
     }
+
+    public List<UserResponseDTO> getUsersByRole(String role) {
+        List<User> users = userRepository.findByRoleIgnoreCase(role);
+        List<UserProfile> profiles = userProfileRepository.findAll();
+        Map<String, UserProfile> profileMap = profiles.stream()
+                .collect(Collectors.toMap(UserProfile::getId, p -> p, (p1, p2) -> p1));
+
+        return users.stream().map(user -> {
+            UserProfile profile = profileMap.get(user.getId());
+            return new UserResponseDTO(
+                    user.getId(),
+                    user.getEmail(),
+                    profile != null ? profile.getFullName() : null,
+                    profile != null ? profile.getPhone() : null,
+                    user.getRole(),
+                    profile != null ? profile.getIsActive() : true,
+                    user.getCreatedAt(),
+                    user.getLastLogin()
+            );
+        }).collect(Collectors.toList());
+    }
 }
