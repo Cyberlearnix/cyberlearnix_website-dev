@@ -220,7 +220,8 @@ public class InAppNotificationController {
     private void requireAdminRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getAuthorities().stream()
-                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                             || a.getAuthority().equals("ROLE_SUPER_ADMIN"))) {
             throw new org.springframework.security.access.AccessDeniedException("Admin role required");
         }
     }
