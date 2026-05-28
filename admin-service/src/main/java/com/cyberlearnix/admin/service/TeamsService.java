@@ -429,7 +429,13 @@ public class TeamsService {
             String full    = detail.isBlank() ? "Zoho API error " + code : detail;
             return new RuntimeException(full);
         } catch (Exception ignored) {
-            return new RuntimeException("Zoho API error [" + ex.getStatusCode() + "]: " + rawBody);
+            // rawBody may be an HTML maintenance page — never forward it to the client
+            String statusCode = ex.getStatusCode().toString();
+            boolean isServerError = rawBody != null && (rawBody.trim().startsWith("<") || rawBody.length() > 500);
+            String clientMsg = isServerError
+                    ? "Zoho Meeting service is temporarily unavailable (HTTP " + statusCode + "). Please try again in a few minutes."
+                    : "Zoho API error [" + statusCode + "]: " + rawBody;
+            return new RuntimeException(clientMsg);
         }
     }
 

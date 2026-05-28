@@ -121,6 +121,9 @@ public class InAppNotificationService {
         } else if (req.getCourseId() != null) {
             // Resolve enrolled students for a course
             userIds = resolveEnrolledStudents(req.getCourseId());
+        } else if (req.getTargetRole() != null && (req.getTargetRole().equalsIgnoreCase("EVERYONE") || req.getTargetRole().equalsIgnoreCase("ALL"))) {
+            // Broadcast to all users regardless of role
+            userIds = resolveAllUsers();
         } else if (req.getTargetRole() != null && !req.getTargetRole().isBlank()) {
             // Resolve all users with this role
             userIds = resolveUsersByRole(req.getTargetRole());
@@ -177,6 +180,25 @@ public class InAppNotificationService {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Failed to resolve enrolled students for courseId={}: {}", courseId, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> resolveAllUsers() {
+        try {
+            String url = userServiceUrl + "/api/users";
+            ResponseEntity<List<Map<String, Object>>> resp = restTemplate.exchange(
+                    url, HttpMethod.GET, null,
+                    new ParameterizedTypeReference<>() {});
+            if (resp.getBody() == null) return Collections.emptyList();
+            return resp.getBody().stream()
+                    .map(m -> String.valueOf(m.get("id")))
+                    .filter(uid -> uid != null && !uid.isBlank() && !"null".equals(uid))
+                    .distinct()
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Failed to resolve all users: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
