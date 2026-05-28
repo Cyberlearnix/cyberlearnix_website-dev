@@ -81,6 +81,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/refresh-token", "/api/auth/request-login-otp", "/api/auth/verify-otp-login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/admin-reset-credentials").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/auth/admin-reset-password").hasRole("ADMIN")
                         .requestMatchers("/api/auth/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/careers", "/api/careers/**").permitAll()

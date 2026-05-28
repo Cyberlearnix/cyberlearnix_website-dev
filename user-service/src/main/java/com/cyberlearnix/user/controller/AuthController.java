@@ -389,6 +389,26 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/admin-reset-password")
+    public ResponseEntity<?> adminResetPassword(@RequestBody Map<String, String> request) {
+        String userId = request.get("userId");
+        String newPassword = request.get("newPassword");
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "userId is required"));
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "newPassword is required"));
+        }
+        try {
+            authService.updatePassword(userId, newPassword);
+            log.info("Admin set password for userId: {}", userId);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Password updated successfully"));
+        } catch (Exception e) {
+            log.warn("Admin password reset failed for userId {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(KEY_ERROR, e.getMessage()));
+        }
+    }
+
     private String generateTempPassword() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         SecureRandom random = new SecureRandom();
