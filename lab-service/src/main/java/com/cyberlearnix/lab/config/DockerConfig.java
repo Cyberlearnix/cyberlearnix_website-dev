@@ -3,31 +3,30 @@ package com.cyberlearnix.lab.config;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
-import org.springframework.beans.factory.annotation.Value;
+import com.github.dockerjava.okhttp.OkDockerHttpClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.time.Duration;
 
 @Configuration
 public class DockerConfig {
 
-    @Value("${lab.docker.host:unix:///var/run/docker.sock}")
-    private String dockerHost;
-
     @Bean
     public DockerClient dockerClient() {
+        // Prefer DOCKER_HOST env var; fall back to unix socket
+        String dockerHost = System.getenv("DOCKER_HOST");
+        if (dockerHost == null || dockerHost.isBlank()) {
+            dockerHost = "unix:///var/run/docker.sock";
+        }
+
         DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(dockerHost)
                 .build();
 
-        ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+        OkDockerHttpClient httpClient = new OkDockerHttpClient.Builder()
                 .dockerHost(config.getDockerHost())
                 .sslConfig(config.getSSLConfig())
-                .maxConnections(20)
-                .connectionTimeout(Duration.ofSeconds(30))
-                .responseTimeout(Duration.ofSeconds(60))
+                .connectTimeout(30_000)
+                .readTimeout(60_000)
                 .build();
 
         return DockerClientImpl.getInstance(config, httpClient);

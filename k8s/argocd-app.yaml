@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cyberlearnix
+  namespace: argocd
+  # Auto-delete child resources when this Application is deleted
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # ── Source: your GitHub repo, helm/ directory ───────────────────────────────
+  source:
+    repoURL: https://github.com/Cyberlearnix/cyberlearnix_website-dev.git
+    targetRevision: main
+    path: helm
+    helm:
+      valueFiles:
+        - values-k3s.yaml
+
+  # ── Destination: cyberlearnix namespace on local k3s ───────────────────────
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cyberlearnix
+
+  # ── Sync policy: auto-sync on every git push ────────────────────────────────
+  syncPolicy:
+    automated:
+      prune: true        # delete resources removed from helm chart
+      selfHeal: true     # auto-fix if someone manually edits a resource
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+
+  # ── Ignore fields that k8s/k3s controllers manage automatically ─────────────
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      managedFieldsManagers:
+        - k3s                         # k3s sets deployment.kubernetes.io/revision
+      jsonPointers:
+        - /spec/replicas              # ignore manual replica scaling
+        - /spec/template/spec/serviceAccount  # k8s deprecated alias, auto-added
+        - /metadata/annotations/deployment.kubernetes.io~1revision  # set by k8s Deployment controller
+    - group: apps
+      kind: StatefulSet
+      managedFieldsManagers:
+        - k3s                         # same k3s-managed annotation on StatefulSets
+      jsonPointers:
+        - /metadata/annotations/deployment.kubernetes.io~1revision
+        - /spec/volumeClaimTemplates  # VCTs are immutable after creation; k8s adds volumeMode+status

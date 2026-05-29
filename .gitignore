@@ -1,0 +1,42 @@
+# Gradle
+.gradle/
+build/
+!**/src/**/build/
+
+# Compiled Java bytecode — never commit binary artifacts
+**/*.class
+
+# Eclipse/VS Code compiled output
+**/bin/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Logs and temporary files
+*.log
+*.pid
+*.err
+*.out
+
+# OS files
+.DS_Store
+thumbs.db
+
+# Secrets and private keys — NEVER commit
+.env
+*.pem
+*.ppk
+*.key
+*.p12
+*.pfx
+# Squad: ignore runtime state (logs, inbox, sessions)
+.squad/orchestration-log/
+.squad/log/
+.squad/decisions/inbox/
+.squad/sessions/
+# Squad: SubSquad activation file (local to this machine)
+.squad-workstream

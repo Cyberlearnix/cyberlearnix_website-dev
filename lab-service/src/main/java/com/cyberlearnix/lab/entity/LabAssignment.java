@@ -19,9 +19,9 @@ public class LabAssignment {
     private Long id;
 
     @Column(nullable = false)
-    private Long studentId;
+    private String studentId;
 
-    private Long instructorId;
+    private String instructorId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lab_template_id", nullable = false)
@@ -44,6 +44,12 @@ public class LabAssignment {
     private Instant lastActiveAt;
 
     private Instant expiresAt;
+
+    /** The course this lab assignment is for (nullable for non-course labs) */
+    private Long courseId;
+
+    /** The approval request that created this assignment (nullable for directly assigned labs) */
+    private Long approvalRequestId;
 
     @PrePersist
     void prePersist() {

@@ -7,11 +7,11 @@ import lombok.Data;
 public class AssignLabRequest {
 
     @NotNull(message = "studentId is required")
-    private Long studentId;
+    private String studentId;
 
     @NotNull(message = "templateId is required")
     private Long templateId;
 
     /** Optional: populated by gateway from JWT; fallback for direct calls */
-    private Long instructorId;
+    private String instructorId;
 }

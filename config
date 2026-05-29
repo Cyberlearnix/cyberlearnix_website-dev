@@ -1,0 +1,11 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	ignorecase = true
+	precomposeunicode = true
+[remote "origin"]
+	url = https://github.com/Cyberlearnix/cyberlearnix_website-dev.git
+	tagOpt = --no-tags
+	fetch = +refs/*:refs/remotes/origin/*
+	mirror = true

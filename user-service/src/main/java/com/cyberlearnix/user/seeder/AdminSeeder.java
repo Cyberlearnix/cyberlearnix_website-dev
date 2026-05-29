@@ -1,0 +1,65 @@
+package com.cyberlearnix.user.seeder;
+
+import com.cyberlearnix.shared.entity.user.User;
+import com.cyberlearnix.shared.entity.user.UserProfile;
+import com.cyberlearnix.shared.repository.user.UserProfileRepository;
+import com.cyberlearnix.shared.repository.user.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+/**
+ * Seeds the default admin user on startup if not already present.
+ */
+@Component
+@ConditionalOnProperty(name = "admin.seeder.enabled", havingValue = "true", matchIfMissing = true)
+public class AdminSeeder implements CommandLineRunner {
+
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private UserProfileRepository userProfileRepository;
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    @Override
+    public void run(String... args) {
+        String adminEmail = "shivakumar@cyberlearnix.com";
+
+        Optional<User> existingAdmin = userRepository.findByEmail(adminEmail);
+        if (existingAdmin.isEmpty()) {
+            User admin = new User();
+            admin.setEmail(adminEmail);
+            admin.setPasswordHash(passwordEncoder.encode("Shivam$179"));
+            admin.setRole("admin");
+            userRepository.save(admin);
+            System.out.println("[AdminSeeder] Created default admin user: " + adminEmail);
+        } else {
+            // Admin user already exists — preserve existing password, only ensure role
+            User admin = existingAdmin.get();
+            if (!"admin".equals(admin.getRole())) {
+                admin.setRole("admin");
+                userRepository.save(admin);
+            }
+            System.out.println("[AdminSeeder] Admin user already exists, no changes made: " + adminEmail);
+        }
+
+        // Ensure UserProfile exists
+        String userId = userRepository.findByEmail(adminEmail).get().getId();
+        UserProfile profile = userProfileRepository.findById(userId).orElse(new UserProfile());
+        profile.setId(userId);
+        profile.setEmail(adminEmail);
+        profile.setRole("admin");
+        if (profile.getFullName() == null) {
+            profile.setFullName("Shivakumar (Admin)");
+        }
+        profile.setIsActive(true);
+        userProfileRepository.save(profile);
+        System.out.println("[AdminSeeder] UserProfile verified for: " + adminEmail);
+    }
+}

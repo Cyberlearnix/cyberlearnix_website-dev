@@ -85,7 +85,7 @@ services:
       - ADMIN_SERVICE_URL=http://admin-service:8090
       - INSTRUCTOR_SERVICE_URL=http://instructor-service:8091
       - ATTENDANCE_SERVICE_URL=http://attendance-service:8092
-      - LAB_SERVICE_URL=http://lab-service:8093
+      - LAB_SERVICE_URL=http://lab-service:8090
     depends_on:
       redis:
         condition: service_healthy
@@ -476,12 +476,14 @@ services:
       context: .
       dockerfile: lab-service/Dockerfile
     container_name: lab-service
+    user: root  # Required for Docker socket access (dev only)
     ports:
-      - "127.0.0.1:8093:8093"
+      - "127.0.0.1:8093:8090"
     environment:
       - LAB_DB_URL=jdbc:postgresql://postgres:5432/lab_db
       - LAB_DB_USERNAME=postgres
       - LAB_DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_PASS=${POSTGRES_PASSWORD}
       - DOCKER_HOST=unix:///var/run/docker.sock
       - JWT_SECRET=${JWT_SECRET}
       - MAX_CONTAINERS=${MAX_LAB_CONTAINERS:-50}

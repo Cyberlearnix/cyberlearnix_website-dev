@@ -2,6 +2,14 @@
 
 ## Learnings
 
+### [2026-05-30] Course-Linked Labs — DB Schema + Docker Deploy (Rohit)
+- **New tables in lab_db:** `course_lab_configs`, `lab_approval_requests` — added alongside existing `lab_templates` and `lab_assignments` (which gained `course_id` + `approval_request_id`). 5 indexes added for query performance.
+- **lab-service port:** runs internally on **8090** (set in `application.yml`). Docker-compose exposed it as `8093:8090` (host 8093 → container 8090). The gateway uses `http://lab-service:8090` internally. Historical history.md had 8090 listed for admin-service — that's the host-accessible port for admin; lab-service is 8093 externally.
+- **Bug fixed — JAXB on Java 21:** `docker-java:3.3.4` transitively pulls `jackson-module-jaxb-annotations` which needs `javax.xml.bind.*` (removed from JDK since Java 9). Fix: add `javax.xml.bind:jaxb-api:2.3.1` to `lab-service/build.gradle`.
+- **Bug fixed — docker-compose env mismatch:** lab-service used `LAB_DB_PASSWORD=${POSTGRES_PASSWORD}` but `application.yml` reads `${DB_PASS}`. Fix: also pass `DB_PASS=${POSTGRES_PASSWORD}` in docker-compose.
+- **Gateway `/api/labs/**` already broad enough** — covers all new sub-paths (`/courses/**`, `/admin/approvals/**`, `/my-labs/**`). No gateway change needed.
+- lab-service smoke test: `GET http://localhost:8093/actuator/health` → `{"status":"UP"}`.
+
 ### [2026-05-13] Gateway Routing Fixes
 - Added `admin-stats-users` route (→ user-service:8081 `/api/admin/stats/users`) and `admin-stats-courses` route (→ course-service:8082 `/api/admin/stats/courses`) **before** the generic `admin-service` catch-all in `gateway-service/src/main/resources/application.yml`. Spring Cloud Gateway uses first-match-wins — specific routes must precede wildcards.
 - `activity-service` route covering `/api/activity/**` was already present — no change needed.

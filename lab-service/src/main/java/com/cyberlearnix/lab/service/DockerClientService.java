@@ -4,6 +4,8 @@ import com.cyberlearnix.lab.entity.LabTemplate;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.command.PullImageResultCallback;
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.RestartPolicy;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +34,7 @@ public class DockerClientService {
      *
      * @return the Docker container ID
      */
-    public String createContainer(LabTemplate template, Long studentId, Long assignmentId) {
+    public String createContainer(LabTemplate template, String studentId, Long assignmentId) {
         String containerName = "cyberlearnix-lab-" + studentId + "-" + assignmentId;
         double cpu = template.getCpuLimit() != null ? template.getCpuLimit() : defaultCpu;
         long memory = template.getMemoryLimit() != null ? template.getMemoryLimit() : defaultMemory;
@@ -47,6 +49,22 @@ public class DockerClientService {
                 .withCpuQuota(cpuQuota)
                 .withNetworkMode("cyberlearnix-labs-network")
                 .withRestartPolicy(RestartPolicy.noRestart());
+
+        // Pull image if not present locally
+        try {
+            dockerClient.inspectImageCmd(template.getDockerImage()).exec();
+        } catch (NotFoundException e) {
+            log.info("Image {} not found locally — pulling...", template.getDockerImage());
+            try {
+                dockerClient.pullImageCmd(template.getDockerImage())
+                        .exec(new PullImageResultCallback())
+                        .awaitCompletion();
+                log.info("Image {} pulled successfully", template.getDockerImage());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while pulling image: " + template.getDockerImage(), ie);
+            }
+        }
 
         CreateContainerResponse response = dockerClient.createContainerCmd(template.getDockerImage())
                 .withName(containerName)

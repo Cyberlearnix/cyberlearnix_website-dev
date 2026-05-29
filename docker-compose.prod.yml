@@ -1,0 +1,72 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml  —  Production image overlay
+#
+# Place this file on the server alongside docker-compose.yml.
+# It is automatically regenerated and re-uploaded by GitHub Actions on every
+# deploy, with exact :{short-sha} tags for services that were rebuilt and
+# :latest for services that were not changed in that run.
+#
+# ── First-time server setup ───────────────────────────────────────────────────
+# 1. Replace YOUR_DOCKERHUB_USERNAME with your actual Docker Hub username.
+# 2. Create the deploy directory and copy both compose files to the server:
+#      mkdir -p ~/cyberlearnix
+#      scp docker-compose.yml docker-compose.prod.yml user@server:~/cyberlearnix/
+# 3. Create ~/cyberlearnix/.env from .env.example and fill in real values.
+# 4. Run:
+#      cd ~/cyberlearnix
+#      docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+#      docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# ── Useful commands on the server ────────────────────────────────────────────
+# Check status:
+#   cd ~/cyberlearnix && docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+# Tail logs for one service:
+#   cd ~/cyberlearnix && docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f gateway-service
+# Rollback a single service to a previous SHA (example):
+#   cd ~/cyberlearnix
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     up -d --no-deps gateway-service  (after updating the image tag here)
+#
+# ── How the override works ────────────────────────────────────────────────────
+# Docker Compose merges this file on top of docker-compose.yml.  The `image:`
+# key here replaces the `build:` directive in the base file, so Docker pulls
+# the pre-built image from Docker Hub instead of building locally.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# NOTE: CI pushes :latest and :{git-sha} tags on every deploy.
+#       Images are stored at ghcr.io/cyberlearnix/cyberlearnix-{service}
+
+services:
+
+  # ── API Gateway ──────────────────────────────────────────────────────────────
+  gateway-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-gateway-service:latest
+
+  # ── Core services ────────────────────────────────────────────────────────────
+  user-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-user-service:latest
+
+  course-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-course-service:latest
+
+  enrollment-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-enrollment-service:latest
+
+  notification-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-notification-service:latest
+
+  shop-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-shop-service:latest
+
+  form-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-form-service:latest
+
+  # ── Admin / instructor ───────────────────────────────────────────────────────
+  admin-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-admin-service:latest
+
+  cms-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-cms-service:latest
+
+  instructor-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-instructor-service:latest

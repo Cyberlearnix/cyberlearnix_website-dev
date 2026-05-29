@@ -1,0 +1,349 @@
+{
+    "info": {
+        "_postman_id": "cyberlearnix-master-collection",
+        "name": "Cyberlearnix Master API Collection",
+        "description": "Complete reference of all endpoints across all 5 microservices.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "User Service",
+            "item": [
+                {
+                    "name": "Auth",
+                    "item": [
+                        {
+                            "name": "Login",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/auth/login",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"email\":\"admin@cyberlearnix.com\",\"password\":\"admin123\"}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Register (Admin-Only)",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/auth/register",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"email\":\"new@test.com\",\"password\":\"pass\",\"role\":\"student\"}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Request OTP",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/auth/request-otp",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"email\":\"test@test.com\"}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Verify OTP",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/auth/verify-otp",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"email\":\"test@test.com\",\"otp\":\"1234\",\"newPassword\":\"new\"}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Switch Role",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/auth/switch-role",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"role\":\"teacher\"}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "User Management",
+                    "item": [
+                        {
+                            "name": "Get Users",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/users?role=student"
+                            }
+                        },
+                        {
+                            "name": "Create User",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/users/create-user",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"fullName\":\"Test User\",\"email\":\"test@test.com\",\"role\":\"student\"}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Toggle Status",
+                            "request": {
+                                "method": "PATCH",
+                                "url": "{{baseUrl}}/api/users/USER_ID/status",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"active\":true}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Permissions",
+                            "request": {
+                                "method": "PUT",
+                                "url": "{{baseUrl}}/api/users/permissions",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"teacherId\":\"ID\",\"canEditContent\":true}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Careers & Contact",
+                    "item": [
+                        {
+                            "name": "Get Careers",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/careers"
+                            }
+                        },
+                        {
+                            "name": "Submit Contact",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/contact-submissions",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"name\":\"Test\",\"email\":\"t@t.com\",\"message\":\"Hi\"}"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Course Service",
+            "item": [
+                {
+                    "name": "Course Ops",
+                    "item": [
+                        {
+                            "name": "List Courses",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/courses"
+                            }
+                        },
+                        {
+                            "name": "Create Course",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/courses"
+                            }
+                        },
+                        {
+                            "name": "Update Course",
+                            "request": {
+                                "method": "PUT",
+                                "url": "{{baseUrl}}/api/courses/1"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Management",
+                    "item": [
+                        {
+                            "name": "Add Module",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/course-management/courses/1/modules"
+                            }
+                        },
+                        {
+                            "name": "Add Content",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/course-management/modules/1/contents"
+                            }
+                        },
+                        {
+                            "name": "Update Content",
+                            "request": {
+                                "method": "PUT",
+                                "url": "{{baseUrl}}/api/course-management/contents/1"
+                            }
+                        },
+                        {
+                            "name": "Get Full Course",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/course-management/courses/1/full"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Course-Teacher Assignments",
+                    "item": [
+                        {
+                            "name": "List Assignments",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/courses/teachers"
+                            }
+                        },
+                        {
+                            "name": "Assign Teacher",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{baseUrl}}/api/courses/teachers",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\"courseId\":1,\"teacherId\":\"ID\"}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Extras (Banner, Partner, Promo)",
+                    "item": [
+                        {
+                            "name": "List Banners",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/banners"
+                            }
+                        },
+                        {
+                            "name": "List Partners",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/partners"
+                            }
+                        },
+                        {
+                            "name": "List Promos",
+                            "request": {
+                                "method": "GET",
+                                "url": "{{baseUrl}}/api/promos"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Enrollment Service",
+            "item": [
+                {
+                    "name": "Get Enrollments",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/enrollments"
+                    }
+                },
+                {
+                    "name": "Bulk Assign",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/api/enrollments/bulk-assign",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"userId\":\"ID\",\"courseIds\":[1,2]}"
+                        }
+                    }
+                },
+                {
+                    "name": "Manage Forms",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/enrollments/forms"
+                    }
+                },
+                {
+                    "name": "Form Responses",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/enrollments/responses"
+                    }
+                },
+                {
+                    "name": "Verify Payment (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/api/enrollments/verify-payment",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"enrollmentId\":1,\"action\":\"approve\"}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Notification Service",
+            "item": [
+                {
+                    "name": "List Notifications",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/notifications"
+                    }
+                },
+                {
+                    "name": "Mark as Read",
+                    "request": {
+                        "method": "PUT",
+                        "url": "{{baseUrl}}/api/notifications/ID/read"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Shop Service",
+            "item": [
+                {
+                    "name": "Get Shop Settings",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/shop/settings"
+                    }
+                },
+                {
+                    "name": "Update Settings",
+                    "request": {
+                        "method": "PUT",
+                        "url": "{{baseUrl}}/api/shop/settings"
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080",
+            "type": "string"
+        }
+    ]
+}

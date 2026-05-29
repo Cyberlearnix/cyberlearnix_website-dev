@@ -1,0 +1,188 @@
+{
+  "info": {
+    "name": "Cyberlearnix – Media Upload APIs",
+    "_postman_id": "media-upload-collection-v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "All photo and media upload endpoints for course-service (Google Drive backed).\n\nBefore running:\n1. Set the 'token' variable to a valid JWT (login first)\n2. Attach a real file in the Body > form-data for each request"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://apis.cyberlearnix.com",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "PASTE_YOUR_JWT_HERE",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth – Login (get token)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@cyberlearnix.com\",\n  \"password\": \"your_password\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Login to get a JWT token. Copy the token value and set it in the collection variable 'token'."
+      }
+    },
+    {
+      "name": "Upload – Course Thumbnail",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/materials/upload/thumbnail",
+          "host": ["{{base_url}}"],
+          "path": ["api", "materials", "upload", "thumbnail"]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Image file (PNG, JPG, WEBP). Max 5 MB."
+            }
+          ]
+        },
+        "description": "Upload a course thumbnail image to Google Drive.\n\nAllowed roles: any logged-in user (admin, teacher, student)\nFile type: image/*\nMax size: 5 MB\n\nSuccess response:\n{\n  \"success\": true,\n  \"fileId\": \"1abc...xyz\",\n  \"url\": \"https://drive.google.com/uc?export=view&id=...\",\n  \"viewUrl\": \"https://drive.google.com/file/d/.../view\",\n  \"streamUrl\": \"https://drive.google.com/uc?export=download&id=...\",\n  \"name\": \"filename.jpg\",\n  \"folder\": \"thumbnails\"\n}"
+      }
+    },
+    {
+      "name": "Upload – Module / Chapter Image",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/materials/upload/module-image",
+          "host": ["{{base_url}}"],
+          "path": ["api", "materials", "upload", "module-image"]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Image file (PNG, JPG, WEBP). Max 5 MB."
+            }
+          ]
+        },
+        "description": "Upload a cover image for a module or chapter.\n\nAllowed roles: any logged-in user\nFile type: image/*\nMax size: 5 MB"
+      }
+    },
+    {
+      "name": "Upload – Banner / Promo Image",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/materials/upload/banner",
+          "host": ["{{base_url}}"],
+          "path": ["api", "materials", "upload", "banner"]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Image file (PNG, JPG, WEBP)."
+            }
+          ]
+        },
+        "description": "Upload a homepage banner or promo image.\n\nAllowed roles: admin only\nFile type: image/*"
+      }
+    },
+    {
+      "name": "Upload – Lecture Video",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/materials/upload/video",
+          "host": ["{{base_url}}"],
+          "path": ["api", "materials", "upload", "video"]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Video file (MP4, WEBM, etc.). Max 500 MB."
+            }
+          ]
+        },
+        "description": "Upload a lecture video to Google Drive.\n\nAllowed roles: admin, teacher, dual\nFile type: video/*\nMax size: 500 MB\n\nSuccess response:\n{\n  \"success\": true,\n  \"fileId\": \"1abc...xyz\",\n  \"viewUrl\": \"https://drive.google.com/file/d/.../view\",\n  \"streamUrl\": \"https://drive.google.com/uc?export=download&id=...\",\n  \"name\": \"lecture.mp4\"\n}"
+      }
+    },
+    {
+      "name": "Upload – Document (PDF / ZIP)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/materials/upload/document",
+          "host": ["{{base_url}}"],
+          "path": ["api", "materials", "upload", "document"]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "PDF, ZIP, DOCX, etc. Max 100 MB."
+            }
+          ]
+        },
+        "description": "Upload a course document or attachment.\n\nAllowed roles: admin, teacher, dual\nFile type: any\nMax size: 100 MB"
+      }
+    },
+    {
+      "name": "Stream – Video from Drive",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Range", "value": "bytes=0-", "description": "Optional – for seeking" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/materials/drive/stream/PASTE_FILE_ID_HERE",
+          "host": ["{{base_url}}"],
+          "path": ["api", "materials", "drive", "stream", "PASTE_FILE_ID_HERE"]
+        },
+        "description": "Proxy-stream a video from Google Drive. Supports Range header for seeking.\n\nReplace PASTE_FILE_ID_HERE with a fileId returned from the video upload.\n\nAllowed roles: any logged-in user"
+      }
+    }
+  ]
+}
