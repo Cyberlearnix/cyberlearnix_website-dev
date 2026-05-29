@@ -81,3 +81,70 @@
   `management.endpoints.web.exposure.include=health` to each service's `application.properties`
   (required for Kubernetes liveness/readiness/startup probes)
 
+---
+
+### [2026-05-30] Lab Service Infrastructure Added
+
+**Changes made:**
+- `docker-compose.yml`: Added `lab-service` block (port **8093** — note: 8090 was already taken by `admin-service`). Added `LAB_SERVICE_URL` env var to gateway-service. Added `lab-service: condition: service_started` to gateway-service `depends_on`. Added `cyberlearnix-labs-network` (isolated bridge) to `networks:` section.
+- `docker/postgres/init/03-lab-db.sql`: New init script creates `lab_db`, tables `lab_templates` + `lab_assignments`, and seeds 3 default templates (Alpine, Ubuntu, Kali).
+- `settings.gradle`: Added `include 'lab-service'`.
+- `.env.example`: Added `MAX_LAB_CONTAINERS=50` and `LAB_IDLE_TIMEOUT=30`.
+- `gateway-service/src/main/resources/application.yml`: Added `lab-service` route (`/api/labs/**`) and `lab-service-terminal` route (`/labs/terminal/**` with WebSocket Upgrade header) after the attendance-service block.
+
+**Key decisions:**
+- Port 8093 assigned to lab-service (8090 already used by admin-service — the request spec had an error).
+- `cyberlearnix-labs-network` is a separate Docker network so student containers are isolated from `cyberlearnix-network` (platform services).
+- Docker socket mount (`/var/run/docker.sock`) is limited to lab-service only; student containers must NOT have socket access.
+- Resource planning doc written to `.squad/decisions/inbox/rohit-lab-docker-plan.md`. Conservative recommendation: `MAX_LAB_CONTAINERS=16` on 8 GB / 4 vCPU.
+
+**Port table update:**
+| Service | Port |
+|---------|------|
+| attendance-service | 8092 |
+| lab-service | 8093 |
+
+---
+
+### [2026-05-30] Cross-team Update: Sandeep's Docker Socket Proxy Recommendation
+
+**From:** Sandeep's security design (LAB-SEC-001, `.squad/decisions.md` SEC-005)
+
+Sandeep has flagged that direct `/var/run/docker.sock` mount into lab-service is the **highest-risk element** in the platform. His recommendation (accepted in SEC-005):
+
+**Add `tecnativa/docker-socket-proxy` to docker-compose.yml:**
+
+```yaml
+docker-socket-proxy:
+  image: tecnativa/docker-socket-proxy:latest
+  container_name: cyberlearnix-docker-proxy
+  environment:
+    CONTAINERS: 1      # allow: container lifecycle ops
+    NETWORKS: 1        # allow: per-student network creation
+    INFO: 1            # allow: docker info (driver checks)
+    POST: 1            # allow: POST methods (create/start/stop)
+    DELETE: 1          # allow: DELETE (container removal)
+    IMAGES: 0          # BLOCK: no image pull/push
+    VOLUMES: 0         # BLOCK: no volume create/delete
+    SERVICES: 0        # BLOCK: no swarm service manipulation
+    SECRETS: 0         # BLOCK: no secret access (hides env of other containers)
+    BUILD: 0           # BLOCK: no docker build
+    CONFIGS: 0         # BLOCK
+    TASKS: 0           # BLOCK
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+  networks:
+    - cyberlearnix-network
+  restart: unless-stopped
+  privileged: true  # proxy itself needs privileged to read the socket — acceptable
+```
+
+**lab-service must then use `DOCKER_HOST=tcp://docker-socket-proxy:2375`** instead of a direct socket mount.
+
+**Action required (Rohit):**
+- [ ] Add `docker-socket-proxy` service to `docker-compose.yml`
+- [ ] Remove `/var/run/docker.sock` mount from lab-service in `docker-compose.yml`
+- [ ] Add `DOCKER_HOST=tcp://docker-socket-proxy:2375` env var to lab-service block
+- [ ] Verify overlay2 + pquota availability on host (for `--storage-opt size=2G`)
+- [ ] Add iptables egress rules to `full-redeploy.sh` blocking lab subnet (172.30.0.0/16) from reaching platform RFC-1918 ranges
+
