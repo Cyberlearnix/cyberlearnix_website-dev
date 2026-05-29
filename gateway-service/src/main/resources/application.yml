@@ -1,0 +1,276 @@
+spring:
+  main:
+    web-application-type: reactive
+    allow-bean-definition-overriding: true
+  application:
+    name: gateway-service
+  codec:
+    # 600MB to support large video/document uploads proxied through the gateway
+    max-in-memory-size: 600MB
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
+        - RemoveRequestHeader=Origin
+      httpclient:
+        wiretap: false
+      httpserver:
+        wiretap: false
+      routes:
+        # Auth Service (on user-service)
+        - id: auth-service
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/auth/**
+
+        # User Service Bridge
+        - id: user-service-legacy
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/get-users,/api/create-user,/api/admin-reset-password-and-notify,/api/manage-teacher-permissions
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /api/get-users
+                replacement: /api/users
+            - name: RewritePath
+              args:
+                regexp: /api/create-user
+                replacement: /api/users/create-user
+            - name: RewritePath
+              args:
+                regexp: /api/admin-reset-password-and-notify
+                replacement: /api/users/reset-password
+            - name: RewritePath
+              args:
+                regexp: /api/manage-teacher-permissions
+                replacement: /api/users/permissions
+
+        # Course Service Bridge (legacy path aliases)
+        - id: course-service-legacy
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
+          predicates:
+            - Path=/api/manage-course-teachers
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /api/manage-course-teachers
+                replacement: /api/courses/teachers
+
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/users/**, /api/send-form-receipt, /api/send-form-notification, /api/send-reply, /api/send-email, /api/send-enrollment-credentials, /api/careers, /api/careers/**, /api/contact-submissions, /api/contact-submissions/**, /api/site-settings, /api/site-settings/**, /api/menus, /api/menus/**, /api/chatbot, /api/chatbot/**, /api/teams, /api/teams/**
+        
+        # User-status toggle (PATCH /api/users/{id}/status)
+        - id: user-status-service
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/users/*/status
+
+        # Course Service
+        - id: course-service
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
+          predicates:
+            - Path=/api/courses/**, /api/course-management/**, /api/materials/**, /api/partners/**, /api/updates, /api/updates/**, /api/banners, /api/banners/**, /api/promos, /api/promos/**, /api/content-reviews, /api/content-reviews/**, /api/teacher/**, /api/certificates, /api/certificates/**
+        - id: course-service-suggestions
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
+          predicates:
+            - Path=/api/suggestions/**
+        # Exam, Assignment & Question endpoints (served by course-service)
+        - id: course-service-exams
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
+          predicates:
+            - Path=/api/exams, /api/exams/**
+        - id: course-service-assignments
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
+          predicates:
+            - Path=/api/assignments, /api/assignments/**
+        - id: course-service-questions
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
+          predicates:
+            - Path=/api/questions, /api/questions/**
+
+        # Enrollment Service Bridge
+        - id: enrollment-service-legacy
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
+          predicates:
+            - Path=/api/manage-enrollments,/api/manage-forms,/api/manage-enrollment-responses
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /api/manage-enrollments
+                replacement: /api/enrollments
+            - name: RewritePath
+              args:
+                regexp: /api/manage-forms
+                replacement: /api/enrollments/forms
+            - name: RewritePath
+              args:
+                regexp: /api/manage-enrollment-responses
+                replacement: /api/enrollments/responses
+
+        - id: student-dashboard
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
+          predicates:
+            - Path=/api/student/**
+
+        # Legacy /api/payu-payment → rewrite to actual PayU initiate endpoint
+        - id: payu-payment-legacy
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
+          predicates:
+            - Path=/api/payu-payment
+          filters:
+            - RewritePath=/api/payu-payment, /api/enrollments/payments/initiate
+
+        - id: enrollment-service
+          uri: ${ENROLLMENT_SERVICE_URL:http://127.0.0.1:8083}
+          predicates:
+            - Path=/api/enrollments, /api/enrollments/**, /api/payments/**
+
+        # Others
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://127.0.0.1:8084}
+          predicates:
+            - Path=/api/notifications/**
+        - id: shop-service
+          uri: ${SHOP_SERVICE_URL:http://127.0.0.1:8085}
+          predicates:
+            - Path=/api/shop/**
+
+        # Form Service
+        - id: form-service
+          uri: ${FORM_SERVICE_URL:http://127.0.0.1:8087}
+          predicates:
+            - Path=/api/forms, /api/forms/**
+
+        - id: activity-service
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/activity/**
+
+        # CMS Service & Unified Page Route
+        - id: cms-service
+          uri: ${CMS_SERVICE_URL:http://127.0.0.1:8089}
+          predicates:
+            - Path=/api/cms/**, /api/pages, /api/pages/**
+          filters:
+            # Route /api/pages and /api/pages/** to /api/cms/pages
+            - name: RewritePath
+              args:
+                regexp: /api/pages(?<remaining>.*)
+                replacement: /api/cms/pages${remaining}
+            # Route CMS forms to Form Service
+            - name: RewritePath
+              args:
+                regexp: /api/cms/forms/(?<formId>.*)/submit
+                replacement: /api/forms/${formId}/responses
+
+        - id: student-portal
+          uri: ${CMS_SERVICE_URL:http://127.0.0.1:8089}
+          predicates:
+            - Path=/student/**
+
+        # Admin stats endpoints — must be BEFORE the generic /api/admin/** catch-all
+        - id: admin-stats-users
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/admin/stats/users
+
+        - id: admin-stats-courses
+          uri: ${COURSE_SERVICE_URL:http://127.0.0.1:8082}
+          predicates:
+            - Path=/api/admin/stats/courses
+
+        # Admin Service
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
+          predicates:
+            - Path=/api/admin/**, /api/meetings/**
+
+        # Instructor Service
+        - id: instructor-service
+          uri: ${INSTRUCTOR_SERVICE_URL:http://127.0.0.1:8091}
+          predicates:
+            - Path=/api/instructor/**
+
+        # Attendance Service
+        - id: attendance-service
+          uri: ${ATTENDANCE_SERVICE_URL:http://127.0.0.1:8092}
+          predicates:
+            - Path=/api/attendance/**,/ws/attendance/**
+
+        # Lab Service — REST management API
+        - id: lab-service
+          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8093}
+          predicates:
+            - Path=/api/labs/**
+
+        # Lab Service — WebSocket terminal (browser TTY access to student containers)
+        - id: lab-service-terminal
+          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8093}
+          predicates:
+            - Path=/labs/terminal/**
+          filters:
+            - name: AddRequestHeader
+              args:
+                name: Upgrade
+                value: websocket
+
+server:
+  port: 8080
+
+jwt:
+  secret: ${JWT_SECRET:cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      show-details: never
+      # Kubernetes liveness + readiness probe endpoints
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: WARN
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: WARN
+    reactor.netty.http.client: WARN
+    reactor.netty.http.server: WARN
+    com.cyberlearnix.gateway: INFO
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: auth-service
+        url: /api/auth/v3/api-docs
+      - name: course-service
+        url: /api/courses/v3/api-docs
+      - name: enrollment-service
+        url: /api/enrollments/v3/api-docs
+      - name: notification-service
+        url: /api/notifications/v3/api-docs
+      - name: shop-service
+        url: /api/shop/v3/api-docs
+      - name: form-service
+        url: /api/forms/v3/api-docs
+      - name: cms-service
+        url: /api/cms/v3/api-docs
+      - name: admin-service
+        url: /api/admin/v3/api-docs

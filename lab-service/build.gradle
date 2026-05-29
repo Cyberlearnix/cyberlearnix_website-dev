@@ -1,0 +1,27 @@
+// lab-service — Spring Boot microservice for managing student Linux lab containers
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':shared-lib')
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'com.github.docker-java:docker-java:3.3.4'
+    implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.3.4'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+    runtimeOnly 'org.postgresql:postgresql'
+}
+
+bootJar {
+    enabled = true
+    mainClass = 'com.cyberlearnix.lab.LabServiceApplication'
+}
+
+jar { enabled = false }
