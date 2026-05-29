@@ -35,7 +35,7 @@ public class LabService {
      * The assignment is persisted first so the container name can include the DB id.
      */
     @Transactional
-    public LabAssignment assignLab(Long studentId, Long templateId, Long instructorId) {
+    public LabAssignment assignLab(String studentId, Long templateId, String instructorId) {
         LabTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new EntityNotFoundException("Lab template not found: " + templateId));
 
@@ -100,7 +100,7 @@ public class LabService {
     }
 
     /** Returns the student's current RUNNING or PROVISIONING assignment, if any. */
-    public Optional<LabAssignment> getStudentActiveLab(Long studentId) {
+    public Optional<LabAssignment> getStudentActiveLab(String studentId) {
         List<AssignmentStatus> activeStatuses = List.of(AssignmentStatus.RUNNING, AssignmentStatus.PROVISIONING);
         return assignmentRepository.findFirstByStudentIdAndStatusIn(studentId, activeStatuses);
     }

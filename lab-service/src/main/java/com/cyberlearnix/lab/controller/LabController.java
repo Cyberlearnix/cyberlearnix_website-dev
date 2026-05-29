@@ -1,12 +1,18 @@
 package com.cyberlearnix.lab.controller;
 
+import com.cyberlearnix.lab.dto.ApprovalDecisionDto;
 import com.cyberlearnix.lab.dto.AssignLabRequest;
+import com.cyberlearnix.lab.dto.CourseLabConfigRequest;
 import com.cyberlearnix.lab.dto.CreateTemplateRequest;
+import com.cyberlearnix.lab.dto.LabRequestDto;
 import com.cyberlearnix.lab.entity.AssignmentStatus;
+import com.cyberlearnix.lab.entity.CourseLabConfig;
+import com.cyberlearnix.lab.entity.LabApprovalRequest;
 import com.cyberlearnix.lab.entity.LabAssignment;
 import com.cyberlearnix.lab.entity.LabTemplate;
 import com.cyberlearnix.lab.repository.LabAssignmentRepository;
 import com.cyberlearnix.lab.repository.LabTemplateRepository;
+import com.cyberlearnix.lab.service.CourseLabService;
 import com.cyberlearnix.lab.service.DockerClientService;
 import com.cyberlearnix.lab.service.LabService;
 import jakarta.validation.Valid;
@@ -27,6 +33,7 @@ import java.util.stream.Collectors;
 public class LabController {
 
     private final LabService labService;
+    private final CourseLabService courseLabService;
     private final LabTemplateRepository templateRepository;
     private final LabAssignmentRepository assignmentRepository;
     private final DockerClientService dockerClientService;
@@ -38,8 +45,8 @@ public class LabController {
     @PostMapping("/assign")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
     public ResponseEntity<LabAssignment> assignLab(@Valid @RequestBody AssignLabRequest request,
-                                                   @RequestHeader(value = "X-User-Id", required = false) Long callerId) {
-        Long instructorId = request.getInstructorId() != null ? request.getInstructorId() : callerId;
+                                                   @RequestHeader(value = "X-User-Id", required = false) String callerId) {
+        String instructorId = request.getInstructorId() != null ? request.getInstructorId() : callerId;
         LabAssignment assignment = labService.assignLab(request.getStudentId(), request.getTemplateId(), instructorId);
         return ResponseEntity.status(HttpStatus.CREATED).body(assignment);
     }
@@ -50,7 +57,7 @@ public class LabController {
      */
     @GetMapping("/my-lab")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> getMyLab(@RequestHeader("X-User-Id") Long studentId) {
+    public ResponseEntity<Map<String, Object>> getMyLab(@RequestHeader("X-User-Id") String studentId) {
         return labService.getStudentActiveLab(studentId)
                 .map(a -> {
                     Map<String, Object> connectionInfo = Map.of(
@@ -123,5 +130,79 @@ public class LabController {
         template.setIsActive(true);
         template.setCreatedAt(Instant.now());
         return ResponseEntity.status(HttpStatus.CREATED).body(templateRepository.save(template));
+    }
+
+    // ─── Course-Linked Lab Endpoints ──────────────────────────────────────────
+
+    /**
+     * Admin: link a lab template to a course.
+     */
+    @PostMapping("/courses/configure")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CourseLabConfig> linkTemplateToCourse(
+            @Valid @RequestBody CourseLabConfigRequest req,
+            @RequestHeader("X-User-Id") String adminId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(courseLabService.linkTemplateToCourse(req, adminId));
+    }
+
+    /**
+     * Anyone authenticated: get lab templates available in a course.
+     */
+    @GetMapping("/courses/{courseId}/templates")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<CourseLabConfig>> getCourseTemplates(@PathVariable Long courseId) {
+        return ResponseEntity.ok(courseLabService.getCourseLabConfigs(courseId));
+    }
+
+    /**
+     * Instructor: request a lab assignment for a student in a course.
+     */
+    @PostMapping("/courses/request")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<LabApprovalRequest> requestLab(
+            @Valid @RequestBody LabRequestDto dto,
+            @RequestHeader("X-User-Id") String instructorId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(courseLabService.requestLab(dto, instructorId));
+    }
+
+    /**
+     * Admin: view all pending approval requests.
+     */
+    @GetMapping("/admin/approvals")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<LabApprovalRequest>> getPendingApprovals() {
+        return ResponseEntity.ok(courseLabService.getPendingApprovals());
+    }
+
+    /**
+     * Admin: approve or reject a lab request.
+     */
+    @PostMapping("/admin/approvals/{requestId}/decide")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LabApprovalRequest> decide(
+            @PathVariable Long requestId,
+            @Valid @RequestBody ApprovalDecisionDto decision,
+            @RequestHeader("X-User-Id") String adminId) {
+        return ResponseEntity.ok(courseLabService.processApproval(requestId, decision, adminId));
+    }
+
+    /**
+     * Student: get their lab assignments for a specific course.
+     */
+    @GetMapping("/my-labs/course/{courseId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<LabAssignment>> getMyLabsForCourse(
+            @PathVariable Long courseId,
+            @RequestHeader("X-User-Id") String studentId) {
+        return ResponseEntity.ok(courseLabService.getMyLabsForCourse(studentId, courseId));
+    }
+
+    /**
+     * Instructor/Admin: get all approval requests for a course.
+     */
+    @GetMapping("/courses/{courseId}/requests")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<LabApprovalRequest>> getCourseRequests(@PathVariable Long courseId) {
+        return ResponseEntity.ok(courseLabService.getCourseRequests(courseId));
     }
 }

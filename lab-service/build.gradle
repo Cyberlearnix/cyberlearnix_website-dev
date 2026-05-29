@@ -14,7 +14,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'com.github.docker-java:docker-java:3.3.4'
-    implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.3.4'
+    implementation 'com.github.docker-java:docker-java-transport-okhttp:3.3.4'
+    // JAXB API required by jackson-module-jaxb-annotations (transitive from docker-java) on Java 9+
+    implementation 'javax.xml.bind:jaxb-api:2.3.1'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
     runtimeOnly 'org.postgresql:postgresql'
 }

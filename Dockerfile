@@ -31,7 +31,6 @@ COPY form-service/build.gradle      form-service/
 COPY admin-service/build.gradle     admin-service/
 COPY cms-service/build.gradle       cms-service/
 COPY instructor-service/build.gradle instructor-service/
-COPY attendance-service/build.gradle attendance-service/
 
 # Warm up the Gradle dependency cache (tolerates resolution failures on stubs)
 RUN gradle dependencies --no-daemon --quiet 2>/dev/null || true
