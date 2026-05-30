@@ -26,7 +26,7 @@ public class LabApprovalRequest {
 
     private String requestedByInstructorId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "lab_template_id", nullable = false)
     private LabTemplate labTemplate;
 
