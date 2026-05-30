@@ -54,8 +54,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/forms/payments/initiate").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/forms/payments/status/**").permitAll()
                         // Public access for responses (submission and check)
-                        .requestMatchers(HttpMethod.POST, "/api/forms/{formId}/responses").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/forms/{formId}/responses/check").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/forms/*/responses").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/forms/*/responses/check").permitAll()
                         // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
