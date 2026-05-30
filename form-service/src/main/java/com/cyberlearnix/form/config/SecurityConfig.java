@@ -45,7 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/forms/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Public access for forms
-                        .requestMatchers(HttpMethod.GET, "/api/forms/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/forms/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/forms/*/public/**").permitAll()
                         // Public access for payment callbacks (called by PayU)
                         .requestMatchers("/api/forms/payments/callback/**").permitAll()
