@@ -63,6 +63,13 @@ public class CourseLabService {
     }
 
     /**
+     * Admin: get all active course-lab configurations across all courses.
+     */
+    public List<CourseLabConfig> getAllCourseLabConfigs() {
+        return courseLabConfigRepository.findByIsActiveTrue();
+    }
+
+    /**
      * Instructor: request a lab for a student in a course.
      * If requiresApproval=false on the config, auto-approves immediately.
      */

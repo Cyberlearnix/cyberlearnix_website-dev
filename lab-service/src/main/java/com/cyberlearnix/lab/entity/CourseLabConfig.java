@@ -21,7 +21,7 @@ public class CourseLabConfig {
     @Column(nullable = false)
     private Long courseId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "lab_template_id", nullable = false)
     private LabTemplate labTemplate;
 

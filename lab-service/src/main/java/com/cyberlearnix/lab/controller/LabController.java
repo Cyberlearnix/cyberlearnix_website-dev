@@ -146,6 +146,15 @@ public class LabController {
     }
 
     /**
+     * Admin: list ALL active course-lab configurations (global view).
+     */
+    @GetMapping("/admin/course-configs")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CourseLabConfig>> getAllCourseConfigs() {
+        return ResponseEntity.ok(courseLabService.getAllCourseLabConfigs());
+    }
+
+    /**
      * Anyone authenticated: get lab templates available in a course.
      */
     @GetMapping("/courses/{courseId}/templates")

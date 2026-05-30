@@ -26,7 +26,7 @@ public class DockerConfig {
                 .dockerHost(config.getDockerHost())
                 .sslConfig(config.getSSLConfig())
                 .connectTimeout(30_000)
-                .readTimeout(60_000)
+                .readTimeout(300_000)  // 5 minutes - interactive shells can be idle
                 .build();
 
         return DockerClientImpl.getInstance(config, httpClient);
