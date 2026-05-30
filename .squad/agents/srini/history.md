@@ -45,3 +45,28 @@
 - [x] Port collision check (8092 is next after instructor-service at 8091)
 - [x] Shared-lib NOT modified (attendance entities are service-local)
 - [x] BUILD SUCCESSFUL — `./gradlew :attendance-service:compileJava` passes
+
+---
+
+## Learnings
+
+### Lab Management System ADR — 2026-05-30
+
+**Decision Summary:**  
+Authored ADR-006, ADR-007, and ADR-008 covering the full Student Lab Management System architecture for Cyberlearnix. Written to `.squad/decisions/inbox/srini-lab-architecture-adr.md`.
+
+**Key Architectural Choices:**
+- **ADR-006 (Lab Service):** New `lab-service` at port 8093, mounts `/var/run/docker.sock` for Docker lifecycle control via Docker Java SDK. Student containers run on isolated `cyberlearnix-labs` Docker network (bridge, `internal: true`) — completely segregated from the platform backbone network to prevent lateral movement. DB: `cyberlearnix_labs`. Resource limits (CPU 0.5 cores, 512MB RAM) enforced at container creation via Docker `HostConfig`.
+- **ADR-007 (Browser Terminal):** Chose **Option B** — WebSocket → `docker exec` bridge co-located in `lab-service`. Rejected Option A (per-container port explosion, dynamic nginx routing complexity) and Option C (introduces sshd + Node.js wetty, misaligned with Java stack). Frontend uses `xterm.js`; WebSocket at `/labs/terminal/{assignmentId}?token=<jwt>`.
+- **ADR-008 (Lifecycle):** PENDING → PROVISIONING → RUNNING ↔ PAUSED → TERMINATED state machine. Auto-stop via Redis sorted set + Spring `@Scheduled` scan every 5 min (default 30-min inactivity threshold). Concurrent container cap: `LAB_MAX_CONCURRENT_CONTAINERS=20` (env-configurable). Per-student cap: 2 active labs.
+
+**Architecture Guardrails Established:**
+- Docker socket is a privileged surface — student containers MUST have `no-new-privileges`, run as UID 1000, and be on the isolated network. Sandeep must review before go-live.
+- The Docker socket strategy is incompatible with Kubernetes (ADR-003 future migration) — flagged as a known tech debt item; K8s migration will require switching to Kubernetes Jobs/Pod API.
+- Port 8093 reserved for `lab-service` — next sequential port after `attendance-service` at 8092.
+
+**Patterns Reinforced:**
+- New services follow the same Dockerfile/build.gradle/DB pattern as all 12 existing services
+- Gateway WebSocket routing uses `ws://` URI scheme in Spring Cloud Gateway — same pattern as attendance-service STOMP
+- Redis already in the platform; reused for inactivity tracking (no new infrastructure)
+- All admin mutations arrive via JWT ROLE_ADMIN — no direct call to admin-service needed
