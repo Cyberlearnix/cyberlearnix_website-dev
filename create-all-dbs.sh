@@ -39,6 +39,14 @@ SELECT 'CREATE DATABASE cyberlearnix_instructor'
 SELECT 'CREATE DATABASE cyberlearnix_notifications'
   WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cyberlearnix_notifications')\gexec
 
+-- attendance-service
+SELECT 'CREATE DATABASE cyberlearnix_attendance'
+  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cyberlearnix_attendance')\gexec
+
+-- lab-service
+SELECT 'CREATE DATABASE lab_db'
+  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'lab_db')\gexec
+
 -- List all databases to confirm
 \l cyberlearnix*
 SQL
