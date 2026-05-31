@@ -85,6 +85,7 @@ services:
       - ADMIN_SERVICE_URL=http://admin-service:8090
       - INSTRUCTOR_SERVICE_URL=http://instructor-service:8091
       - ATTENDANCE_SERVICE_URL=http://attendance-service:8092
+      - LAB_SERVICE_URL=http://lab-service:8090
     depends_on:
       redis:
         condition: service_healthy
@@ -108,6 +109,8 @@ services:
         condition: service_healthy
       attendance-service:
         condition: service_healthy
+      lab-service:
+        condition: service_started
     restart: unless-stopped
     networks:
       - cyberlearnix-network
@@ -468,6 +471,32 @@ services:
     networks:
       - cyberlearnix-network
 
+  lab-service:
+    build:
+      context: .
+      dockerfile: lab-service/Dockerfile
+    container_name: lab-service
+    user: root  # Required for Docker socket access (dev only)
+    ports:
+      - "127.0.0.1:8093:8090"
+    environment:
+      - LAB_DB_URL=jdbc:postgresql://postgres:5432/lab_db
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - MAX_CONTAINERS=${MAX_LAB_CONTAINERS:-50}
+      - LAB_IDLE_TIMEOUT_MINUTES=${LAB_IDLE_TIMEOUT:-30}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
   # ── Logging stack ───────────────────────────────────────────────────────────
   loki:
     image: grafana/loki:3.0.0
@@ -537,6 +566,9 @@ services:
 networks:
   cyberlearnix-network:
     driver: bridge
+  cyberlearnix-labs-network:
+    driver: bridge
+    internal: false  # students need internet for package installs in some labs
 
 volumes:
   postgres_data:

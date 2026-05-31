@@ -205,6 +205,23 @@ spring:
           predicates:
             - Path=/api/attendance/**,/ws/attendance/**
 
+        # Lab Service — REST management API
+        - id: lab-service
+          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8093}
+          predicates:
+            - Path=/api/labs/**
+
+        # Lab Service — WebSocket terminal (browser TTY access to student containers)
+        - id: lab-service-terminal
+          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8093}
+          predicates:
+            - Path=/labs/terminal/**
+          filters:
+            - name: AddRequestHeader
+              args:
+                name: Upgrade
+                value: websocket
+
 server:
   port: 8080
 

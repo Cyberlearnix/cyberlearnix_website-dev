@@ -214,20 +214,41 @@ spec:
             failureThreshold: 60   # 15s + 60×10s = up to 10 minutes to start
 
           # Level-2 Container security
+          {{- if $svc.dockerSocket }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+            runAsUser: 0
+            capabilities:
+              drop: [ALL]
+              add: [SETUID, SETGID]
+          {{- else }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
+          {{- end }}
 
           # /tmp needed for Spring Boot temp files (uploads, Tomcat work dir)
           volumeMounts:
             - name: tmp-dir
               mountPath: /tmp
+            {{- if $svc.dockerSocket }}
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            {{- end }}
 
       volumes:
         - name: tmp-dir
           emptyDir:
             sizeLimit: 256Mi
+        {{- if $svc.dockerSocket }}
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        {{- end }}
 
 {{- end }}

@@ -31,17 +31,18 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
-  gateway-service:        6ee07dbe0c840e445a493352e9e288dd5537202d
-  user-service:     6ee07dbe0c840e445a493352e9e288dd5537202d
-  course-service:    6ee07dbe0c840e445a493352e9e288dd5537202d
-  enrollment-service:     6ee07dbe0c840e445a493352e9e288dd5537202d
-  notification-service:    6ee07dbe0c840e445a493352e9e288dd5537202d
-  shop-service:    6ee07dbe0c840e445a493352e9e288dd5537202d
-  form-service:    6ee07dbe0c840e445a493352e9e288dd5537202d
-  admin-service:     6ee07dbe0c840e445a493352e9e288dd5537202d
-  cms-service:    6ee07dbe0c840e445a493352e9e288dd5537202d
-  instructor-service:     6ee07dbe0c840e445a493352e9e288dd5537202d
-  attendance-service:     6ee07dbe0c840e445a493352e9e288dd5537202d
+  gateway-service:       85c8259de51c7d6253e93831b9eb4a109598b3d1
+  user-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
+  course-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
+  enrollment-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
+  notification-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
+  shop-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
+  form-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
+  admin-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
+  cms-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
+  instructor-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
+  attendance-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
+  lab-service:           latest
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
@@ -68,6 +69,7 @@ appConfig:
   ADMIN_SERVICE_URL: "http://admin-service:8090"
   INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
   ATTENDANCE_SERVICE_URL: "http://attendance-service:8092"
+  LAB_SERVICE_URL: "http://lab-service:8090"
   CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app"
   SERVER_COOKIE_SECURE: "true"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
@@ -371,5 +373,26 @@ services:
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  lab-service:
+    port: 8090
+    containerPort: 8090
+    replicas: 1
+    dbName: lab_db
+    dbRequired: true
+    dockerSocket: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    hpa:
+      enabled: false
     pdb:
       minAvailable: 1

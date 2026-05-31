@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: lab-service
+  datasource:
+    url: ${LAB_DB_URL:jdbc:postgresql://postgres:5432/lab_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:Cyb3rL3arnix#2026!DB}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+server:
+  port: 8090
+
+lab:
+  docker:
+    host: ${DOCKER_HOST:unix:///var/run/docker.sock}
+  defaults:
+    max-containers: 50
+    default-cpu: 0.5
+    default-memory: 536870912
+    idle-timeout-minutes: 30
+
+jwt:
+  secret: ${JWT_SECRET:cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
+
+springdoc:
+  api-docs:
+    path: /api/labs/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -157,3 +157,36 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 - `AttendanceOverrideRequest.action` is `@NotBlank` — must always be set before sending
 - Webhook endpoint `/api/attendance/webhooks/zoho` is public (no JWT) — validated by `X-Zoho-Meeting-Token` header
 - Scheduler tasks: finalize every 5min, disconnect detection every 2min, stale meetings every 1hr
+
+## lab-service — Added 2026-05-30
+
+### New Service
+- Port: 8090, DB: `lab_db`
+- Package root: `com.cyberlearnix.lab`
+- Main class: `LabServiceApplication` with `@EnableScheduling`
+- 2 entities: `LabTemplate`, `LabAssignment` (local, NOT in shared-lib)
+- 2 repos: `LabTemplateRepository`, `LabAssignmentRepository`
+- 2 services: `DockerClientService` (docker-java API), `LabService` (business logic)
+- 1 controller: `LabController` at `/api/labs/**`
+- 1 WebSocket handler: `LabTerminalWebSocketHandler` at `/labs/terminal/{assignmentId}`
+- 3 configs: `DockerConfig`, `SecurityConfig`, `WebSocketConfig`
+- 1 `GlobalExceptionHandler` (covers 400/404/409/403/500)
+
+### Key Patterns
+- `assignLab()` saves DB record FIRST to get the id, then names container `cyberlearnix-lab-{studentId}-{id}` — avoids id-unknown naming problem
+- Docker CPU limits use CFS bandwidth: `cpuQuota = cpu * 100_000`, `cpuPeriod = 100_000`
+- WebSocket terminal: `ExecStartResultCallback` streams stdout frames to browser; `PipedOutputStream` feeds stdin from browser messages; each session gets a daemon thread
+- Idle cleanup `@Scheduled(fixedDelay=300_000)` stops (not removes) labs idle > `lab.defaults.idle-timeout-minutes`
+- `AssignmentStatus` enum: PENDING → PROVISIONING → RUNNING → PAUSED / TERMINATED
+
+### Pre-deploy Requirements
+- Docker network must exist: `docker network create cyberlearnix-labs-network`
+- `/var/run/docker.sock` must be mounted into lab-service container
+- Gateway needs routes: `/api/labs/**` → `lab-service:8090` AND `/labs/terminal/**` (WebSocket upgrade)
+- `lab_db` database must be created in PostgreSQL
+- Dependencies: `com.github.docker-java:docker-java:3.3.4` + `docker-java-transport-httpclient5:3.3.4`
+
+### Learnings
+- `docker-java` `ExecStartResultCallback.onNext(Frame)` delivers stdout/stderr as `Frame` objects; use `frame.getPayload()` to get the bytes
+- Spring WebSocket path variables (`/labs/terminal/{assignmentId}`) are NOT extracted automatically — must parse `session.getUri().getPath()` manually
+- `@EnableScheduling` must be on the main application class or a `@Configuration` class; missing it silently skips all `@Scheduled` methods
