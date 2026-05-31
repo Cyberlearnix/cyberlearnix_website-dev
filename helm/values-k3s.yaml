@@ -31,30 +31,18 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
-  gateway-service:       85c8259de51c7d6253e93831b9eb4a109598b3d1
-  user-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  course-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  enrollment-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  notification-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  shop-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  form-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  admin-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  cms-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  instructor-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  attendance-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  lab-service:           85c8259de51c7d6253e93831b9eb4a109598b3d1
-  gateway-service:        baa1c4f2cffe442c751435d106d65dd4017becd0
-  user-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  course-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  enrollment-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  notification-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  shop-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  form-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  admin-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  cms-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  instructor-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  attendance-service:      baa1c4f2cffe442c751435d106d65dd4017becd0
-  lab-service:             baa1c4f2cffe442c751435d106d65dd4017becd0
+  gateway-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
+  user-service:        baa1c4f2cffe442c751435d106d65dd4017becd0
+  course-service:      baa1c4f2cffe442c751435d106d65dd4017becd0
+  enrollment-service:  baa1c4f2cffe442c751435d106d65dd4017becd0
+  notification-service: baa1c4f2cffe442c751435d106d65dd4017becd0
+  shop-service:        baa1c4f2cffe442c751435d106d65dd4017becd0
+  form-service:        baa1c4f2cffe442c751435d106d65dd4017becd0
+  admin-service:       baa1c4f2cffe442c751435d106d65dd4017becd0
+  cms-service:         baa1c4f2cffe442c751435d106d65dd4017becd0
+  instructor-service:  baa1c4f2cffe442c751435d106d65dd4017becd0
+  attendance-service:  baa1c4f2cffe442c751435d106d65dd4017becd0
+  lab-service:         baa1c4f2cffe442c751435d106d65dd4017becd0
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
