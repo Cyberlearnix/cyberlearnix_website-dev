@@ -70,3 +70,9 @@ services:
 
   instructor-service:
     image: ghcr.io/cyberlearnix/cyberlearnix-instructor-service:latest
+
+  attendance-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-attendance-service:latest
+
+  lab-service:
+    image: ghcr.io/cyberlearnix/cyberlearnix-lab-service:latest

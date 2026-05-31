@@ -29,6 +29,8 @@ images:
   admin-service: latest
   cms-service: latest
   instructor-service: latest
+  attendance-service: latest
+  lab-service: latest
 
 # ── Shared application config (injected as ConfigMap) ────────────────────────
 appConfig:
@@ -48,6 +50,8 @@ appConfig:
   CMS_SERVICE_URL: "http://cms-service:8089"
   ADMIN_SERVICE_URL: "http://admin-service:8090"
   INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
+  ATTENDANCE_SERVICE_URL: "http://attendance-service:8092"
+  LAB_SERVICE_URL: "http://lab-service:8090"
   CORS_ALLOWED_ORIGINS: "https://app.cyberlearnix.com,https://staging.cyberlearnix.com"
 
 # ── Per-service configuration ─────────────────────────────────────────────────
@@ -275,6 +279,50 @@ services:
       minReplicas: 1
       maxReplicas: 4
       targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  attendance-service:
+    port: 8092
+    containerPort: 8092
+    replicas: 1
+    dbName: cyberlearnix_attendance
+    dbRequired: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "384Mi"
+        cpu: "100m"
+      limits:
+        memory: "768Mi"
+        cpu: "500m"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      minAvailable: 1
+
+  lab-service:
+    port: 8090
+    containerPort: 8090
+    replicas: 1
+    dbName: lab_db
+    dbRequired: true
+    dockerSocket: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    hpa:
+      enabled: false
     pdb:
       minAvailable: 1
 

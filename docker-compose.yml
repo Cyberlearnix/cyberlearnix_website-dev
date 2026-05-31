@@ -481,15 +481,15 @@ services:
       - "127.0.0.1:8093:8090"
     environment:
       - LAB_DB_URL=jdbc:postgresql://postgres:5432/lab_db
-      - LAB_DB_USERNAME=postgres
-      - LAB_DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_PASS=${POSTGRES_PASSWORD}
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=${JWT_SECRET}
+      - DOCKER_HOST=unix:///var/run/docker.sock
       - MAX_CONTAINERS=${MAX_LAB_CONTAINERS:-50}
       - LAB_IDLE_TIMEOUT_MINUTES=${LAB_IDLE_TIMEOUT:-30}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock  # CRITICAL: allows lab-service to manage student containers
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy
