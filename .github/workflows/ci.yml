@@ -32,6 +32,8 @@ jobs:
       admin:           ${{ steps.filter.outputs.admin-service }}
       cms:             ${{ steps.filter.outputs.cms-service }}
       instructor:      ${{ steps.filter.outputs.instructor-service }}
+      attendance:      ${{ steps.filter.outputs.attendance-service }}
+      lab:             ${{ steps.filter.outputs.lab-service }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -63,6 +65,10 @@ jobs:
               - 'cms-service/**'
             instructor-service:
               - 'instructor-service/**'
+            attendance-service:
+              - 'attendance-service/**'
+            lab-service:
+              - 'lab-service/**'
 
   # ── Compile & test (smart matrix — only changed services) ──────────────────
   build:
@@ -93,6 +99,10 @@ jobs:
             changed: ${{ needs.changes.outputs.cms }}
           - service: instructor-service
             changed: ${{ needs.changes.outputs.instructor }}
+          - service: attendance-service
+            changed: ${{ needs.changes.outputs.attendance }}
+          - service: lab-service
+            changed: ${{ needs.changes.outputs.lab }}
     steps:
       - uses: actions/checkout@v4
 
