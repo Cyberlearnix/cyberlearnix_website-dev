@@ -1,4 +1,4 @@
-# Run stage
+# Run stage — initial image push trigger
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
