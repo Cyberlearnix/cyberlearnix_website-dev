@@ -41,8 +41,8 @@ images:
   admin-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
   cms-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
   instructor-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  attendance-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  lab-service:           85c8259de51c7d6253e93831b9eb4a109598b3d1
+  attendance-service:     f93d42c6e2f3aac7fb21b9bd0a11e1ec12441256
+  lab-service:            f93d42c6e2f3aac7fb21b9bd0a11e1ec12441256
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
