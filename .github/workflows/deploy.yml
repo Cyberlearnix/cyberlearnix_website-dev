@@ -79,11 +79,13 @@ jobs:
             admin-service:        ['admin-service/**']
             cms-service:          ['cms-service/**']
             instructor-service:   ['instructor-service/**']
+            attendance-service:   ['attendance-service/**']
+            lab-service:          ['lab-service/**']
 
       - name: Determine build matrix
         id: decide
         run: |
-          ALL='["gateway-service","user-service","course-service","enrollment-service","notification-service","shop-service","form-service","admin-service","cms-service","instructor-service"]'
+          ALL='["gateway-service","user-service","course-service","enrollment-service","notification-service","shop-service","form-service","admin-service","cms-service","instructor-service","attendance-service","lab-service"]'
           FORCE="${{ github.event.inputs.force_rebuild_all }}"
           SHARED="${{ steps.filter.outputs.shared-lib }}"
 
@@ -94,7 +96,7 @@ jobs:
             CHANGED=()
             SERVICES=(gateway-service user-service course-service enrollment-service \
                        notification-service shop-service form-service admin-service \
-                       cms-service instructor-service)
+                       cms-service instructor-service attendance-service lab-service)
             declare -A FILTER_MAP=(
               [gateway-service]="${{ steps.filter.outputs.gateway-service }}"
               [user-service]="${{ steps.filter.outputs.user-service }}"
@@ -106,6 +108,8 @@ jobs:
               [admin-service]="${{ steps.filter.outputs.admin-service }}"
               [cms-service]="${{ steps.filter.outputs.cms-service }}"
               [instructor-service]="${{ steps.filter.outputs.instructor-service }}"
+              [attendance-service]="${{ steps.filter.outputs.attendance-service }}"
+              [lab-service]="${{ steps.filter.outputs.lab-service }}"
             )
             for svc in "${SERVICES[@]}"; do
               [[ "${FILTER_MAP[$svc]}" == "true" ]] && CHANGED+=("\"$svc\"")
