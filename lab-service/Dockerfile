@@ -1,4 +1,4 @@
-# Run stage — JAR pre-built locally via ./gradlew bootJar
+# Run stage — JAR pre-built via ./gradlew bootJar
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 # curl is required for HEALTHCHECK probes
