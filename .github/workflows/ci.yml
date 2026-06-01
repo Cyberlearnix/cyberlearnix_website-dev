@@ -42,8 +42,6 @@ jobs:
           filters: |
             shared-lib:
               - 'shared-lib/**'
-              - 'build.gradle'
-              - 'settings.gradle'
               - 'gradle/**'
             gateway-service:
               - 'gateway-service/**'
