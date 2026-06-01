@@ -244,11 +244,29 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: |
           SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
+
+          # Write idempotent helper: deletes ALL existing lines for a service then
+          # inserts exactly ONE clean line — prevents duplicate-key corruption.
+          cat > /tmp/update_image_tag.py << 'PYEOF'
+          import sys, re
+          svc, sha = sys.argv[1], sys.argv[2]
+          path = 'helm/values-k3s.yaml'
+          with open(path) as f:
+              content = f.read()
+          # Remove every existing image-tag line for this service (40-char hex sha)
+          content = re.sub(
+              r'(?m)^  ' + re.escape(svc) + r':[ \t]+[0-9a-f]{40}[ \t]*\n',
+              '', content
+          )
+          # Insert one fresh line immediately after the 'images:' header
+          content = content.replace('\nimages:\n', '\nimages:\n  ' + svc + ': ' + sha + '\n', 1)
+          with open(path, 'w') as f:
+              f.write(content)
+          print(f'  ✓ {svc} → {sha}')
+          PYEOF
+
           for svc in $SERVICES; do
-            # Replace ONLY lines in the images: section (value is a 40-char hex sha)
-            # This avoids corrupting the services: block where the same key appears without a sha value
-            sed -i "s|^\(  ${svc}:\s*\)[0-9a-f]\{40\}\s*$|\1 ${GIT_SHA}|" helm/values-k3s.yaml
-            echo "  ✓ $svc → $GIT_SHA"
+            python3 /tmp/update_image_tag.py "${svc}" "${GIT_SHA}"
           done
 
       - name: Commit and push updated image tags
