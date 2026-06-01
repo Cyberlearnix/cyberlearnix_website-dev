@@ -28,4 +28,7 @@ public interface EnrollmentServiceClient {
 
     @GetMapping("/api/admin/stats/revenue")
     Map<String, Object> getRevenueStats(@RequestHeader("Authorization") String auth);
+
+    @GetMapping("/api/admin/reports/courses")
+    List<Map<String, Object>> getCourseReport(@RequestHeader("Authorization") String auth);
 }

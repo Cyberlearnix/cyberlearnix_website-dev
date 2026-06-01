@@ -30,5 +30,5 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
             @org.springframework.data.repository.query.Param("isActive") Boolean isActive, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Query("SELECT COUNT(c) FROM Course c WHERE LOWER(c.status) = LOWER(:status)")
-    long countByStatusIgnoreCase(String status);
+    long countByStatusIgnoreCase(@org.springframework.data.repository.query.Param("status") String status);
 }

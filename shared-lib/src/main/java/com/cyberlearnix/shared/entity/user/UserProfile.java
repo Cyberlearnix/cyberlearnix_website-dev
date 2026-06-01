@@ -40,4 +40,10 @@ public class UserProfile {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Column(name = "enrollment_number", unique = true)
+    private String enrollmentNumber;
+
+    @Column(name = "qr_code_data", columnDefinition = "TEXT")
+    private String qrCodeData;
 }

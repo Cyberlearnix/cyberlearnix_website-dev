@@ -41,7 +41,7 @@ public class SecurityConfig {
                     } else {
                         corsConfig.setAllowedOrigins(origins);
                     }
-                    corsConfig.setAllowedOrigins(origins);
+
                     corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(java.util.List.of("*"));
                     return corsConfig;
@@ -52,8 +52,12 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/enrollments/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Public: send login credentials to newly enrolled student
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/send-credentials").permitAll()
                         // Public: form config lookup (embed on website without login)
+                        // NOTE: /forms/response-counts is admin-only — must be listed BEFORE forms/** wildcard
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/config").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/forms/response-counts").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/forms/**").permitAll()
                         // Public: student receipt download after PayU redirect (no JWT available)
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/responses/*/receipt").permitAll()

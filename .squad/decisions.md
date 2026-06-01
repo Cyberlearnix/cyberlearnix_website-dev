@@ -180,3 +180,32 @@
 - Sneha writes tests before a feature is marked done
 - Rohit owns all infrastructure changes
 - All meaningful decisions are recorded here with an ADR number
+
+---
+
+### [2026-06-01] ADR-006: EnrollmentManagement FormsTab — fully dynamic from DB
+**By:** Sandeep (API & Security Engineer)
+**Decision:** Fixed two bugs and added dynamic response counts in `EnrollmentManagement.jsx` FormsTab. `parseFieldCount(fields)` helper handles `fields` as either a JSON string or array, fixing the "220 fields" display bug. `load()` now fetches `GET /api/enrollments/forms/response-counts` in parallel via `Promise.allSettled` and displays a "X responses" badge per form card.
+**Why:** `EnrollmentFormConfig.fields` is stored as a JSON string; `.length` on the raw string returned character count (~220) instead of element count.
+**Consequences:** FormsTab shows correct field count and per-form response count from DB.
+**Status:** Accepted
+
+### [2026-06-01] ADR-007: EnrollmentFormResponseRepository — countByFormId endpoint
+**By:** Shiva (Backend Engineer)
+**Decision:** Added `countByFormIdAndDeletedAtIsNull(String formId)` derived query to `EnrollmentFormResponseRepository`. Added `getFormResponseCounts()` to `EnrollmentService`. Added `GET /api/enrollments/forms/response-counts` in `FormController` returning `Map<String, Long>`.
+**Why:** FormsTab in the admin portal needed per-form response counts.
+**Consequences:** No schema changes — query uses existing `enrollment_form_responses.form_id` and `deleted_at` columns.
+**Status:** Accepted
+
+### [2026-06-01] ADR-008: Frontend Role-Switch Portal Navigation
+**By:** Sandeep (API & Security Engineer)
+**Decision:** Role-switch targets determined by a static `ROLE_SWITCH_MAP` in `AdminNavbar` keyed on `currentRole`. `portal_origin_*` sessionStorage keys written before cross-portal navigation, read on mount to show a dismissible "Return to X Portal" banner. Institute switch reloads the admin portal after updating `sessionStorage.user_role`. Teacher→student switch calls `/api/auth/switch-role` to get a student-scoped JWT first.
+**Consequences:** All role-preview sessions are visually flagged and reversible. Origin JWT fully restored on return — no residual role bleed.
+**Status:** Accepted
+
+### [2026-06-01] ADR-009: Expand Role-Switch Permission Matrix in AuthService
+**By:** Shiva (Backend Engineer)
+**Decision:** Replaced flat boolean guard in `AuthService.switchRole` with a declarative permission map: `admin → [teacher, student, institute]`, `institute → [teacher, student]`, `dual → [teacher, student]`, `teacher → [student]`. Any role not in the map gets an empty allowed list.
+**Why:** Previous guard only allowed `admin` and `dual` switches, blocking legitimate preview workflows for `teacher` and `institute` role holders.
+**Consequences:** Institute and teacher users can now preview lower-role portals via the navbar.
+**Status:** Accepted

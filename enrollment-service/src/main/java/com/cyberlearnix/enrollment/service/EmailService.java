@@ -20,7 +20,68 @@ public class EmailService {
     @Autowired
     private PdfService pdfService;
 
+    @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}")
+    private String mailUsername;
+
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+
+    public void sendCredentials(String studentEmail, String studentName, String temporaryPassword,
+                                String courseName, String loginUrl) {
+        if (!isValidEmail(studentEmail)) {
+            throw new IllegalArgumentException("Invalid email address: " + studentEmail);
+        }
+        if (!StringUtils.hasText(mailUsername)) {
+            throw new RuntimeException("Email not configured: set GMAIL_USER and GMAIL_APP_PASSWORD in .env");
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setTo(studentEmail);
+            helper.setSubject("\uD83C\uDF93 Your Course Access is Ready - Login Credentials Inside");
+            helper.setText(buildCredentialsHtml(studentName, studentEmail, temporaryPassword, courseName, loginUrl), true);
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send credentials email: " + e.getMessage(), e);
+        }
+    }
+
+    private String buildCredentialsHtml(String studentName, String studentEmail, String temporaryPassword,
+                                         String courseName, String loginUrl) {
+        String url = StringUtils.hasText(loginUrl) ? loginUrl : "https://cyberlearnix.com/login.html";
+        String courseBlock = StringUtils.hasText(courseName)
+                ? "<p style='display:inline-block;background:#dbeafe;color:#0c4a6e;padding:6px 14px;border-radius:20px;font-weight:600;font-size:14px'>" + courseName + "</p>"
+                : "";
+        return "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+                + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>body{font-family:Arial,sans-serif;background:#f1f5f9;margin:0;padding:20px}"
+                + ".wrap{max-width:600px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1)}"
+                + ".hdr{background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:white;padding:36px 30px;text-align:center}"
+                + ".hdr h1{margin:0 0 8px;font-size:26px}.hdr p{margin:0;opacity:.85;font-size:15px}"
+                + ".body{padding:32px 30px}.cred{background:#f8fafc;border:2px dashed #cbd5e1;border-radius:10px;padding:20px;margin:24px 0}"
+                + ".cred p{margin:8px 0;font-size:15px}.cred code{color:#1d4ed8;font-weight:700;font-size:16px}"
+                + ".warn{background:#fffbeb;border-left:4px solid #f59e0b;padding:14px 16px;border-radius:0 8px 8px 0;margin:20px 0;font-size:14px}"
+                + ".btn{display:inline-block;background:#1e3a8a;color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;margin:8px 0}"
+                + ".footer{text-align:center;padding:20px;background:#f8fafc;color:#64748b;font-size:13px;border-top:1px solid #e2e8f0}"
+                + "</style></head><body>"
+                + "<div class='wrap'>"
+                + "<div class='hdr'><h1>\uD83C\uDF93 Welcome to Cyberlearnix!</h1><p>Your course access is ready</p></div>"
+                + "<div class='body'>"
+                + "<h2 style='color:#1e3a8a;margin-top:0'>Hello " + studentName + ",</h2>"
+                + "<p style='color:#475569;font-size:15px'>Congratulations! Your enrollment has been approved and your account is now active.</p>"
+                + courseBlock
+                + "<h3 style='color:#334155;margin:24px 0 8px'>Your Login Credentials</h3>"
+                + "<div class='cred'>"
+                + "<p><strong>Email:</strong> <code>" + studentEmail + "</code></p>"
+                + "<p><strong>Temporary Password:</strong> <code>" + temporaryPassword + "</code></p>"
+                + "</div>"
+                + "<div class='warn'><strong>\u26A0\uFE0F Important:</strong> Please change your password immediately after your first login.</div>"
+                + "<p style='text-align:center;margin:28px 0'><a href='" + url + "' class='btn'>Login to Your Account</a></p>"
+                + "<p style='color:#64748b;font-size:14px'>Need help? Email us at <strong>support@cyberlearnix.com</strong></p>"
+                + "<p style='color:#1e3a8a;font-weight:700'>\uD83D\uDE80 Happy Learning!</p>"
+                + "</div>"
+                + "<div class='footer'>&copy; 2026 Cyberlearnix Private Limited. All rights reserved.</div>"
+                + "</div></body></html>";
+    }
 
     public void sendFailureEmail(String to, String studentName, String txnid, String errorMsg) {
         if (!isValidEmail(to)) {

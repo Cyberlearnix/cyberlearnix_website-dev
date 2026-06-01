@@ -193,6 +193,19 @@ spring:
           predicates:
             - Path=/api/admin/**, /api/meetings/**
 
+        # Admin LMS Portal — JWT + role-gated via JwtAuthenticationFilter
+        # Routes /adminlms to the frontend dev server (Vite) or production static server.
+        # The JwtAuthenticationFilter enforces ROLE_ADMIN/dual/institute before this route is reached.
+        - id: adminlms-portal
+          uri: ${FRONTEND_URL:http://localhost:5175}
+          predicates:
+            - Path=/adminlms,/adminlms/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /adminlms(?<remaining>.*)
+                replacement: /adminlms.html${remaining}
+
         # Instructor Service
         - id: instructor-service
           uri: ${INSTRUCTOR_SERVICE_URL:http://127.0.0.1:8091}

@@ -18,4 +18,6 @@ public class UserResponseDTO {
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
+    private String enrollmentNumber;
+    private String qrCodeData;
 }

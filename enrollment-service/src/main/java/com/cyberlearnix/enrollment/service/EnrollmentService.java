@@ -69,6 +69,15 @@ public class EnrollmentService {
         return configRepository.findByDeletedAtIsNull();
     }
 
+    public java.util.Map<String, Long> getFormResponseCounts() {
+        List<EnrollmentFormConfig> forms = configRepository.findByDeletedAtIsNull();
+        java.util.Map<String, Long> counts = new java.util.LinkedHashMap<>();
+        for (EnrollmentFormConfig f : forms) {
+            counts.put(f.getId(), responseRepository.countByFormIdAndDeletedAtIsNull(f.getId()));
+        }
+        return counts;
+    }
+
     public List<EnrollmentFormConfig> getTrashedConfigs() {
         return configRepository.findByDeletedAtIsNotNull();
     }

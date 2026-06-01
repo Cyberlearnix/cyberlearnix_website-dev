@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -24,8 +25,8 @@ public class ReportsController {
     }
 
     @GetMapping("/courses")
-    public ResponseEntity<Map<String, Object>> getCourseStats(@RequestHeader("Authorization") String auth) {
-        return ResponseEntity.ok(courseServiceClient.getCourseStats(auth));
+    public ResponseEntity<List<Map<String, Object>>> getCourseStats(@RequestHeader("Authorization") String auth) {
+        return ResponseEntity.ok(enrollmentServiceClient.getCourseReport(auth));
     }
 
     @GetMapping("/revenue")

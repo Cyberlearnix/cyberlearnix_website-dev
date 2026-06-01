@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.entity.user.UserProfile;
 import com.cyberlearnix.shared.repository.user.TeacherPermissionRepository;
 import com.cyberlearnix.shared.repository.user.UserProfileRepository;
 import com.cyberlearnix.user.dto.UserResponseDTO;
+import com.cyberlearnix.user.service.EnrollmentCardService;
 import com.cyberlearnix.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,28 @@ public class UserController {
 
     @Autowired
     private TeacherPermissionRepository teacherPermissionRepository;
+
+    @Autowired
+    private EnrollmentCardService enrollmentCardService;
+
+    @PostMapping("/{userId}/generate-card")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> generateEnrollmentCard(@PathVariable String userId) {
+        return userProfileRepository.findById(userId)
+                .<ResponseEntity<?>>map(profile -> {
+                    try {
+                        enrollmentCardService.issueCard(profile);
+                        return ResponseEntity.ok(Map.of(
+                            "enrollmentNumber", profile.getEnrollmentNumber() != null ? profile.getEnrollmentNumber() : "",
+                            "qrCodeData", profile.getQrCodeData() != null ? profile.getQrCodeData() : ""
+                        ));
+                    } catch (Exception e) {
+                        return ResponseEntity.internalServerError()
+                            .body(Map.of("error", "Failed to generate card: " + e.getMessage()));
+                    }
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")

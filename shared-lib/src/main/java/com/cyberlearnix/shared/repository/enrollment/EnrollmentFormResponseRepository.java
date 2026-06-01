@@ -10,6 +10,8 @@ import java.util.List;
 public interface EnrollmentFormResponseRepository extends JpaRepository<EnrollmentFormResponse, Long> {
     List<EnrollmentFormResponse> findByFormId(String formId);
 
+    long countByFormIdAndDeletedAtIsNull(String formId);
+
     List<EnrollmentFormResponse> findByStudentEmail(String studentEmail);
 
     List<EnrollmentFormResponse> findByDeletedAtIsNull();

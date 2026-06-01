@@ -78,6 +78,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                             String userRole = (String) claims.get("role");
                             log.debug("[GW] JWT valid — userId={} role={} injecting headers", userId, userRole);
 
+                            // SECURITY: /adminlms requires ADMIN or DUAL role — reject all others
+                            if (path.startsWith("/adminlms")) {
+                                if (!"admin".equals(userRole) && !"dual".equals(userRole) && !"institute".equals(userRole)) {
+                                    log.warn("[GW] /adminlms access denied — insufficient role: {}", userRole);
+                                    sanitizedExchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                                    return sanitizedExchange.getResponse().setComplete();
+                                }
+                            }
+
                             ServerHttpRequest.Builder builder = sanitizedExchange.getRequest().mutate();
                             if (userId != null) builder.header("X-User-Id", userId);
                             if (userRole != null) builder.header("X-User-Role", userRole);
@@ -116,6 +125,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         if (path.startsWith("/api/auth/") ||
+            path.startsWith("/api/public/") ||
             path.startsWith("/api/careers") ||
             path.startsWith("/api/contact-submissions") ||
             path.startsWith("/api/shop") ||

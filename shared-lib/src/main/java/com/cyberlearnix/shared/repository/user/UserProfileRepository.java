@@ -9,4 +9,8 @@ import java.util.List;
 @Repository
 public interface UserProfileRepository extends JpaRepository<UserProfile, String> {
     List<UserProfile> findByRole(String role);
+
+    Optional<UserProfile> findByEnrollmentNumber(String enrollmentNumber);
+
+    long countByEnrollmentNumberIsNotNull();
 }
