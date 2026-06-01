@@ -1283,6 +1283,40 @@ app.post('/api/upload-image', express.raw({ type: '*/*', limit: '25mb' }), async
 // ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', port: PORT }));
 
+// ─── PROXY: forward unhandled /api/* routes to the Spring API gateway ─────────
+// Catches lab-service, user-service, notification-service, etc. that are not
+// served by this Express server but are called from the same domain.
+app.use('/api', async (req, res) => {
+    try {
+        const targetUrl = `https://apis.cyberlearnix.com${req.originalUrl}`;
+        const headers = {};
+        if (req.headers['authorization'])   headers['Authorization']  = req.headers['authorization'];
+        if (req.headers['content-type'])    headers['Content-Type']   = req.headers['content-type'];
+        if (req.headers['accept'])          headers['Accept']         = req.headers['accept'];
+        headers['X-Forwarded-For']  = req.ip;
+        headers['X-Forwarded-Host'] = req.hostname;
+
+        const fetchOptions = { method: req.method, headers };
+        if (!['GET', 'HEAD', 'DELETE'].includes(req.method) && req.body && Object.keys(req.body).length > 0) {
+            fetchOptions.body = JSON.stringify(req.body);
+            if (!headers['Content-Type']) headers['Content-Type'] = 'application/json';
+        }
+
+        const upstream = await fetch(targetUrl, fetchOptions);
+        res.status(upstream.status);
+        upstream.headers.forEach((val, key) => {
+            if (!['transfer-encoding', 'connection', 'keep-alive'].includes(key.toLowerCase())) {
+                res.setHeader(key, val);
+            }
+        });
+        const body = await upstream.text();
+        res.send(body);
+    } catch (err) {
+        console.error('[proxy] error forwarding', req.method, req.originalUrl, err.message);
+        res.status(502).json({ error: 'Bad Gateway', message: err.message });
+    }
+});
+
 // Start
 initDB().then(() => {
     app.listen(PORT, () => {
