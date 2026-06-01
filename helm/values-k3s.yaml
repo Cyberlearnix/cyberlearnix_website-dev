@@ -32,6 +32,8 @@ imagePullSecrets:
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
   gateway-service:        0cd12bbacc34498a09434a7411b3fc04376addfa
+  gateway-service:        3d38884c35b10ff32a06073660bb49253f4da5d4
+  gateway-service:         0cd12bbacc34498a09434a7411b3fc04376addfa
   user-service:           3d38884c35b10ff32a06073660bb49253f4da5d4
   course-service:         3d38884c35b10ff32a06073660bb49253f4da5d4
   enrollment-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
@@ -43,6 +45,8 @@ images:
   instructor-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
   attendance-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
   lab-service:            b6ad0b6187398a60a70cacfd07630ac6baa436cb
+  lab-service:             b6ad0b6187398a60a70cacfd07630ac6baa436cb
+  lab-service:              b6ad0b6187398a60a70cacfd07630ac6baa436cb
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
