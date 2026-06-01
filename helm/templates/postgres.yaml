@@ -149,4 +149,6 @@ data:
     CREATE DATABASE cyberlearnix_instructor;
     CREATE DATABASE cyberlearnix_notifications;
     CREATE DATABASE cyberlearnix_attendance;
+    CREATE DATABASE lab_db;
+    CREATE DATABASE cyberlearnix_attendance;
 {{- end }}

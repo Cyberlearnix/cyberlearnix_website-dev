@@ -17,6 +17,23 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 
 ## Learnings
 
+### [2026-06-01] Lab Service — Google Drive Integration
+
+**Task:** Connect lab-service APIs to Google Drive (user confirmed Drive credentials already provisioned on server).
+
+**Changes made:**
+- `lab-service/src/main/resources/application.yml`: Added `google.drive.credentials-json-b64` and `google.drive.folder-id` properties backed by env vars `GOOGLE_DRIVE_CREDENTIALS_JSON_B64` / `GOOGLE_DRIVE_FOLDER_ID`.
+- `docker-compose.yml` lab-service block: Added both `GOOGLE_DRIVE_CREDENTIALS_JSON_B64` and `GOOGLE_DRIVE_FOLDER_ID` env vars (optional, same pattern as user-service / course-service).
+- `helm/templates/deployment.yaml`: Added `lab-service` to the existing Google Drive credentials block (`or` condition now includes `lab-service`). Secrets fetched from `cyberlearnix-secrets` with `optional: true`.
+- **New file** `lab-service/.../controller/LabMaterialController.java`: Three endpoints:
+  - `POST /api/labs/materials/upload` (ADMIN/INSTRUCTOR) — multipart upload to Drive, 200 MB limit, returns `fileId`/`viewUrl`/`streamUrl`.
+  - `GET  /api/labs/materials/drive/stream/{fileId}` (any auth) — proxy-streams from Drive, supports HTTP Range for resumable downloads.
+  - `DELETE /api/labs/materials/{fileId}` (ADMIN) — deletes Drive file.
+- `GoogleDriveService` is already in `shared-lib` and `lab-service` already depends on `:shared-lib` — no new Gradle dependency needed.
+- All endpoints gracefully return `503 SERVICE_UNAVAILABLE` when Drive is not configured (`isEnabled() == false`).
+
+---
+
 ### API Audit — 2026-05-13
 
 #### Gateway Routing Gaps (Critical)

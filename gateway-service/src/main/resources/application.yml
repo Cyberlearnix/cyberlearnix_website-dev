@@ -220,13 +220,13 @@ spring:
 
         # Lab Service — REST management API
         - id: lab-service
-          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8093}
+          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8090}
           predicates:
             - Path=/api/labs/**
 
         # Lab Service — WebSocket terminal (browser TTY access to student containers)
         - id: lab-service-terminal
-          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8093}
+          uri: ${LAB_SERVICE_URL:http://127.0.0.1:8090}
           predicates:
             - Path=/labs/terminal/**
           filters:
