@@ -26,7 +26,7 @@ dependencies {
     implementation 'com.github.docker-java:docker-java-transport-okhttp:3.3.4'
     // JAXB API required by jackson-module-jaxb-annotations (transitive from docker-java) on Java 9+
     implementation 'javax.xml.bind:jaxb-api:2.3.1'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     runtimeOnly 'org.postgresql:postgresql'
 }
 
