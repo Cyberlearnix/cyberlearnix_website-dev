@@ -50,7 +50,9 @@ public class UserService {
                     user.getRole(),
                     profile != null ? profile.getIsActive() : true,
                     user.getCreatedAt(),
-                    user.getLastLogin()
+                    user.getLastLogin(),
+                    profile != null ? profile.getEnrollmentNumber() : null,
+                    profile != null ? profile.getQrCodeData() : null
             ));
             processedEmails.add(email);
         }
@@ -68,7 +70,9 @@ public class UserService {
                         "lead", // Identify them as a lead or inquiry
                         true,
                         sub.getCreatedAt(),
-                        null // No login for inquiry leads
+                        null,
+                        null,
+                        null
                 ));
                 processedEmails.add(email);
             }
@@ -93,7 +97,9 @@ public class UserService {
                     user.getRole(),
                     profile != null ? profile.getIsActive() : true,
                     user.getCreatedAt(),
-                    user.getLastLogin()
+                    user.getLastLogin(),
+                    profile != null ? profile.getEnrollmentNumber() : null,
+                    profile != null ? profile.getQrCodeData() : null
             );
         }).collect(Collectors.toList());
     }

@@ -190,3 +190,18 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 - `docker-java` `ExecStartResultCallback.onNext(Frame)` delivers stdout/stderr as `Frame` objects; use `frame.getPayload()` to get the bytes
 - Spring WebSocket path variables (`/labs/terminal/{assignmentId}`) are NOT extracted automatically — must parse `session.getUri().getPath()` manually
 - `@EnableScheduling` must be on the main application class or a `@Configuration` class; missing it silently skips all `@Scheduled` methods
+### Role-Switch Permission Expansion — 2026-06-01
+- **What changed:** Replaced the flat `canSwitch` boolean in `AuthService.switchRole()` with a declarative permission matrix (`allowedSwitches` map).
+- **New permissions added:** `teacher` → `student`, `institute` → `teacher` or `student`. `admin` now also explicitly allows `institute`.
+- **Why:** Teacher needed to preview the student portal; institute admins needed to preview both teacher and student portals for QA and support workflows.
+- **Controller verified:** `AuthController.POST /switch-role` correctly calls `authService.switchRole(userId, targetRole)` and returns `ResponseEntity.ok(result)` (HTTP 200 with `{token, role}` body). On exception it returns HTTP 403. No changes needed to the controller.
+- **Java note:** Used fully-qualified `java.util.Map.of(...)` and `java.util.List.of(...)` inline — `Map` was already in scope from the return statement import.
+
+### Enrollment Service — Form Response Count Endpoint — 2026-06-01
+
+- **New endpoint:** `GET /api/enrollments/forms/response-counts` → returns `Map<String, Long>` (formId → active response count)
+- **Repository method added:** `countByFormIdAndDeletedAtIsNull(String formId)` in `EnrollmentFormResponseRepository` (Spring Data derived query, zero SQL needed)
+- **Service method added:** `EnrollmentService.getFormResponseCounts()` — iterates `configRepository.findByDeletedAtIsNull()` and builds the map via the new count query
+- **Key pattern:** `EnrollmentFormConfig.fields` is stored as `String` JSONB (via `RawJsonDeserializer`). HTTP response emits it as a raw JSON string literal (e.g. `"fields": "[{...}]"`) — NOT as an inline array. Frontend must parse it; backend does NOT need to change.
+- **`responseRepository` was already injected** in `EnrollmentService` via constructor — `import com.cyberlearnix.shared.repository.enrollment.*` wildcard covers `EnrollmentFormResponseRepository`.
+- BUILD SUCCESSFUL (only deprecation warning from PaymentService, unrelated).

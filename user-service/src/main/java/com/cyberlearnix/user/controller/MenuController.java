@@ -21,14 +21,29 @@ public class MenuController {
 
     private void initializeDefaultMenus() {
         if (menuItemRepository.count() == 0) {
-            menuItemRepository.save(createMenuItem("Home", "/", "header", 1, true, "home", null));
-            menuItemRepository.save(createMenuItem("Courses", "/courses", "header", 2, true, "book", null));
-            menuItemRepository.save(createMenuItem("About", "/about", "header", 3, true, "info", null));
-            menuItemRepository.save(createMenuItem("Contact", "/contact", "header", 4, true, "mail", null));
+            // Top-level nav items
+            MenuItem home     = menuItemRepository.save(createMenuItem("Home",       "/",        "header", 1, true,  "home",       null,  null));
+            MenuItem services = menuItemRepository.save(createMenuItem("Services",   "/services", "header", 2, true,  "briefcase",  null,  null));
+            MenuItem courses  = menuItemRepository.save(createMenuItem("Courses",    "/courses",  "header", 3, true,  "book",       null,  null));
+            menuItemRepository.save(createMenuItem("Blog",       "/blog",     "header", 4, true,  "file-text",  null,  null));
+            menuItemRepository.save(createMenuItem("Careers",    "/careers",  "header", 5, true,  "users",      null,  null));
+            menuItemRepository.save(createMenuItem("Login",      "/login",    "header", 6, true,  "user",       null,  null));
+            menuItemRepository.save(createMenuItem("Contact Us", "/contact",  "header", 7, true,  "mail",       null,  "btn btn-primary nav-btn"));
+
+            // Services dropdown children
+            menuItemRepository.save(createMenuItem("Cybersecurity Services",     "/cyber-services",           "header", 1, true, null, services.getId(), null));
+            menuItemRepository.save(createMenuItem("Training & Certifications",  "/training-certifications",  "header", 2, true, null, services.getId(), null));
+            menuItemRepository.save(createMenuItem("Web App Development",        "/web-dev",                  "header", 3, true, null, services.getId(), null));
+            menuItemRepository.save(createMenuItem("Mobile App Development",     "/mobile-dev",               "header", 4, true, null, services.getId(), null));
+
+            // Courses dropdown children
+            menuItemRepository.save(createMenuItem("Cybersecurity Essentials", "/cyber-essentials", "header", 1, true, null, courses.getId(), null));
+            menuItemRepository.save(createMenuItem("Ethical Hacking",          "/ethical-hacking",  "header", 2, true, null, courses.getId(), null));
+            menuItemRepository.save(createMenuItem("SOC Analyst Program",      "/soc-analyst",      "header", 3, true, null, courses.getId(), null));
         }
     }
 
-    private MenuItem createMenuItem(String label, String url, String location, int order, boolean active, String icon, Long parentId) {
+    private MenuItem createMenuItem(String label, String url, String location, int order, boolean active, String icon, Long parentId, String cssClass) {
         MenuItem item = new MenuItem();
         item.setLabel(label);
         item.setUrl(url);
@@ -37,6 +52,7 @@ public class MenuController {
         item.setIsActive(active);
         item.setIcon(icon);
         item.setParentId(parentId);
+        item.setCssClass(cssClass);
         return item;
     }
 

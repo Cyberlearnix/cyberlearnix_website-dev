@@ -7,6 +7,7 @@ import com.cyberlearnix.shared.repository.user.PasswordResetTokenRepository;
 import com.cyberlearnix.shared.repository.user.RefreshTokenRepository;
 import com.cyberlearnix.shared.repository.user.UserProfileRepository;
 import com.cyberlearnix.shared.repository.user.UserRepository;
+import com.cyberlearnix.user.service.EnrollmentCardService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class AuthServiceTest {
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private PasswordResetTokenRepository passwordResetTokenRepository;
     @Mock private BlacklistedTokenRepository blacklistedTokenRepository;
+    @Mock private EnrollmentCardService enrollmentCardService;
 
     @InjectMocks
     private AuthService authService;

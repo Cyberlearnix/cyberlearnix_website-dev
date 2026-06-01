@@ -1,0 +1,421 @@
+# Standalone dev-dependencies stack — postgres, redis, redisinsight only.
+# Run:  docker compose -f docker-compose.dev-deps.yml up -d
+# Stop: docker compose -f docker-compose.dev-deps.yml down
+#
+# Shares the same cyberlearnix-network and named volumes as the main stack
+# so services started later from docker-compose.yml can reach these containers.
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cyberlearnix-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    ports:
+      - "5999:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cyberlearnix-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: cyberlearnix-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6380:6379"   # 6379 is held by swachvega-redis; use 6380 locally
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} --no-auth-warning ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: cyberlearnix-redisinsight
+    ports:
+      - "127.0.0.1:5541:5540"   # 5540 is held by Docker Desktop; use 5541 locally
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_users
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
+      - GOOGLE_DRIVE_CREDENTIALS_JSON_B64=${GOOGLE_DRIVE_CREDENTIALS_JSON_B64:-}
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  cms-service:
+    build:
+      context: .
+      dockerfile: cms-service/Dockerfile
+    container_name: cms-service
+    ports:
+      - "127.0.0.1:8089:8089"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_cms
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
+      - GOOGLE_DRIVE_CREDENTIALS_JSON_B64=${GOOGLE_DRIVE_CREDENTIALS_JSON_B64:-}
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  course-service:
+    build:
+      context: .
+      dockerfile: course-service/Dockerfile
+    container_name: course-service
+    ports:
+      - "127.0.0.1:8082:8082"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_courses
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_DRIVE_CREDENTIALS_JSON_B64=${GOOGLE_DRIVE_CREDENTIALS_JSON_B64:-}
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_UPLOAD_PRESET=${CLOUDINARY_UPLOAD_PRESET:-ml_default}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  enrollment-service:
+    build:
+      context: .
+      dockerfile: enrollment-service/Dockerfile
+    container_name: enrollment-service
+    ports:
+      - "127.0.0.1:8083:8083"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_enrollments
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: notification-service
+    ports:
+      - "127.0.0.1:8084:8084"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_notifications
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  shop-service:
+    build:
+      context: .
+      dockerfile: shop-service/Dockerfile
+    container_name: shop-service
+    ports:
+      - "127.0.0.1:8085:8085"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_shop
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  form-service:
+    build:
+      context: .
+      dockerfile: form-service/Dockerfile
+    container_name: form-service
+    ports:
+      - "127.0.0.1:8087:8087"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_forms
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    container_name: admin-service
+    ports:
+      - "127.0.0.1:8090:8090"
+    environment:
+      - SERVER_PORT=8090
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_admin
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  instructor-service:
+    build:
+      context: .
+      dockerfile: instructor-service/Dockerfile
+    container_name: instructor-service
+    ports:
+      - "127.0.0.1:8091:8091"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_instructor
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  attendance-service:
+    build:
+      context: .
+      dockerfile: attendance-service/Dockerfile
+    container_name: attendance-service
+    ports:
+      - "127.0.0.1:8092:8092"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cyberlearnix_attendance
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8092/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    container_name: gateway-service
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:5174}
+      - USER_SERVICE_URL=http://user-service:8081
+      - COURSE_SERVICE_URL=http://course-service:8082
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:8083
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8084
+      - SHOP_SERVICE_URL=http://shop-service:8085
+      - FORM_SERVICE_URL=http://form-service:8087
+      - CMS_SERVICE_URL=http://cms-service:8089
+      - ADMIN_SERVICE_URL=http://admin-service:8090
+      - INSTRUCTOR_SERVICE_URL=http://instructor-service:8091
+      - ATTENDANCE_SERVICE_URL=http://attendance-service:8092
+      - FRONTEND_URL=http://host.docker.internal:5175
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      cms-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberlearnix-network
+
+networks:
+  cyberlearnix-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

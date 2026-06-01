@@ -42,6 +42,9 @@ public class AuthService {
     @Autowired
     private BlacklistedTokenRepository blacklistedTokenRepository;
 
+    @Autowired
+    private EnrollmentCardService enrollmentCardService;
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Value("${jwt.secret:cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant}")
@@ -75,6 +78,11 @@ public class AuthService {
         profile.setRole(role);
         profile.setIsActive(true);
         userProfileRepository.save(profile);
+
+        // Issue enrollment card (number + QR code) for students
+        if ("student".equalsIgnoreCase(role)) {
+            enrollmentCardService.issueCard(profile);
+        }
 
         return Map.of("id", user.getId(), "email", user.getEmail(), "role", user.getRole());
     }
@@ -243,11 +251,18 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        boolean canSwitch = "admin".equals(user.getRole()) ||
-                ("dual".equals(user.getRole()) && ("teacher".equals(targetRole) || "student".equals(targetRole)));
+        // Role → allowed target roles for view-switching
+        java.util.Map<String, java.util.List<String>> allowedSwitches = java.util.Map.of(
+            "admin",     java.util.List.of("teacher", "student", "institute"),
+            "institute", java.util.List.of("teacher", "student"),
+            "dual",      java.util.List.of("teacher", "student"),
+            "teacher",   java.util.List.of("student")
+        );
 
-        if (!canSwitch && !user.getRole().equals(targetRole)) {
-            throw new RuntimeException("No permission to switch to this role");
+        java.util.List<String> allowed = allowedSwitches.getOrDefault(user.getRole(), java.util.List.of());
+
+        if (!allowed.contains(targetRole)) {
+            throw new RuntimeException("No permission to switch to role: " + targetRole);
         }
 
         User tempUser = new User();

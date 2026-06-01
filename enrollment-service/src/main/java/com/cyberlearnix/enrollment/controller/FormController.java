@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/enrollments/forms")
@@ -103,5 +104,10 @@ public class FormController {
     @PostMapping("/{id}/duplicate")
     public ResponseEntity<EnrollmentFormConfig> duplicateConfig(@PathVariable String id) {
         return ResponseEntity.ok(enrollmentService.duplicateForm(id));
+    }
+
+    @GetMapping("/response-counts")
+    public ResponseEntity<Map<String, Long>> getResponseCounts() {
+        return ResponseEntity.ok(enrollmentService.getFormResponseCounts());
     }
 }

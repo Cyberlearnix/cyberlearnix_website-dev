@@ -70,3 +70,43 @@
 - For Docker-socket-exposed services: always interpose a socket proxy. Direct socket mount = root on host.
 - For per-student resource isolation: all limits must be hard-coded in ContainerFactory, never taken from request input.
 - IDOR on lab endpoints: always `auth.getName()` (JWT subject) for student identity, never `@RequestParam String studentId`.
+### [2026-06-01] Frontend Role-Switch Fix — portal switching across admin/teacher/student/institute
+
+**What was changed:**
+- `AdminNavbar.jsx` (`ProfileDropdown`): Replaced dynamic JWT-roles approach with a `currentRole` useMemo (reads from `user.role` → `sessionStorage.user_role` → JWT decode) and a `ROLE_SWITCH_MAP` that deterministically maps role → switchable targets (admin → teacher/student/institute; institute/dual → teacher/student). Eliminates the bug where institute users saw wrong options.
+- `AdminNavbar.jsx` (display label): Both "Administrator" label occurrences in the chip and dropdown header are now dynamically derived from `currentRole` so institute users see "Institute" instead.
+- `AdminApp.jsx` (`handleRoleSwitch`): Before navigating, stores `portal_origin_jwt/role/url/label` in sessionStorage so target portals can render a "Return" banner. Added `institute` branch that reloads the admin portal with the institute-scoped JWT instead of navigating away.
+- `TeacherApp.jsx` (`handleViewSwitch`): Made async; calls `simpleApiService.switchRole('student')` to get a student-scoped JWT before navigating. Stores `portal_origin_*` keys for the return banner. Falls back gracefully if API fails.
+- `StudentApp.jsx`: Added amber fixed-position "Previewing as Student" banner at top of portal, reads `portal_origin_*` from sessionStorage, restores original JWT on dismiss and navigates back.
+- `TeacherApp.jsx` (return JSX): Added indigo fixed-position "Previewing as Teacher" banner using the same `portal_origin_*` pattern.
+- `simpleApiService.switchRole` was already present — no change needed.
+
+**Security notes:**
+- The origin JWT is stored in sessionStorage only (not localStorage) — clears on tab close.
+- On return, the origin JWT is restored and the preview keys are removed immediately to prevent stale previews.
+
+### Enrollment Forms FormsTab — Fully Dynamic from DB — 2026-06-01
+
+**Bug fixed: "220 fields" display**
+- Root cause: `EnrollmentFormConfig.fields` is a `String` (raw JSONB). Backend HTTP response emits it as a JSON string literal, not an inline array. `(f.fields || []).length` fell through to `String.length` — returning character count (~220) instead of field count.
+- Fix: added `parseFieldCount(fields)` module-level helper before `FormsTab`:
+  ```js
+  const parseFieldCount = (fields) => {
+    if (!fields) return 0;
+    if (Array.isArray(fields)) return fields.length;
+    try { const p = JSON.parse(fields); return Array.isArray(p) ? p.length : 0; }
+    catch { return 0; }
+  };
+  ```
+- **Always parse enrollment form `fields` before using `.length`** — it is a string from the backend.
+
+**Response counts added**
+- New state: `[responseCounts, setResponseCounts]` (object map: formId → number)
+- `load()` now uses `Promise.allSettled([forms, response-counts])` in parallel
+- Fetches `GET /api/enrollments/forms/response-counts` alongside forms list
+- Each form card shows "X responses" badge when count is available
+
+**Key file paths:**
+- `D:\Cyberlearnix\Website_FE\src\student-portal\components\Admin\EnrollmentManagement.jsx` — FormsTab (line ~1632)
+- `AdminNavbar.jsx` — ✅ fixed (ResizeObserver + RAF scroll-to-active)
+- `CourseManagementSimple.jsx` — ✅ fixed (parallel fetch + enrollment count merge from `/api/admin/reports/courses`)

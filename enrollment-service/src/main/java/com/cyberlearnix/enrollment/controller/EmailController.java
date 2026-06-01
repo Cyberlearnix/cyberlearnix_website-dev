@@ -14,6 +14,38 @@ public class EmailController {
     @Autowired
     private EmailService emailService;
 
+    @PostMapping("/send-credentials")
+    public ResponseEntity<?> sendCredentials(@RequestBody Map<String, Object> request) {
+        try {
+            String studentEmail = (String) request.get("studentEmail");
+            String studentName = (String) request.get("studentName");
+            String temporaryPassword = (String) request.get("temporaryPassword");
+            String courseName = (String) request.getOrDefault("courseName", "");
+            String loginUrl = (String) request.getOrDefault("loginUrl", "");
+
+            if (studentEmail == null || studentEmail.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "studentEmail is required"));
+            }
+            if (studentName == null || studentName.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "studentName is required"));
+            }
+            if (temporaryPassword == null || temporaryPassword.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "temporaryPassword is required"));
+            }
+
+            emailService.sendCredentials(studentEmail, studentName, temporaryPassword, courseName, loginUrl);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Credentials sent to " + studentEmail
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/send-receipt-email")
     public ResponseEntity<?> sendReceiptEmail(
             @RequestBody Map<String, Object> request,
