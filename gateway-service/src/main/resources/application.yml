@@ -1,3 +1,4 @@
+# Spring Cloud Gateway — routes all /api/** requests to downstream microservices
 spring:
   main:
     web-application-type: reactive
