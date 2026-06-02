@@ -31,7 +31,7 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
-  gateway-service:      f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  gateway-service:      4447c3191efb871168e78375bdae12c38e43c473
   user-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   course-service:       f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   enrollment-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
@@ -42,7 +42,7 @@ images:
   cms-service:          f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   instructor-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   attendance-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  lab-service:          e91ca12b1b2d9828b89324910270f6585ebe0653
+  lab-service:          d2d4a02453c25b0070eac87292063e78249ec80f
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
