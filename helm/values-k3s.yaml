@@ -31,7 +31,7 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
-  lab-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  lab-service: e91ca12b1b2d9828b89324910270f6585ebe0653
   attendance-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   instructor-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   cms-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
