@@ -144,6 +144,16 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
             return;
         }
 
+        // Verify the requesting user owns this assignment using the gateway-injected header.
+        // The gateway validates the JWT and injects X-User-Id; if it's missing, reject.
+        String callerUserId = session.getHandshakeHeaders().getFirst("X-User-Id");
+        String callerRole   = session.getHandshakeHeaders().getFirst("X-User-Role");
+        if (callerUserId == null) {
+            log.warn("WebSocket terminal rejected — no X-User-Id header (request bypassed gateway?)");
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
+            return;
+        }
+
         long assignmentId;
         try {
             assignmentId = Long.parseLong(assignmentIdStr);
@@ -157,6 +167,14 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
                 || assignment.getContainerId() == null
                 || assignment.getStatus() != AssignmentStatus.RUNNING) {
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Lab is not currently running"));
+            return;
+        }
+
+        // Admins/instructors may connect to any assignment; students only their own.
+        boolean isPrivileged = "admin".equals(callerRole) || "instructor".equals(callerRole) || "dual".equals(callerRole);
+        if (!isPrivileged && !callerUserId.equals(assignment.getStudentId())) {
+            log.warn("WebSocket terminal rejected — user {} is not the owner of assignment {}", callerUserId, assignmentId);
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Forbidden"));
             return;
         }
 
