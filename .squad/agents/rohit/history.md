@@ -91,6 +91,20 @@
 
 ---
 
+### [2026-06-02] Lab Service CrashLoopBackOff — Root Cause & Fix
+
+**Symptom:** `lab-service-68896b7578-gt7z6` stuck at `0/1 CrashLoopBackOff`, 74 restarts in 38h. All `/api/labs/**` returning 404 from Spring Cloud Gateway (no healthy endpoint to route to).
+
+**Diagnosed via:** `kubectl logs` on production pod (K3s, port 9022).
+
+**Root Cause:** `LabServiceApplication` scanned only `com.cyberlearnix.lab.*`. `GoogleDriveService` in `com.cyberlearnix.shared.service` (shared-lib) was never registered — `UnsatisfiedDependencyException` on startup.
+
+**Fix:** Added `scanBasePackages = {"com.cyberlearnix.lab", "com.cyberlearnix.shared.service"}` to `LabServiceApplication`. This is the same pattern `cms-service` and `course-service` already use. Commit `311c532` on `develop` — needs PR merge to trigger CI-CD rebuild + ArgoCD redeploy.
+
+**Project Convention:** Any service that uses `GoogleDriveService` or `CloudinaryService` from `shared-lib` MUST include `"com.cyberlearnix.shared.service"` in `scanBasePackages`. Do NOT use `"com.cyberlearnix.shared"` (too broad — pulls in `SharedSecurityConfig`).
+
+---
+
 ### [2026-06-01] Lab Service API Fix — Post-Deploy Bugs
 
 **Root causes diagnosed and fixed:**

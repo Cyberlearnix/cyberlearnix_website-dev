@@ -31,6 +31,22 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
+  gateway-service:        0cd12bbacc34498a09434a7411b3fc04376addfa
+  gateway-service:        3d38884c35b10ff32a06073660bb49253f4da5d4
+  gateway-service:         0cd12bbacc34498a09434a7411b3fc04376addfa
+  user-service:           3d38884c35b10ff32a06073660bb49253f4da5d4
+  course-service:         3d38884c35b10ff32a06073660bb49253f4da5d4
+  enrollment-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
+  notification-service:   3d38884c35b10ff32a06073660bb49253f4da5d4
+  shop-service:           3d38884c35b10ff32a06073660bb49253f4da5d4
+  form-service:           3d38884c35b10ff32a06073660bb49253f4da5d4
+  admin-service:          3d38884c35b10ff32a06073660bb49253f4da5d4
+  cms-service:            3d38884c35b10ff32a06073660bb49253f4da5d4
+  instructor-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
+  attendance-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
+  lab-service:            b6ad0b6187398a60a70cacfd07630ac6baa436cb
+  lab-service:             b6ad0b6187398a60a70cacfd07630ac6baa436cb
+  lab-service:              b6ad0b6187398a60a70cacfd07630ac6baa436cb
   lab-service: e91ca12b1b2d9828b89324910270f6585ebe0653
   attendance-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   instructor-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
