@@ -226,15 +226,12 @@ spring:
             - Path=/api/labs/**
 
         # Lab Service — WebSocket terminal (browser TTY access to student containers)
+        # Spring Cloud Gateway auto-detects Upgrade: websocket and switches to WebSocket proxy mode.
+        # JWT is validated from the ?token= query param (browsers cannot set Authorization headers on WS).
         - id: lab-service-terminal
           uri: ${LAB_SERVICE_URL:http://127.0.0.1:8090}
           predicates:
             - Path=/labs/terminal/**
-          filters:
-            - name: AddRequestHeader
-              args:
-                name: Upgrade
-                value: websocket
 
 server:
   port: 8080
