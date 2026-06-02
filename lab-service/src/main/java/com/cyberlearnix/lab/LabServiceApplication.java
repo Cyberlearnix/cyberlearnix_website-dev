@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.TimeZone;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.cyberlearnix.lab", "com.cyberlearnix.shared.service"})
 @EnableScheduling
 public class LabServiceApplication {
 
