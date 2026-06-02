@@ -70,6 +70,8 @@ appConfig:
   INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
   ATTENDANCE_SERVICE_URL: "http://attendance-service:8092"
   LAB_SERVICE_URL: "http://lab-service:8090"
+  FRONTEND_URL: "https://cyberlearnix.com"
+  BACKEND_URL: "https://apis.cyberlearnix.com"
   CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app"
   SERVER_COOKIE_SECURE: "true"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)

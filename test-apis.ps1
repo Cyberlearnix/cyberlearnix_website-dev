@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Token = $env:API_TOKEN,
     [string]$Email = $env:API_EMAIL,
     [string]$Password = $env:API_PASSWORD,
@@ -52,7 +52,7 @@ T GET "/api/users/profile"          200 -label "(admin)"
 T GET "/api/users"                  200 -label "(admin list)"
 
 Write-Host "`n=== 4. COURSE MANAGEMENT ===" -ForegroundColor Cyan
-T GET "/api/course-management/courses" 200
+T GET "/api/admin/courses" 200 -label "(admin list)"
 $newCourse = '{"title":"Test Course","description":"API test course","price":0,"status":"DRAFT"}'
 $cr = T POST "/api/course-management/courses" 201 $newCourse -label "(create)"
 if ($cr) {
@@ -65,42 +65,42 @@ if ($cr) {
 Write-Host "`n=== 5. ENROLLMENTS (admin) ===" -ForegroundColor Cyan
 T GET "/api/enrollments" 200 -label "(list all - admin)"
 $newEnroll = '{"studentId":"test-student-id","courseId":"test-course-id","amountPaid":0}'
-T POST "/api/enrollments" 400 $newEnroll -label "(create with bad ids - expect 400 or 201)"
+T POST "/api/enrollments" 400 $newEnroll -label "(create with bad ids - expect 400)"
 
 Write-Host "`n=== 6. COUPON ENDPOINTS ===" -ForegroundColor Cyan
 T GET "/api/enrollments/coupons" 200 -label "(list coupons - admin)"
-$newCoupon = '{"code":"TEST10","discountPercent":10,"maxUses":5}'
-$cr2 = T POST "/api/enrollments/coupons" 201 $newCoupon -label "(create coupon - admin)"
+$newCoupon = '{"code":"TESTAPI1","discountType":"PERCENTAGE","discountValue":10,"maxUsages":5,"expiresAt":"2027-12-31T23:59:59"}'
+$cr2 = T POST "/api/enrollments/coupons" 200 $newCoupon -label "(create coupon - admin)"
 
 Write-Host "`n=== 7. STUDENT DASHBOARD ===" -ForegroundColor Cyan
 T GET "/api/student/dashboard"    200 -label "(as admin)"
 T GET "/api/student/enrollments"  200 -label "(as admin)"
 
 Write-Host "`n=== 8. ADMIN ENDPOINTS ===" -ForegroundColor Cyan
-T GET "/api/admin/stats/revenue"  200 -label "(revenue stats)"
+T GET "/api/admin/reports/revenue" 200 -label "(revenue stats)"
 T GET "/api/admin/users"          200 -label "(user management)"
 
 Write-Host "`n=== 9. NOTIFICATION SERVICE ===" -ForegroundColor Cyan
-T GET "/api/notifications"        200 -label "(list notifications)"
+T GET "/api/notifications/inbox"   200 -label "(inbox notifications)"
 
 Write-Host "`n=== 10. SHOP SERVICE ===" -ForegroundColor Cyan
-T GET "/api/shop/products"        200 -label "(list products)"
+T GET "/api/shop"                  200 -label "(shop settings)"
 
 Write-Host "`n=== 11. INSTRUCTOR SERVICE ===" -ForegroundColor Cyan
-T GET "/api/instructors"          200 -label "(list instructors)"
+T GET "/api/instructor/courses"   200 -label "(instructor courses)"
 
 Write-Host "`n=== 12. FORM SERVICE ===" -ForegroundColor Cyan
 T GET "/api/forms"                200 -label "(list forms)"
 
 # ── Auto-login if token not supplied ──────────────────────────────────────────
 if (-not $Token -and $Email -and $Password) {
-    Write-Host "`nNo token provided — logging in as $Email ..." -ForegroundColor Gray
+    Write-Host "`nNo token provided -- logging in as $Email ..." -ForegroundColor Gray
     try {
         $lr = Invoke-RestMethod -Uri "$base/api/auth/login" -Method POST `
               -ContentType "application/json" `
               -Body (ConvertTo-Json @{email=$Email; password=$Password}) `
               -UseBasicParsing
-        $Token = $lr.token ?? $lr.accessToken ?? $lr.jwt
+        $Token = if ($lr.token) { $lr.token } elseif ($lr.accessToken) { $lr.accessToken } else { $lr.jwt }
         Write-Host "  Got token: $($Token.Substring(0,[Math]::Min(40,$Token.Length)))..." -ForegroundColor Gray
     } catch {
         Write-Host "  Login failed: $_" -ForegroundColor Red
@@ -147,7 +147,7 @@ function TUpload {
     }
 }
 
-# 1x1 white JPEG (smallest valid JPEG — 631 bytes)
+# 1x1 white JPEG (smallest valid JPEG -- 631 bytes)
 $tinyJpeg = [Convert]::FromBase64String(
     "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U" +
     "HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgN" +
@@ -168,7 +168,7 @@ try {
     Invoke-WebRequest -Uri "$base/api/materials/upload/thumbnail" -Method POST `
         -ContentType "multipart/form-data; boundary=$boundary2" `
         -Body ([System.Text.Encoding]::UTF8.GetBytes($dummyBody)) -UseBasicParsing -TimeoutSec 5 | Out-Null
-    Write-Host "FAIL [2xx] POST /api/materials/upload/thumbnail (expected 401 — auth not enforced!)" -ForegroundColor Red
+    Write-Host "FAIL [2xx] POST /api/materials/upload/thumbnail (expected 401 -- auth not enforced!)" -ForegroundColor Red
     $script:fail++
 } catch {
     $code = $_.Exception.Response.StatusCode.value__
@@ -184,7 +184,7 @@ try {
 # Authenticated uploads
 TUpload "/api/materials/upload/thumbnail"    -bytes $tinyJpeg -fileName "thumb.jpg"   -label "(thumbnail image)"
 TUpload "/api/materials/upload/module-image" -bytes $tinyPng  -fileName "module.png" -mimeType "image/png" -label "(module image)"
-TUpload "/api/materials/upload/banner"       -bytes $tinyJpeg -fileName "banner.jpg"  -label "(banner image — admin only)"
+TUpload "/api/materials/upload/banner"       -bytes $tinyJpeg -fileName "banner.jpg"  -label "(banner image -- admin only)"
 
 # Drive endpoint should respond (503 if Drive not configured, 200 if it is)
 Write-Host "`n  -- /drive/upload endpoints (expect 200 or 503 depending on Drive config) --" -ForegroundColor DarkGray
@@ -201,7 +201,7 @@ if ($Token) {
     } catch {
         $code3 = $_.Exception.Response.StatusCode.value__
         if ($code3 -eq 503) {
-            Write-Host "WARN [503] POST /api/materials/drive/upload/video (Drive NOT configured — set GOOGLE_DRIVE_CREDENTIALS_JSON_B64 env var)" -ForegroundColor Yellow
+            Write-Host "WARN [503] POST /api/materials/drive/upload/video (Drive NOT configured -- set GOOGLE_DRIVE_CREDENTIALS_JSON_B64 env var)" -ForegroundColor Yellow
             $script:warn++
         } else {
             Write-Host "FAIL [$code3] POST /api/materials/drive/upload/video" -ForegroundColor Red
