@@ -31,6 +31,7 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
+  lab-service: d2d4a02453c25b0070eac87292063e78249ec80f
   gateway-service:      f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   user-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   course-service:       f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
@@ -49,10 +50,6 @@ images:
   cms-service:            3d38884c35b10ff32a06073660bb49253f4da5d4
   instructor-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
   attendance-service:     3d38884c35b10ff32a06073660bb49253f4da5d4
-  lab-service:            b6ad0b6187398a60a70cacfd07630ac6baa436cb
-  lab-service:             b6ad0b6187398a60a70cacfd07630ac6baa436cb
-  lab-service:              b6ad0b6187398a60a70cacfd07630ac6baa436cb
-  lab-service: e91ca12b1b2d9828b89324910270f6585ebe0653
   attendance-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   instructor-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   cms-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
@@ -66,7 +63,6 @@ images:
   cms-service:          f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   instructor-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
   attendance-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  lab-service:          e91ca12b1b2d9828b89324910270f6585ebe0653
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
