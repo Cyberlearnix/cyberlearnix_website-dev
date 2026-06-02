@@ -17,6 +17,29 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 
 ## Learnings
 
+### [2026-06-02] Lab Service — CrashLoopBackOff Fix (LabServiceApplication missing scanBasePackages)
+
+**Root Cause:** `LabServiceApplication` used plain `@SpringBootApplication` which only scans `com.cyberlearnix.lab.*`. `GoogleDriveService` lives in `com.cyberlearnix.shared.service` (shared-lib) and was never registered as a Spring bean, causing:
+```
+Error creating bean 'labMaterialController':
+No qualifying bean of type 'com.cyberlearnix.shared.service.GoogleDriveService'
+```
+The service had been crash-looping (74 restarts, always `0/1 Running`) since initial deployment.
+
+**Fix:** `lab-service/src/main/java/com/cyberlearnix/lab/LabServiceApplication.java`
+```java
+// Before
+@SpringBootApplication
+
+// After — matches cms-service and course-service pattern
+@SpringBootApplication(scanBasePackages = {"com.cyberlearnix.lab", "com.cyberlearnix.shared.service"})
+```
+**Important:** Use `"com.cyberlearnix.shared.service"` NOT `"com.cyberlearnix.shared"` — the broader scan would also pull in `SharedSecurityConfig` from `com.cyberlearnix.shared.security`, conflicting with lab-service's own `SecurityConfig`.
+
+**Committed:** `311c532` on `develop` — awaiting PR to main.
+
+---
+
 ### [2026-06-01] Lab Service — Google Drive Integration
 
 **Task:** Connect lab-service APIs to Google Drive (user confirmed Drive credentials already provisioned on server).
