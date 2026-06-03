@@ -24,6 +24,8 @@ import com.cyberlearnix.course.client.EnrollmentServiceClient;
 import com.cyberlearnix.course.client.UserServiceClient;
 import com.cyberlearnix.course.dto.*;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +45,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/courses")
 public class CourseController {
 
+    private static final Logger log = LoggerFactory.getLogger(CourseController.class);
     private static final String KEY_SUCCESS = "success";
     private static final String KEY_DIFFICULTY_LEVEL = "difficultyLevel";
 
@@ -448,10 +451,13 @@ public class CourseController {
         if (!isAdmin && !isAssignedTeacher) {
             try {
                 isEnrolled = enrollmentServiceClient.isEnrolled(userId, id);
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                log.error("Enrollment check failed for student={} course={} — {}: {}",
+                        userId, id, e.getClass().getSimpleName(), e.getMessage());
                 // enrollment-service unavailable — deny access
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of(KEY_SUCCESS, false, "error", "Unable to verify enrollment"));
+                        .body(Map.of(KEY_SUCCESS, false, "error",
+                                "Unable to verify enrollment. Please try again or contact support."));
             }
             if (!isEnrolled) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
