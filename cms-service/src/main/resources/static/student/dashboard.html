@@ -37,6 +37,9 @@
       <button class="cl-nav-item" data-section="courses">
         <span class="nav-icon">📚</span> My Courses
       </button>
+      <button class="cl-nav-item" data-section="labs">
+        <span class="nav-icon">🔬</span> My Labs
+      </button>
       <button class="cl-nav-item" data-section="profile">
         <span class="nav-icon">👤</span> Profile
       </button>
@@ -111,6 +114,15 @@
           <span id="coursesCountBadge" class="badge badge-category"></span>
         </div>
         <div id="coursesContainer"><div class="cl-spinner"></div></div>
+      </div>
+
+      <!-- ── MY LABS SECTION ── -->
+      <div class="cl-section" id="section-labs">
+        <div class="section-header">
+          <h2 class="section-title">My Labs</h2>
+          <span id="labsCountBadge" class="badge badge-category"></span>
+        </div>
+        <div id="labsContainer"><div class="cl-spinner"></div></div>
       </div>
 
       <!-- ── PROFILE SECTION ── -->
@@ -314,10 +326,11 @@ function showSection(name) {
   document.querySelectorAll('.cl-nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('section-' + name).classList.add('active');
   document.querySelector(`[data-section="${name}"]`).classList.add('active');
-  const titles = { home: 'Dashboard', courses: 'My Courses', profile: 'Profile', activity: 'Activity Logs' };
+  const titles = { home: 'Dashboard', courses: 'My Courses', labs: 'My Labs', profile: 'Profile', activity: 'Activity Logs' };
   document.getElementById('pageTitle').textContent = titles[name] || 'Dashboard';
   if (name === 'activity' && !activityLoaded) loadActivity();
   if (name === 'profile' && !profileLoaded) loadProfile();
+  if (name === 'labs' && !labsLoaded) loadLabs();
 }
 
 document.querySelectorAll('.cl-nav-item[data-section]').forEach(btn => {
@@ -479,6 +492,83 @@ async function loadActivity() {
 const menuToggle = document.getElementById('menuToggle');
 if (window.innerWidth <= 768) menuToggle.style.display = 'flex';
 menuToggle.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+
+/* ── Labs ── */
+let labsLoaded = false;
+let labsData = [];
+
+const LAB_STATUS_LABELS = {
+  RUNNING: { label: 'Running', color: '#22c55e' },
+  PENDING: { label: 'Pending', color: '#f59e0b' },
+  ASSIGNED: { label: 'Assigned', color: '#3b82f6' },
+  STOPPED: { label: 'Stopped', color: '#6b7280' },
+  EXPIRED: { label: 'Expired', color: '#ef4444' },
+  FAILED: { label: 'Failed', color: '#ef4444' }
+};
+
+function labStatusBadge(status) {
+  const s = LAB_STATUS_LABELS[status] || { label: status || 'Unknown', color: '#6b7280' };
+  return `<span class="badge" style="background:${s.color}22;color:${s.color};border:1px solid ${s.color}44;">${s.label}</span>`;
+}
+
+async function loadLabs() {
+  const container = document.getElementById('labsContainer');
+  try {
+    const res = await apiFetch('/api/labs/my-labs');
+    if (!res.ok) throw new Error('Failed to load labs');
+    labsData = await res.json();
+    document.getElementById('labsCountBadge').textContent = labsData.length + (labsData.length === 1 ? ' lab' : ' labs');
+    renderLabs(labsData, container);
+    labsLoaded = true;
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Failed to load labs</h3><p>${e.message}</p></div>`;
+  }
+}
+
+function renderLabs(list, container) {
+  if (!list.length) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">🔬</div>
+      <h3>No lab assignments yet</h3>
+      <p>Labs assigned to your courses by the admin will appear here.</p>
+    </div>`;
+    return;
+  }
+  container.innerHTML = `<div class="courses-grid">${list.map(labCard).join('')}</div>`;
+}
+
+function labCard(lab) {
+  const tpl = lab.labTemplate || {};
+  const name = tpl.templateName || tpl.name || 'Lab';
+  const image = tpl.dockerImage || '';
+  const status = lab.status || 'UNKNOWN';
+  const isRunning = status === 'RUNNING';
+  const assignedAt = lab.assignedAt ? new Date(lab.assignedAt).toLocaleDateString() : '';
+  const expiresAt = lab.expiresAt ? new Date(lab.expiresAt).toLocaleDateString() : '';
+  return `
+    <div class="course-card" style="cursor:default;">
+      <div class="course-card-thumb" style="font-size:2.5rem;">🔬</div>
+      <div class="course-card-body">
+        <div class="course-card-title">${name}</div>
+        <div class="course-card-badges" style="margin-bottom:8px;">
+          ${labStatusBadge(status)}
+          ${image ? `<span class="badge badge-category" title="Docker image">${image.split('/').pop().split(':')[0]}</span>` : ''}
+        </div>
+        ${assignedAt ? `<div style="font-size:0.78rem;color:var(--cl-text-muted);margin-bottom:4px;">Assigned: ${assignedAt}</div>` : ''}
+        ${expiresAt ? `<div style="font-size:0.78rem;color:var(--cl-text-muted);margin-bottom:8px;">Expires: ${expiresAt}</div>` : ''}
+        ${lab.courseId ? `<div style="margin-bottom:8px;"><a href="course.html?courseId=${lab.courseId}" class="btn btn-outline btn-sm btn-full">📚 Go to Course</a></div>` : ''}
+        ${isRunning
+          ? `<button class="btn btn-primary btn-sm btn-full" onclick="launchLabTerminal(${lab.id})">🖥️ Launch Terminal</button>`
+          : `<div style="font-size:0.82rem;color:var(--cl-text-muted);text-align:center;padding:6px 0;">Terminal unavailable — status: ${status}</div>`
+        }
+      </div>
+    </div>`;
+}
+
+function launchLabTerminal(assignmentId) {
+  const url = `terminal.html?assignmentId=${encodeURIComponent(assignmentId)}&token=${encodeURIComponent(token)}`;
+  window.open(url, '_blank', 'width=1000,height=650,noopener,noreferrer');
+}
 
 /* ── Init ── */
 loadDashboard();

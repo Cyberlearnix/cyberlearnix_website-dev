@@ -12,6 +12,8 @@ import java.util.Optional;
 @Repository
 public interface LabAssignmentRepository extends JpaRepository<LabAssignment, Long> {
 
+    List<LabAssignment> findByStudentId(String studentId);
+
     List<LabAssignment> findByStudentIdAndStatus(String studentId, AssignmentStatus status);
 
     List<LabAssignment> findByStatus(AssignmentStatus status);
@@ -19,6 +21,8 @@ public interface LabAssignmentRepository extends JpaRepository<LabAssignment, Lo
     List<LabAssignment> findByStatusAndLastActiveAtBefore(AssignmentStatus status, Instant threshold);
 
     Optional<LabAssignment> findFirstByStudentIdAndStatusIn(String studentId, List<AssignmentStatus> statuses);
+
+    Optional<LabAssignment> findByContainerName(String containerName);
 
     List<LabAssignment> findByStudentIdAndCourseId(String studentId, Long courseId);
 

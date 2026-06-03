@@ -7,8 +7,12 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
@@ -18,7 +22,9 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLDecoder;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -41,6 +47,9 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
 
     private final DockerClient dockerClient;
     private final LabAssignmentRepository assignmentRepository;
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
     /** Per-session stdin stream so browser input reaches the container. */
     private final Map<String, ContainerStdin> sessionStdinStreams = new ConcurrentHashMap<>();
@@ -144,19 +153,67 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
             return;
         }
 
-        long assignmentId;
-        try {
-            assignmentId = Long.parseLong(assignmentIdStr);
-        } catch (NumberFormatException e) {
-            session.close(CloseStatus.BAD_DATA.withReason("Invalid assignment ID"));
+        // Verify the requesting user owns this assignment.
+        // Primary: gateway injects X-User-Id after validating the JWT.
+        // Fallback: Spring Cloud Gateway's WebSocket proxy may not forward filter-injected headers;
+        //           parse the JWT from the ?token= query parameter directly in that case.
+        String callerUserId = session.getHandshakeHeaders().getFirst("X-User-Id");
+        String callerRole   = session.getHandshakeHeaders().getFirst("X-User-Role");
+
+        if (callerUserId == null && session.getUri() != null) {
+            String query = session.getUri().getQuery();
+            if (query != null) {
+                for (String param : query.split("&")) {
+                    if (param.startsWith("token=")) {
+                        String token = URLDecoder.decode(param.substring(6), StandardCharsets.UTF_8);
+                        try {
+                            Claims claims = Jwts.parser()
+                                    .verifyWith(Keys.hmacShaKeyFor(jwtSecret.trim().getBytes(StandardCharsets.UTF_8)))
+                                    .build()
+                                    .parseSignedClaims(token)
+                                    .getPayload();
+                            callerUserId = claims.getSubject();
+                            callerRole = (String) claims.get("role");
+                            log.debug("WebSocket terminal: authenticated userId={} via ?token= query param", callerUserId);
+                        } catch (Exception e) {
+                            log.warn("WebSocket terminal: JWT parse from query param failed: {}", e.getMessage());
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (callerUserId == null) {
+            log.warn("WebSocket terminal rejected — no X-User-Id header and no valid ?token= param");
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
         }
 
-        LabAssignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+        long assignmentId;
+        LabAssignment assignment;
+        try {
+            assignmentId = Long.parseLong(assignmentIdStr);
+            assignment = assignmentRepository.findById(assignmentId).orElse(null);
+        } catch (NumberFormatException e) {
+            // The admin UI passes the container name (e.g. "cyberlearnix-lab-{uuid}-{id}")
+            // instead of the numeric assignment ID — look it up by container name.
+            log.debug("WebSocket terminal: path param '{}' is not numeric, trying container name lookup", assignmentIdStr);
+            assignment = assignmentRepository.findByContainerName(assignmentIdStr).orElse(null);
+        }
+
         if (assignment == null
                 || assignment.getContainerId() == null
                 || assignment.getStatus() != AssignmentStatus.RUNNING) {
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Lab is not currently running"));
+            return;
+        }
+
+        // Admins/instructors may connect to any assignment; students only their own.
+        boolean isPrivileged = "admin".equals(callerRole) || "instructor".equals(callerRole) || "dual".equals(callerRole);
+        if (!isPrivileged && !callerUserId.equals(assignment.getStudentId())) {
+            log.warn("WebSocket terminal rejected — user {} is not the owner of assignment {}", callerUserId, assignment.getId());
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Forbidden"));
             return;
         }
 
@@ -250,7 +307,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         execThread.setDaemon(true);
         execThread.start();
 
-        log.info("Terminal session opened: session={} assignment={} container={}", session.getId(), assignmentId, containerId);
+        log.info("Terminal session opened: session={} assignment={} container={}", session.getId(), assignment.getId(), containerId);
     }
 
     @Override

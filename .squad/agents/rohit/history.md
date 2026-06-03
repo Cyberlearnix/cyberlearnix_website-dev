@@ -91,6 +91,34 @@
 
 ---
 
+### [2026-06-02] Lab Service CrashLoopBackOff — Root Cause & Fix
+
+**Symptom:** `lab-service-68896b7578-gt7z6` stuck at `0/1 CrashLoopBackOff`, 74 restarts in 38h. All `/api/labs/**` returning 404 from Spring Cloud Gateway (no healthy endpoint to route to).
+
+**Diagnosed via:** `kubectl logs` on production pod (K3s, port 9022).
+
+**Root Cause:** `LabServiceApplication` scanned only `com.cyberlearnix.lab.*`. `GoogleDriveService` in `com.cyberlearnix.shared.service` (shared-lib) was never registered — `UnsatisfiedDependencyException` on startup.
+
+**Fix:** Added `scanBasePackages = {"com.cyberlearnix.lab", "com.cyberlearnix.shared.service"}` to `LabServiceApplication`. This is the same pattern `cms-service` and `course-service` already use. Commit `311c532` on `develop` — needs PR merge to trigger CI-CD rebuild + ArgoCD redeploy.
+
+**Project Convention:** Any service that uses `GoogleDriveService` or `CloudinaryService` from `shared-lib` MUST include `"com.cyberlearnix.shared.service"` in `scanBasePackages`. Do NOT use `"com.cyberlearnix.shared"` (too broad — pulls in `SharedSecurityConfig`).
+
+---
+
+### [2026-06-01] Lab Service API Fix — Post-Deploy Bugs
+
+**Root causes diagnosed and fixed:**
+
+1. **Duplicate YAML keys in `helm/values-k3s.yaml` `images:` section** — Commits #120 and #121 (ImagePullBackOff fix) both appended a full second block of 12 image tags, creating invalid YAML with duplicate keys. Go's yaml.v3 silently uses the last value; ArgoCD may behave inconsistently. Fixed: collapsed to a single canonical block. The CI `sed` regex still works correctly (matches both entries, updates both to same SHA).
+
+2. **`LAB_SERVICE_URL` wrong default port in `gateway-service/src/main/resources/application.yml`** — Default was `http://127.0.0.1:8093` (the host-exposed port); should be `8090` (the container/service port). In K3s, `LAB_SERVICE_URL=http://lab-service:8090` overrides the default, so this was a latent bug that only manifests in local dev fallback mode.
+
+3. **`lab_db` and `cyberlearnix_attendance` missing from postgres init ConfigMap** (`helm/templates/postgres.yaml`). These two databases were not in the 01-create-databases.sql ConfigMap. The per-service init container creates them idempotently, but the postgres init SQL is the belt-and-suspenders fallback. Added both.
+
+4. **`LAB_DB_URL` not explicitly set in Helm deployment** — lab-service uses `${LAB_DB_URL:jdbc:postgresql://postgres:5432/lab_db}` for its datasource URL, not the injected `DB_HOST`/`DB_PORT`. Added explicit `LAB_DB_URL` env var in the deployment template using `$.Values.appConfig.DB_HOST` and `DB_PORT` so the DB host stays in sync with the rest of the cluster.
+
+---
+
 ### [2026-05-30] Lab Service Infrastructure Added
 
 **Changes made:**

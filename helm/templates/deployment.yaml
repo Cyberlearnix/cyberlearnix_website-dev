@@ -139,6 +139,10 @@ spec:
                   name: cyberlearnix-secrets
                   key: db-password
             {{- end }}
+            {{- if eq $name "lab-service" }}
+            - name: LAB_DB_URL
+              value: {{ printf "jdbc:postgresql://%s:%s/lab_db" $.Values.appConfig.DB_HOST $.Values.appConfig.DB_PORT | quote }}
+            {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -152,7 +156,7 @@ spec:
                   key: redis-password
                   optional: true
             {{- end }}
-            {{- if or (eq $name "course-service") (eq $name "cms-service") }}
+            {{- if or (eq $name "course-service") (eq $name "cms-service") (eq $name "lab-service") }}
             - name: GOOGLE_DRIVE_CREDENTIALS_JSON_B64
               valueFrom:
                 secretKeyRef:

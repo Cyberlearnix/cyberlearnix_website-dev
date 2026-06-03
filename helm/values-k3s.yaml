@@ -31,30 +31,18 @@ imagePullSecrets:
 # ── Image tags — updated automatically by CI on every main push ──────────────
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 images:
-  gateway-service:       85c8259de51c7d6253e93831b9eb4a109598b3d1
-  user-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  course-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  enrollment-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  notification-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  shop-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  form-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  admin-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  cms-service:   85c8259de51c7d6253e93831b9eb4a109598b3d1
-  instructor-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  attendance-service:    85c8259de51c7d6253e93831b9eb4a109598b3d1
-  lab-service:           85c8259de51c7d6253e93831b9eb4a109598b3d1
-  gateway-service:        baa1c4f2cffe442c751435d106d65dd4017becd0
-  user-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  course-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  enrollment-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  notification-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  shop-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  form-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  admin-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  cms-service:    baa1c4f2cffe442c751435d106d65dd4017becd0
-  instructor-service:     baa1c4f2cffe442c751435d106d65dd4017becd0
-  attendance-service:      baa1c4f2cffe442c751435d106d65dd4017becd0
-  lab-service:             baa1c4f2cffe442c751435d106d65dd4017becd0
+  gateway-service:      63b21f73b8c3f627ef1b56af06f948833fee9425
+  user-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  course-service:       f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  enrollment-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  notification-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  shop-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  form-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  admin-service:        f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  cms-service:          f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  instructor-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  attendance-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
+  lab-service:          aff4c693971b4563d0752566c1eae881340165bc
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
@@ -82,6 +70,8 @@ appConfig:
   INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
   ATTENDANCE_SERVICE_URL: "http://attendance-service:8092"
   LAB_SERVICE_URL: "http://lab-service:8090"
+  FRONTEND_URL: "https://cyberlearnix.com"
+  BACKEND_URL: "https://apis.cyberlearnix.com"
   CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app"
   SERVER_COOKIE_SECURE: "true"
   # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
@@ -94,8 +84,8 @@ appConfig:
 ingress:
   className: nginx
   annotations:
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: letsencrypt-prod
   tls:

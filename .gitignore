@@ -33,6 +33,8 @@ thumbs.db
 *.key
 *.p12
 *.pfx
+token.txt
+*.token
 # Squad: ignore runtime state (logs, inbox, sessions)
 .squad/orchestration-log/
 .squad/log/

@@ -53,8 +53,21 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String authHeader = sanitizedExchange.getRequest().getHeaders().getFirst("Authorization");
         log.debug("[GW] {} {} | auth={}", method, path, authHeader != null ? "present" : "missing");
 
+        // WebSocket clients cannot set custom headers during the initial handshake.
+        // For WebSocket terminal paths, also accept the JWT from the ?token= query parameter.
+        String resolvedToken = null;
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7).trim();
+            resolvedToken = authHeader.substring(7).trim();
+        } else if (path.startsWith("/labs/terminal/")) {
+            String queryToken = sanitizedExchange.getRequest().getQueryParams().getFirst("token");
+            if (queryToken != null && !queryToken.isBlank()) {
+                resolvedToken = queryToken.trim();
+                log.debug("[GW] WebSocket path — using token from query parameter");
+            }
+        }
+
+        if (resolvedToken != null) {
+            String token = resolvedToken;
             // Redis blacklist key must match what user-service writes: "blacklisted:" + token
             String blacklistKey = "blacklisted:" + token;
 

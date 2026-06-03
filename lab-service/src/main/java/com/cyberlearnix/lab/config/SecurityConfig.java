@@ -1,6 +1,7 @@
 package com.cyberlearnix.lab.config;
 
 import com.cyberlearnix.shared.security.JwtTokenFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,6 +47,11 @@ public class SecurityConfig {
                         // WebSocket upgrade — JWT validated inside the handler
                         .requestMatchers("/labs/terminal/**").permitAll()
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        // Return 401 (not Spring Security's default 403) for unauthenticated requests
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
                 )
                 .addFilterBefore(new JwtTokenFilter(jwtSecret), UsernamePasswordAuthenticationFilter.class);
         return http.build();

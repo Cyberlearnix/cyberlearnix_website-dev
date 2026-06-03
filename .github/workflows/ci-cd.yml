@@ -223,60 +223,33 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 5. Update image tags in helm/values-k3s.yaml → ArgoCD auto-syncs ────────
+  # ── 5. Deploy to K3s via kubectl (direct API access) ────────────────────────
   deploy:
-    name: Update image tags → ArgoCD syncs
+    name: Deploy → K3s
     needs: [detect, build-push]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     environment: production
-    permissions:
-      contents: write   # needed to commit updated image tags back to main
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
 
-      - name: Update image tags in helm/values-k3s.yaml
+      - name: Deploy changed services via kubectl
         env:
           CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
           GIT_SHA: ${{ github.sha }}
+          KUBECONFIG_DATA: ${{ secrets.K3S_KUBECONFIG }}
+          K3S_NAMESPACE: ${{ secrets.K3S_NAMESPACE }}
         run: |
+          echo "$KUBECONFIG_DATA" | base64 -d > /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
           SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
+          REGISTRY="ghcr.io/cyberlearnix"
           for svc in $SERVICES; do
-            # Replace ONLY lines in the images: section (value is a 40-char hex sha)
-            # This avoids corrupting the services: block where the same key appears without a sha value
-            sed -i "s|^\(  ${svc}:\s*\)[0-9a-f]\{40\}\s*$|\1 ${GIT_SHA}|" helm/values-k3s.yaml
-            echo "  ✓ $svc → $GIT_SHA"
+            IMAGE="${REGISTRY}/cyberlearnix-${svc}:${GIT_SHA}"
+            echo "🚀 Deploying $svc → $IMAGE"
+            kubectl set image deployment/${svc} ${svc}=${IMAGE} -n "$K3S_NAMESPACE"
+            kubectl rollout status deployment/${svc} -n "$K3S_NAMESPACE" --timeout=120s
           done
-
-      - name: Commit and push updated image tags
-        env:
-          PAT: ${{ secrets.DEPLOY_PAT }}
-          RULESET_ID: "15896943"
-          REPO: "Cyberlearnix/cyberlearnix_website-dev"
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add helm/values-k3s.yaml
-          # Only commit if something changed
-          if git diff --cached --quiet; then
-            echo "No image tag changes to commit"
-          else
-            git commit -m "chore(deploy): update image tags to ${{ github.sha }} [skip ci]"
-            # Temporarily disable branch protection ruleset so we can push directly
-            curl -s -X PUT \
-              -H "Authorization: Bearer $PAT" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$REPO/rulesets/$RULESET_ID" \
-              -d '{"name":"Protect main","enforcement":"disabled"}' | python3 -c "import sys,json; print('ruleset disabled:', json.load(sys.stdin).get('enforcement'))"
-            git push "https://Cyberlearnix:$PAT@github.com/$REPO.git" main
-            # Re-enable ruleset
-            curl -s -X PUT \
-              -H "Authorization: Bearer $PAT" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$REPO/rulesets/$RULESET_ID" \
-              -d '{"name":"Protect main","enforcement":"active"}' | python3 -c "import sys,json; print('ruleset re-enabled:', json.load(sys.stdin).get('enforcement'))"
-            echo "✅ Image tags updated — ArgoCD will sync within ~30 seconds"
-          fi
+          rm -f /tmp/kubeconfig
+          echo "✅ All services deployed successfully"

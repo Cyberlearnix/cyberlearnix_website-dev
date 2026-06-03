@@ -51,7 +51,8 @@ public class GatewaySecurityConfig {
             "Origin",
             "Access-Control-Request-Method",
             "Access-Control-Request-Headers",
-            "x-user-id"
+            "x-user-id",
+            "x-user-role"
         ));
         
         // Allow credentials — origins are explicitly allowlisted, not wildcard // NOSONAR java:S5122
