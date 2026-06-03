@@ -12,6 +12,8 @@ import java.util.Optional;
 @Repository
 public interface LabAssignmentRepository extends JpaRepository<LabAssignment, Long> {
 
+    List<LabAssignment> findByStudentId(String studentId);
+
     List<LabAssignment> findByStudentIdAndStatus(String studentId, AssignmentStatus status);
 
     List<LabAssignment> findByStatus(AssignmentStatus status);

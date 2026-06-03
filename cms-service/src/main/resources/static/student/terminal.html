@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab Terminal — Cyberlearnix</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d1117; color: #e6edf3; font-family: 'Consolas', 'Courier New', monospace; height: 100vh; display: flex; flex-direction: column; }
+    .tbar {
+      display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+      background: #161b22; border-bottom: 1px solid #30363d; flex-shrink: 0;
+    }
+    .tbar-title { font-size: 0.95rem; font-weight: 600; color: #58a6ff; }
+    .tbar-status { font-size: 0.78rem; padding: 3px 10px; border-radius: 20px; margin-left: auto; }
+    .tbar-status.connecting { background: #fde04722; color: #fde047; border: 1px solid #fde04744; }
+    .tbar-status.connected  { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+    .tbar-status.error      { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
+    .btn-close {
+      padding: 4px 14px; border-radius: 6px; border: 1px solid #30363d;
+      background: #21262d; color: #e6edf3; cursor: pointer; font-size: 0.82rem;
+    }
+    .btn-close:hover { background: #30363d; }
+    #terminal-container { flex: 1; overflow: hidden; padding: 8px; }
+    #error-box {
+      display: none; padding: 40px; text-align: center;
+      flex: 1; justify-content: center; align-items: center; flex-direction: column; gap: 12px;
+    }
+    #error-box h3 { color: #ef4444; font-size: 1.1rem; }
+    #error-box p  { color: #8b949e; font-size: 0.875rem; max-width: 400px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="tbar">
+  <span class="tbar-title">🔬 Cyberlearnix Lab Terminal</span>
+  <span class="tbar-status connecting" id="statusBadge">Connecting…</span>
+  <button class="btn-close" onclick="window.close()">✕ Close</button>
+</div>
+<div id="terminal-container"></div>
+<div id="error-box">
+  <h3 id="errTitle">Connection Failed</h3>
+  <p id="errMsg">Unable to connect to the lab terminal.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script>
+(function () {
+  /* ── Params ── */
+  const params       = new URLSearchParams(window.location.search);
+  const assignmentId = params.get('assignmentId');
+  const token        = params.get('token') || localStorage.getItem('cl_token');
+
+  const statusEl = document.getElementById('statusBadge');
+
+  if (!assignmentId || !token) {
+    showError('Missing Parameters', 'assignmentId and token are required query parameters.');
+    return;
+  }
+
+  /* ── Terminal ── */
+  const term    = new Terminal({ cursorBlink: true, fontSize: 14, theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff' } });
+  const fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  term.open(document.getElementById('terminal-container'));
+  fitAddon.fit();
+
+  window.addEventListener('resize', () => fitAddon.fit());
+
+  /* ── WebSocket ── */
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const wsUrl  = `${proto}://${location.host}/labs/terminal/${encodeURIComponent(assignmentId)}?token=${encodeURIComponent(token)}`;
+  let   ws;
+
+  function connect() {
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      statusEl.textContent = 'Connected';
+      statusEl.className   = 'tbar-status connected';
+      term.write('\r\n\x1b[32m✓ Connected to lab terminal\x1b[0m\r\n\r\n');
+      sendResize();
+    };
+
+    ws.onmessage = (evt) => {
+      if (typeof evt.data === 'string') term.write(evt.data);
+      else {
+        const reader = new FileReader();
+        reader.onload = () => term.write(reader.result);
+        reader.readAsText(evt.data);
+      }
+    };
+
+    ws.onerror = () => {
+      statusEl.textContent = 'Error';
+      statusEl.className   = 'tbar-status error';
+    };
+
+    ws.onclose = (evt) => {
+      statusEl.textContent = 'Disconnected';
+      statusEl.className   = 'tbar-status error';
+      const reason = evt.reason || `Code ${evt.code}`;
+      if (evt.code === 1002 || evt.code === 4001) {
+        showError('Access Denied', `Your lab session could not be started (${reason}). The lab may not be in RUNNING state or your session has expired. Please return to your course and check the lab status.`);
+      } else if (evt.code !== 1000) {
+        term.write(`\r\n\x1b[31m✗ Connection closed: ${reason}\x1b[0m\r\n`);
+      }
+    };
+  }
+
+  /* Send terminal input to server */
+  term.onData(data => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(data); });
+
+  /* Notify server of terminal size changes */
+  function sendResize() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+    }
+  }
+  term.onResize(() => sendResize());
+
+  function showError(title, msg) {
+    document.getElementById('terminal-container').style.display = 'none';
+    const box = document.getElementById('error-box');
+    box.style.display = 'flex';
+    document.getElementById('errTitle').textContent = title;
+    document.getElementById('errMsg').textContent   = msg;
+    statusEl.textContent = 'Error';
+    statusEl.className   = 'tbar-status error';
+  }
+
+  connect();
+})();
+</script>
+</body>
+</html>

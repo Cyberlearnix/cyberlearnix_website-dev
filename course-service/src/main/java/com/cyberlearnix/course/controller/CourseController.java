@@ -524,6 +524,7 @@ public class CourseController {
             map.put("durationMinutes", lab.getDurationMinutes());
             map.put("difficultyLevel", lab.getDifficultyLevel());
             map.put("prerequisites", lab.getPrerequisites());
+            map.put("learningObjectives", lab.getLearningObjectives());
             map.put("solutionGuide", lab.getSolutionGuide());
         } else if (content instanceof AssignmentContent) {
             AssignmentContent ass = (AssignmentContent) content;

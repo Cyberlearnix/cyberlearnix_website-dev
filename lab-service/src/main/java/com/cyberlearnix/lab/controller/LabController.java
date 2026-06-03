@@ -207,6 +207,29 @@ public class LabController {
     }
 
     /**
+     * Student: get all their lab assignments across all courses.
+     */
+    @GetMapping("/my-labs")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<LabAssignment>> getAllMyLabs(@RequestHeader("X-User-Id") String studentId) {
+        return ResponseEntity.ok(assignmentRepository.findByStudentId(studentId));
+    }
+
+    /**
+     * Student: self-request a lab for a course they are enrolled in.
+     * If the CourseLabConfig has requiresApproval=false it is auto-provisioned immediately.
+     */
+    @PostMapping("/my-labs/request")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<LabApprovalRequest> requestMyLab(
+            @Valid @RequestBody LabRequestDto dto,
+            @RequestHeader("X-User-Id") String studentId) {
+        // Override studentId from the authenticated user — students cannot request on behalf of others
+        dto.setStudentId(studentId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(courseLabService.requestLab(dto, studentId));
+    }
+
+    /**
      * Instructor/Admin: get all approval requests for a course.
      */
     @GetMapping("/courses/{courseId}/requests")
