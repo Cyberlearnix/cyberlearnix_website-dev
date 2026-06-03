@@ -46,6 +46,15 @@ spec:
                 name: {{ $name }}
                 port:
                   name: http
+          {{- if eq $name "gateway-service" }}
+          - path: /labs/terminal
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  name: http
+          {{- end }}
     {{- end }}
     {{- if not $.Values.hosts.api }}
     - http:
