@@ -191,14 +191,17 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         }
 
         long assignmentId;
+        LabAssignment assignment;
         try {
             assignmentId = Long.parseLong(assignmentIdStr);
+            assignment = assignmentRepository.findById(assignmentId).orElse(null);
         } catch (NumberFormatException e) {
-            session.close(CloseStatus.BAD_DATA.withReason("Invalid assignment ID"));
-            return;
+            // The admin UI passes the container name (e.g. "cyberlearnix-lab-{uuid}-{id}")
+            // instead of the numeric assignment ID — look it up by container name.
+            log.debug("WebSocket terminal: path param '{}' is not numeric, trying container name lookup", assignmentIdStr);
+            assignment = assignmentRepository.findByContainerName(assignmentIdStr).orElse(null);
         }
 
-        LabAssignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
         if (assignment == null
                 || assignment.getContainerId() == null
                 || assignment.getStatus() != AssignmentStatus.RUNNING) {
@@ -209,7 +212,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         // Admins/instructors may connect to any assignment; students only their own.
         boolean isPrivileged = "admin".equals(callerRole) || "instructor".equals(callerRole) || "dual".equals(callerRole);
         if (!isPrivileged && !callerUserId.equals(assignment.getStudentId())) {
-            log.warn("WebSocket terminal rejected — user {} is not the owner of assignment {}", callerUserId, assignmentId);
+            log.warn("WebSocket terminal rejected — user {} is not the owner of assignment {}", callerUserId, assignment.getId());
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Forbidden"));
             return;
         }
@@ -304,7 +307,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         execThread.setDaemon(true);
         execThread.start();
 
-        log.info("Terminal session opened: session={} assignment={} container={}", session.getId(), assignmentId, containerId);
+        log.info("Terminal session opened: session={} assignment={} container={}", session.getId(), assignment.getId(), containerId);
     }
 
     @Override
