@@ -223,7 +223,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 5. Deploy to K3s via SSH + kubectl set image ─────────────────────────────
+  # ── 5. Deploy to K3s via kubectl (direct API access) ────────────────────────
   deploy:
     name: Deploy → K3s
     needs: [detect, build-push]
@@ -231,24 +231,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Deploy changed services via kubectl set image
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Deploy changed services via kubectl
         env:
           CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
           GIT_SHA: ${{ github.sha }}
-          K3S_HOST: ${{ secrets.K3S_HOST }}
-          K3S_PORT: ${{ secrets.K3S_PORT }}
-          K3S_USER: ${{ secrets.K3S_USER }}
-          K3S_PASS: ${{ secrets.K3S_PASS }}
+          KUBECONFIG_DATA: ${{ secrets.K3S_KUBECONFIG }}
           K3S_NAMESPACE: ${{ secrets.K3S_NAMESPACE }}
         run: |
-          sudo apt-get install -y sshpass > /dev/null 2>&1
+          echo "$KUBECONFIG_DATA" | base64 -d > /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
           SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
-          SSH="sshpass -p \"$K3S_PASS\" ssh -o StrictHostKeyChecking=no -p $K3S_PORT $K3S_USER@$K3S_HOST"
           REGISTRY="ghcr.io/cyberlearnix"
           for svc in $SERVICES; do
             IMAGE="${REGISTRY}/cyberlearnix-${svc}:${GIT_SHA}"
             echo "🚀 Deploying $svc → $IMAGE"
-            eval "$SSH \"kubectl set image deployment/${svc} ${svc}=${IMAGE} -n $K3S_NAMESPACE\""
-            eval "$SSH \"kubectl rollout status deployment/${svc} -n $K3S_NAMESPACE --timeout=120s\""
+            kubectl set image deployment/${svc} ${svc}=${IMAGE} -n "$K3S_NAMESPACE"
+            kubectl rollout status deployment/${svc} -n "$K3S_NAMESPACE" --timeout=120s
           done
+          rm -f /tmp/kubeconfig
           echo "✅ All services deployed successfully"
