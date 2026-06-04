@@ -186,7 +186,8 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
 
         if (callerUserId == null) {
             log.warn("WebSocket terminal rejected — no X-User-Id header and no valid ?token= param");
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
+            try { session.sendMessage(new TextMessage("[ERROR] Unauthorized: missing or invalid token")); } catch (Exception ignored) {}
+            session.close(CloseStatus.NORMAL.withReason("Unauthorized"));
             return;
         }
 
@@ -200,12 +201,37 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
             // instead of the numeric assignment ID — look it up by container name.
             log.debug("WebSocket terminal: path param '{}' is not numeric, trying container name lookup", assignmentIdStr);
             assignment = assignmentRepository.findByContainerName(assignmentIdStr).orElse(null);
+
+            // Fallback: if containerName is null in DB (assignments created before containerName
+            // column was populated), parse the numeric ID from the end of the container name.
+            // Format: "cyberlearnix-lab-{studentUUID}-{assignmentId}"
+            if (assignment == null && assignmentIdStr.contains("-")) {
+                String lastSegment = assignmentIdStr.substring(assignmentIdStr.lastIndexOf('-') + 1);
+                try {
+                    long idFromName = Long.parseLong(lastSegment);
+                    assignment = assignmentRepository.findById(idFromName).orElse(null);
+                    if (assignment != null) {
+                        log.info("WebSocket terminal: resolved assignment {} via ID suffix of container name '{}'",
+                                idFromName, assignmentIdStr);
+                    }
+                } catch (NumberFormatException ignored) {
+                    log.warn("WebSocket terminal: cannot parse assignment ID from container name '{}'", assignmentIdStr);
+                }
+            }
         }
 
         if (assignment == null
                 || assignment.getContainerId() == null
                 || assignment.getStatus() != AssignmentStatus.RUNNING) {
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Lab is not currently running"));
+            String reason = assignment == null
+                    ? "Lab assignment not found for: " + assignmentIdStr
+                    : (assignment.getContainerId() == null
+                            ? "Lab container ID missing (assignment " + assignment.getId() + ")"
+                            : "Lab not running — status: " + assignment.getStatus()
+                              + " (assignment " + assignment.getId() + ")");
+            log.warn("WebSocket terminal rejected — {}", reason);
+            try { session.sendMessage(new TextMessage("[ERROR] " + reason)); } catch (Exception ignored) {}
+            session.close(CloseStatus.NORMAL.withReason(reason));
             return;
         }
 
@@ -213,7 +239,8 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         boolean isPrivileged = "admin".equals(callerRole) || "instructor".equals(callerRole) || "dual".equals(callerRole);
         if (!isPrivileged && !callerUserId.equals(assignment.getStudentId())) {
             log.warn("WebSocket terminal rejected — user {} is not the owner of assignment {}", callerUserId, assignment.getId());
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Forbidden"));
+            try { session.sendMessage(new TextMessage("[ERROR] Forbidden: you do not own this lab assignment")); } catch (Exception ignored) {}
+            session.close(CloseStatus.NORMAL.withReason("Forbidden"));
             return;
         }
 
