@@ -157,55 +157,26 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         // Primary: gateway injects X-User-Id after validating the JWT.
         // Fallback: Spring Cloud Gateway's WebSocket proxy may not forward filter-injected headers;
         //           parse the JWT from the ?token= query parameter directly in that case.
-        String callerUserId = session.getHandshakeHeaders().getFirst("X-User-Id");
-        String callerRole   = session.getHandshakeHeaders().getFirst("X-User-Role");
-
-        if (callerUserId == null && session.getUri() != null) {
-            String query = session.getUri().getQuery();
-            if (query != null) {
-                for (String param : query.split("&")) {
-                    if (param.startsWith("token=")) {
-                        String token = URLDecoder.decode(param.substring(6), StandardCharsets.UTF_8);
-                        try {
-                            Claims claims = Jwts.parser()
-                                    .verifyWith(Keys.hmacShaKeyFor(jwtSecret.trim().getBytes(StandardCharsets.UTF_8)))
-                                    .build()
-                                    .parseSignedClaims(token)
-                                    .getPayload();
-                            callerUserId = claims.getSubject();
-                            callerRole = (String) claims.get("role");
-                            log.debug("WebSocket terminal: authenticated userId={} via ?token= query param", callerUserId);
-                        } catch (Exception e) {
-                            log.warn("WebSocket terminal: JWT parse from query param failed: {}", e.getMessage());
-                        }
-                        break;
-                    }
-                }
-            }
-        }
+        String[] callerIdentity = resolveCallerIdentity(session);
+        String callerUserId = callerIdentity[0];
+        String callerRole   = callerIdentity[1];
 
         if (callerUserId == null) {
             log.warn("WebSocket terminal rejected — no X-User-Id header and no valid ?token= param");
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
+            sendErrorText(session, "[ERROR] Unauthorized: missing or invalid token");
+            session.close(CloseStatus.NORMAL.withReason("Unauthorized"));
             return;
         }
 
-        long assignmentId;
-        LabAssignment assignment;
-        try {
-            assignmentId = Long.parseLong(assignmentIdStr);
-            assignment = assignmentRepository.findById(assignmentId).orElse(null);
-        } catch (NumberFormatException e) {
-            // The admin UI passes the container name (e.g. "cyberlearnix-lab-{uuid}-{id}")
-            // instead of the numeric assignment ID — look it up by container name.
-            log.debug("WebSocket terminal: path param '{}' is not numeric, trying container name lookup", assignmentIdStr);
-            assignment = assignmentRepository.findByContainerName(assignmentIdStr).orElse(null);
-        }
+        LabAssignment assignment = resolveAssignment(assignmentIdStr);
 
         if (assignment == null
                 || assignment.getContainerId() == null
                 || assignment.getStatus() != AssignmentStatus.RUNNING) {
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Lab is not currently running"));
+            String reason = buildRejectionReason(assignment, assignmentIdStr);
+            log.warn("WebSocket terminal rejected — {}", reason);
+            sendErrorText(session, "[ERROR] " + reason);
+            session.close(CloseStatus.NORMAL.withReason(reason));
             return;
         }
 
@@ -213,101 +184,18 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         boolean isPrivileged = "admin".equals(callerRole) || "instructor".equals(callerRole) || "dual".equals(callerRole);
         if (!isPrivileged && !callerUserId.equals(assignment.getStudentId())) {
             log.warn("WebSocket terminal rejected — user {} is not the owner of assignment {}", callerUserId, assignment.getId());
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Forbidden"));
+            sendErrorText(session, "[ERROR] Forbidden: you do not own this lab assignment");
+            session.close(CloseStatus.NORMAL.withReason("Forbidden"));
             return;
         }
 
-        String containerId = assignment.getContainerId();
-
-        // Create exec with bash
-        // We'll force interactive terminal behavior with explicit stty commands
-        ExecCreateCmdResponse execResponse = dockerClient.execCreateCmd(containerId)
-                .withCmd("bash")
-                .withAttachStdin(true)
-                .withAttachStdout(true)
-                .withAttachStderr(true)
-                .withTty(true)
-                .withEnv(java.util.List.of("TERM=xterm", "COLUMNS=80", "LINES=24"))
-                .exec();
-
-        String execId = execResponse.getId();
-
-        // stdin stream: browser → ContainerStdin.push() → docker exec stdin
-        ContainerStdin containerStdin = new ContainerStdin();
-        sessionStdinStreams.put(session.getId(), containerStdin);
-        sessionExecIds.put(session.getId(), execId);
-
-        // Run exec in a daemon thread so Spring threads are not blocked
-        Thread execThread = new Thread(() -> {
-            try {
-                // Start the exec (non-blocking)
-                ExecStartResultCallback callback = dockerClient.execStartCmd(execId)
-                        .withDetach(false)
-                        .withTty(true)
-                        .withStdIn(containerStdin)
-                        .exec(new ExecStartResultCallback() {
-                            @Override
-                            public void onNext(Frame frame) {
-                                log.info("📤 Got frame from container: type={} payload={} bytes", 
-                                        frame != null ? frame.getStreamType() : "null", 
-                                        frame != null && frame.getPayload() != null ? frame.getPayload().length : 0);
-                                if (frame == null || frame.getPayload() == null) return;
-                                try {
-                                    synchronized (session) {
-                                        if (session.isOpen()) {
-                                            session.sendMessage(new BinaryMessage(
-                                                    ByteBuffer.wrap(frame.getPayload())));
-                                            log.info("📨 Sent {} bytes to browser", frame.getPayload().length);
-                                        }
-                                    }
-                                } catch (IOException e) {
-                                    log.warn("Error sending terminal output to session {}: {}", session.getId(), e.getMessage());
-                                }
-                            }
-                        });
-
-                // Now that exec is started, initialize PTY properly
-                // Critical: bash needs dimensions BEFORE it can echo properly
-                try {
-                    // Step 1: Resize PTY to actual dimensions
-                    dockerClient.resizeExecCmd(execId)
-                            .withSize(24, 80)  // height=24 rows, width=80 cols
-                            .exec();
-                    
-                    // Step 2: Wait for bash to notice the resize
-                    Thread.sleep(200);
-                    
-                    // Step 3: Force terminal into sane state with echo enabled
-                    // Send as single command with Enter to execute immediately
-                    String initCmd = "stty sane echo echoe echok -echonl icanon icrnl\r";
-                    containerStdin.push(initCmd.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    
-                    // Step 4: Wait for command to execute
-                    Thread.sleep(100);
-                    
-                    // Step 5: Clear the screen and show fresh prompt
-                    containerStdin.push("clear\r".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    
-                    log.info("✅ PTY resized to 80x24, terminal initialized with echo enabled");
-                } catch (Exception e) {
-                    log.warn("Failed to initialize PTY for session {}: {}", session.getId(), e.getMessage());
-                }
-
-                // Wait for exec to complete
-                callback.awaitCompletion();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.debug("Exec thread interrupted for session {}", session.getId());
-            } catch (Exception e) {
-                log.error("Exec error for session {}: {}", session.getId(), e.getMessage(), e);
-            } finally {
-                closeQuietly(session);
-            }
-        }, "lab-terminal-" + session.getId());
-        execThread.setDaemon(true);
-        execThread.start();
-
-        log.info("Terminal session opened: session={} assignment={} container={}", session.getId(), assignment.getId(), containerId);
+        try {
+            startDockerExec(session, assignment);
+        } catch (Exception e) {
+            log.error("Failed to start Docker exec for session {}: {}", session.getId(), e.getMessage(), e);
+            sendErrorText(session, "[ERROR] Could not attach to container: " + e.getMessage());
+            session.close(CloseStatus.SERVER_ERROR.withReason("Docker exec failed"));
+        }
     }
 
     @Override
@@ -334,6 +222,205 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
 
     // ─── helpers ────────────────────────────────────────────────────────────────
 
+    /**
+     * Returns caller userId and role from gateway-injected headers, falling back to a
+     * {@code ?token=} JWT query parameter when the gateway WebSocket proxy strips injected headers.
+     * Returns {@code String[2]} where {@code [0]} is userId and {@code [1]} is role; both may be null.
+     */
+    private String[] resolveCallerIdentity(WebSocketSession session) {
+        String userId = session.getHandshakeHeaders().getFirst("X-User-Id");
+        String role   = session.getHandshakeHeaders().getFirst("X-User-Role");
+        if (userId == null && session.getUri() != null) {
+            String[] fromToken = parseCallerFromToken(session.getUri().getQuery());
+            userId = fromToken[0];
+            role   = fromToken[1];
+        }
+        return new String[]{userId, role};
+    }
+
+    /**
+     * Parses userId and role from a JWT {@code ?token=} query parameter.
+     * Returns {@code String[2]}, both null on parse failure.
+     */
+    private String[] parseCallerFromToken(String query) {
+        if (query == null) return new String[]{null, null};
+        for (String param : query.split("&")) {
+            if (param.startsWith("token=")) {
+                String token = URLDecoder.decode(param.substring(6), StandardCharsets.UTF_8);
+                try {
+                    Claims claims = Jwts.parser()
+                            .verifyWith(Keys.hmacShaKeyFor(jwtSecret.trim().getBytes(StandardCharsets.UTF_8)))
+                            .build()
+                            .parseSignedClaims(token)
+                            .getPayload();
+                    String userId = claims.getSubject();
+                    String role   = (String) claims.get("role");
+                    log.debug("WebSocket terminal: authenticated userId={} via ?token= query param", userId);
+                    return new String[]{userId, role};
+                } catch (Exception e) {
+                    log.warn("WebSocket terminal: JWT parse from query param failed: {}", e.getMessage());
+                    return new String[]{null, null};
+                }
+            }
+        }
+        return new String[]{null, null};
+    }
+
+    /**
+     * Resolves a {@link LabAssignment} by numeric ID or by container name.
+     * Falls back to parsing the numeric ID from the end of the container name when the
+     * {@code containerName} column is null for assignments created before the column was added.
+     */
+    private LabAssignment resolveAssignment(String assignmentIdStr) {
+        try {
+            long assignmentId = Long.parseLong(assignmentIdStr);
+            return assignmentRepository.findById(assignmentId).orElse(null);
+        } catch (NumberFormatException e) {
+            // The admin UI passes the container name (e.g. "cyberlearnix-lab-{uuid}-{id}")
+            // instead of the numeric assignment ID — look it up by container name.
+            log.debug("WebSocket terminal: path param '{}' is not numeric, trying container name lookup", assignmentIdStr);
+            LabAssignment assignment = assignmentRepository.findByContainerName(assignmentIdStr).orElse(null);
+            return assignment != null ? assignment : resolveAssignmentByIdSuffix(assignmentIdStr);
+        }
+    }
+
+    /**
+     * Fallback: parses the numeric assignment ID from the end of a container name.
+     * Container name format: {@code cyberlearnix-lab-{studentUUID}-{assignmentId}}.
+     */
+    private LabAssignment resolveAssignmentByIdSuffix(String containerName) {
+        if (!containerName.contains("-")) return null;
+        String lastSegment = containerName.substring(containerName.lastIndexOf('-') + 1);
+        try {
+            long idFromName = Long.parseLong(lastSegment);
+            LabAssignment assignment = assignmentRepository.findById(idFromName).orElse(null);
+            if (assignment != null) {
+                log.info("WebSocket terminal: resolved assignment {} via ID suffix of container name '{}'",
+                        idFromName, containerName);
+            }
+            return assignment;
+        } catch (NumberFormatException e) {
+            log.warn("WebSocket terminal: cannot parse assignment ID from container name '{}'", containerName);
+            return null;
+        }
+    }
+
+    /** Returns a human-readable rejection reason based on the assignment's null/state condition. */
+    private String buildRejectionReason(LabAssignment assignment, String assignmentIdStr) {
+        if (assignment == null) {
+            return "Lab assignment not found for: " + assignmentIdStr;
+        }
+        if (assignment.getContainerId() == null) {
+            return "Lab container ID missing (assignment " + assignment.getId() + ")";
+        }
+        return "Lab not running — status: " + assignment.getStatus() + " (assignment " + assignment.getId() + ")";
+    }
+
+    /** Sends a text error message to the browser, logging send failures at DEBUG level. */
+    private void sendErrorText(WebSocketSession session, String message) {
+        try {
+            session.sendMessage(new TextMessage(message));
+        } catch (Exception e) {
+            log.debug("Could not send error message to session {}: {}", session.getId(), e.getMessage());
+        }
+    }
+
+    /** Creates a Docker exec, wires stdin/stdout streams, and starts the background exec thread. */
+    private void startDockerExec(WebSocketSession session, LabAssignment assignment) {
+        String containerId = assignment.getContainerId();
+        // Use /bin/sh as the exec entry-point and exec into bash if available;
+        // this works on both Alpine (sh only) and Debian/Ubuntu (bash present) images.
+        ExecCreateCmdResponse execResponse = dockerClient.execCreateCmd(containerId)
+                .withCmd("/bin/sh", "-c", "[ -x /bin/bash ] && exec /bin/bash || exec /bin/sh")
+                .withAttachStdin(true)
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .withTty(true)
+                .withEnv(java.util.List.of("TERM=xterm", "COLUMNS=80", "LINES=24"))
+                .exec();
+
+        String execId = execResponse.getId();
+        ContainerStdin containerStdin = new ContainerStdin();
+        sessionStdinStreams.put(session.getId(), containerStdin);
+        sessionExecIds.put(session.getId(), execId);
+
+        Thread execThread = new Thread(
+                () -> runExecLoop(session, execId, containerStdin),
+                "lab-terminal-" + session.getId());
+        execThread.setDaemon(true);
+        execThread.start();
+
+        log.info("Terminal session opened: session={} assignment={} container={}",
+                session.getId(), assignment.getId(), containerId);
+    }
+
+    /** Runs the Docker exec loop: streams container stdout/stderr to the WebSocket. */
+    private void runExecLoop(WebSocketSession session, String execId, ContainerStdin containerStdin) {
+        try {
+            ExecStartResultCallback callback = dockerClient.execStartCmd(execId)
+                    .withDetach(false)
+                    .withTty(true)
+                    .withStdIn(containerStdin)
+                    .exec(new ExecStartResultCallback() {
+                        @Override
+                        public void onNext(Frame frame) {
+                            sendFrameToSession(session, frame);
+                        }
+                    });
+
+            initializePty(execId, containerStdin, session);
+            callback.awaitCompletion();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.debug("Exec thread interrupted for session {}", session.getId());
+        } catch (Exception e) {
+            log.error("Exec error for session {}: {}", session.getId(), e.getMessage(), e);
+            sendErrorText(session, "[ERROR] Terminal exec failed: " + e.getMessage());
+        } finally {
+            closeQuietly(session);
+        }
+    }
+
+    /** Forwards a Docker output frame to the WebSocket browser client. */
+    private void sendFrameToSession(WebSocketSession session, Frame frame) {
+        if (frame == null || frame.getPayload() == null) return;
+        log.info("📤 Got frame from container: type={} payload={} bytes",
+                frame.getStreamType(), frame.getPayload().length);
+        try {
+            synchronized (session) {
+                if (session.isOpen()) {
+                    session.sendMessage(new BinaryMessage(ByteBuffer.wrap(frame.getPayload())));
+                    log.info("📨 Sent {} bytes to browser", frame.getPayload().length);
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Error sending terminal output to session {}: {}", session.getId(), e.getMessage());
+        }
+    }
+
+    /** Resizes the PTY to 80×24 and sends {@code stty}/clear commands to initialise the terminal. */
+    private void initializePty(String execId, ContainerStdin containerStdin, WebSocketSession session) {
+        try {
+            // Step 1: Resize PTY to actual dimensions (height=24 rows, width=80 cols)
+            dockerClient.resizeExecCmd(execId).withSize(24, 80).exec();
+
+            // Step 2: Wait for the shell to notice the resize
+            Thread.sleep(200);
+
+            // Step 3: Force terminal into sane state with echo enabled
+            containerStdin.push("stty sane echo echoe echok -echonl icanon icrnl\r"
+                    .getBytes(StandardCharsets.UTF_8));
+
+            // Step 4: Wait for command to execute, then clear screen
+            Thread.sleep(100);
+            containerStdin.push("clear\r".getBytes(StandardCharsets.UTF_8));
+
+            log.info("✅ PTY resized to 80x24, terminal initialized with echo enabled");
+        } catch (Exception e) {
+            log.warn("Failed to initialize PTY for session {}: {}", session.getId(), e.getMessage());
+        }
+    }
+
     private void forwardToContainer(WebSocketSession session, byte[] data) {
         ContainerStdin stdin = sessionStdinStreams.get(session.getId());
         if (stdin != null) {
@@ -358,6 +445,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
                 session.close(CloseStatus.NORMAL);
             }
         } catch (IOException ignore) {
+            // intentionally silent — we are already in a teardown path
         }
     }
 }

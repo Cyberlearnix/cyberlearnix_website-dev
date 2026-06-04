@@ -101,8 +101,12 @@
       statusEl.textContent = 'Disconnected';
       statusEl.className   = 'tbar-status error';
       const reason = evt.reason || `Code ${evt.code}`;
-      if (evt.code === 1002 || evt.code === 4001) {
-        showError('Access Denied', `Your lab session could not be started (${reason}). The lab may not be in RUNNING state or your session has expired. Please return to your course and check the lab status.`);
+      const isAuthError = evt.code === 4001 || evt.reason?.includes('Unauthorized') || evt.reason?.includes('Forbidden');
+      const isLabError  = evt.code === 1002 || evt.reason?.includes('not running') || evt.reason?.includes('not currently running');
+      if (isAuthError) {
+        showError('Access Denied', `Your lab session could not be started (${reason}). Please log in again or contact your instructor.`);
+      } else if (isLabError) {
+        showError('Lab Not Active', `Your lab session could not be started (${reason}). The lab may not be in RUNNING state. Please return to your course and check the lab status.`);
       } else if (evt.code !== 1000) {
         term.write(`\r\n\x1b[31m✗ Connection closed: ${reason}\x1b[0m\r\n`);
       }
