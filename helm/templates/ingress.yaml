@@ -64,7 +64,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: gateway-service
+                name: lab-service
                 port:
                   name: http
           {{- end }}
