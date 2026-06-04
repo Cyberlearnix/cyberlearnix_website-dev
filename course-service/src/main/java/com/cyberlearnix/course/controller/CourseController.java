@@ -444,15 +444,16 @@ public class CourseController {
     public ResponseEntity<?> getCourseCurriculum(@PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = true) String userId,
             @RequestHeader(value = "X-User-Role", required = true) String userRole) {
-        // Verify student is enrolled (skip for admins and teachers assigned to the course)
-        boolean isAdmin = "admin".equals(userRole);
-        boolean isAssignedTeacher = courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
+        // Verify student is enrolled (skip for admins, instructors, and teachers assigned to the course)
+        boolean isPrivileged = "admin".equals(userRole) || "instructor".equals(userRole)
+                || "dual".equals(userRole) || "institute".equals(userRole);
+        boolean isAssignedTeacher = !isPrivileged && courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
         boolean isEnrolled = false;
-        if (!isAdmin && !isAssignedTeacher) {
+        if (!isPrivileged && !isAssignedTeacher) {
             try {
                 isEnrolled = enrollmentServiceClient.isEnrolled(userId, id);
             } catch (Exception e) {
-                log.error("Enrollment check failed for student={} course={} — {}: {}",
+                log.error("Enrollment check failed for student={} course={} — {}: {} (check enrollment-service connectivity)",
                         userId, id, e.getClass().getSimpleName(), e.getMessage());
                 // enrollment-service unavailable — deny access
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
