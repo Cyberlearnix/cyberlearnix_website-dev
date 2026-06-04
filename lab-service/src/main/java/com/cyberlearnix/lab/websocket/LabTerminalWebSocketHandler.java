@@ -189,11 +189,17 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
             return;
         }
 
-        startDockerExec(session, assignment);
+        try {
+            startDockerExec(session, assignment);
+        } catch (Exception e) {
+            log.error("Failed to start Docker exec for session {}: {}", session.getId(), e.getMessage(), e);
+            sendErrorText(session, "[ERROR] Could not attach to container: " + e.getMessage());
+            session.close(CloseStatus.SERVER_ERROR.withReason("Docker exec failed"));
+        }
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+    protected void handleTextMessage
         forwardToContainer(session, message.getPayload().getBytes());
     }
 
@@ -322,8 +328,10 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
     /** Creates a Docker exec, wires stdin/stdout streams, and starts the background exec thread. */
     private void startDockerExec(WebSocketSession session, LabAssignment assignment) {
         String containerId = assignment.getContainerId();
+        // Use /bin/sh as the exec entry-point and exec into bash if available;
+        // this works on both Alpine (sh only) and Debian/Ubuntu (bash present) images.
         ExecCreateCmdResponse execResponse = dockerClient.execCreateCmd(containerId)
-                .withCmd("bash")
+                .withCmd("/bin/sh", "-c", "[ -x /bin/bash ] && exec /bin/bash || exec /bin/sh")
                 .withAttachStdin(true)
                 .withAttachStdout(true)
                 .withAttachStderr(true)
@@ -367,6 +375,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
             log.debug("Exec thread interrupted for session {}", session.getId());
         } catch (Exception e) {
             log.error("Exec error for session {}: {}", session.getId(), e.getMessage(), e);
+            sendErrorText(session, "[ERROR] Terminal exec failed: " + e.getMessage());
         } finally {
             closeQuietly(session);
         }
@@ -395,7 +404,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
             // Step 1: Resize PTY to actual dimensions (height=24 rows, width=80 cols)
             dockerClient.resizeExecCmd(execId).withSize(24, 80).exec();
 
-            // Step 2: Wait for bash to notice the resize
+            // Step 2: Wait for the shell to notice the resize
             Thread.sleep(200);
 
             // Step 3: Force terminal into sane state with echo enabled
