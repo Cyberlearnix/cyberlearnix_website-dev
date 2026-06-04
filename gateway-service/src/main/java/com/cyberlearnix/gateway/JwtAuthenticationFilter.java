@@ -157,7 +157,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         if (path.startsWith("/api/courses") && 
             !path.contains("/full") && 
             !path.contains("/progress") && 
-            !path.endsWith("/teachers")) {
+            !path.endsWith("/teachers") &&
+            !path.contains("/curriculum")) {
             return true;
         }
 
