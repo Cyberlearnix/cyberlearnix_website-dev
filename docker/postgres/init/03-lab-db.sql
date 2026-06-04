@@ -33,8 +33,8 @@ CREATE TABLE course_lab_configs (
 CREATE TABLE lab_approval_requests (
     id BIGSERIAL PRIMARY KEY,
     course_id BIGINT NOT NULL,
-    student_id BIGINT NOT NULL,
-    requested_by_instructor_id BIGINT,
+    student_id VARCHAR(255) NOT NULL,
+    requested_by_instructor_id VARCHAR(255),
     lab_template_id BIGINT NOT NULL REFERENCES lab_templates(id),
     status VARCHAR(16) DEFAULT 'PENDING',     -- PENDING | APPROVED | REJECTED
     rejection_reason TEXT,
@@ -48,8 +48,8 @@ CREATE TABLE lab_approval_requests (
 -- Active student container sessions
 CREATE TABLE lab_assignments (
     id BIGSERIAL PRIMARY KEY,
-    student_id BIGINT NOT NULL,
-    instructor_id BIGINT,
+    student_id VARCHAR(255) NOT NULL,
+    instructor_id VARCHAR(255),
     lab_template_id BIGINT REFERENCES lab_templates(id),
     course_id BIGINT,                         -- which course this lab belongs to
     approval_request_id BIGINT REFERENCES lab_approval_requests(id),
@@ -74,7 +74,7 @@ VALUES
   ('Linux Basics',
    'alpine:3.19',
    'Lightweight Alpine Linux — perfect for learning shell commands, file navigation, and basic scripting.',
-   'bash, sh, vim, nano, curl, wget, grep, awk, sed',
+   'sh, vim, nano, curl, wget, grep, awk, sed',
    0.25, 268435456),          -- 0.25 CPU, 256 MB
 
   ('Ubuntu Developer',

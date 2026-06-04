@@ -55,4 +55,13 @@ public class MediaService {
 
         return mediaFileRepository.save(mediaFile);
     }
+
+    public boolean deleteMedia(String fileId) {
+        boolean driveDeleted = googleDriveService.isEnabled() && googleDriveService.deleteFile(fileId);
+        // Remove DB record by Drive file ID embedded in the URL
+        mediaFileRepository.findAll().stream()
+                .filter(m -> m.getUrl() != null && m.getUrl().contains(fileId))
+                .forEach(mediaFileRepository::delete);
+        return driveDeleted;
+    }
 }
