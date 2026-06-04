@@ -8,6 +8,30 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 
 ### Build
 - Root build: `./gradlew build`
+
+## Learnings (prepended)
+
+### [2026-06-04] CMS MediaController — Drive Connection + Security Fix
+
+**File:** `cms-service/src/main/java/com/cyberlearnix/cms/controller/MediaController.java`
+
+**Bugs fixed:**
+1. **`uploadedBy` from user-controlled query param** — Anyone could forge the uploader identity. Changed to read from `X-User-Id` request header (injected by the JWT gateway filter).
+2. **HTTP 200 on upload** — Should be 201 Created. Fixed.
+3. **Missing DELETE endpoint** — Added `DELETE /api/cms/media/{fileId}` that delegates to a new `MediaService.deleteMedia(fileId)` method.
+
+**New `MediaService.deleteMedia(String fileId)`:** calls `googleDriveService.deleteFile(fileId)` then removes the matching `MediaFile` DB record (matched by fileId substring in the stored URL).
+
+**Security note:** `cms-service/SecurityConfig` already gates `POST /api/cms/**` to `ROLE_ADMIN` — so the upload endpoint only needs the gateway-injected `X-User-Id` for audit, not a role check. The new DELETE endpoint inherits the same `ROLE_ADMIN` constraint.
+
+### Media API — Full Status (as of 2026-06-04)
+
+| Service | Controller | Endpoint | Drive wired? | Stream proxy? | Notes |
+|---------|-----------|----------|-------------|---------------|-------|
+| user-service | PhotoUploadController | `POST /api/users/upload/photo` | ✅ | N/A (returns view URL) | Auth: Spring Security Authentication |
+| course-service | MaterialUploadController | `POST /api/materials/upload/*`, `GET /api/materials/drive/stream/{id}` | ✅ | ✅ | Auth: X-User-Id + X-User-Role |
+| cms-service | MediaController | `GET/POST/DELETE /api/cms/media/**` | ✅ | N/A (returns view URL) | Auth: ROLE_ADMIN via SecurityConfig |
+| lab-service | LabMaterialController | `POST /api/labs/materials/upload`, `GET /api/labs/materials/drive/stream/{id}` | ✅ | ✅ | Auth: PreAuthorize ADMIN/INSTRUCTOR |
 - Single service: `./gradlew :{name}-service:build`
 - Compiled classes go to `build/classes/`, JARs to `build/libs/`
 
