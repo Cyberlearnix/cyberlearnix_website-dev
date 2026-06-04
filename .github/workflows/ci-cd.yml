@@ -249,7 +249,7 @@ jobs:
             IMAGE="${REGISTRY}/cyberlearnix-${svc}:${GIT_SHA}"
             echo "🚀 Deploying $svc → $IMAGE"
             kubectl set image deployment/${svc} ${svc}=${IMAGE} -n "$K3S_NAMESPACE"
-            kubectl rollout status deployment/${svc} -n "$K3S_NAMESPACE" --timeout=120s
+            kubectl rollout status deployment/${svc} -n "$K3S_NAMESPACE" --timeout=300s
           done
           rm -f /tmp/kubeconfig
           echo "✅ All services deployed successfully"
