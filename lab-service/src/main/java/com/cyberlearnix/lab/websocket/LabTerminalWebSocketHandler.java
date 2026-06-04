@@ -199,7 +199,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         forwardToContainer(session, message.getPayload().getBytes());
     }
 
