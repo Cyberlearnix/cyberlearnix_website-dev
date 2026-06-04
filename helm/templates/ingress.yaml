@@ -34,6 +34,19 @@ spec:
                 name: {{ $name }}
                 port:
                   name: http
+          {{- if eq $name "gateway-service" }}
+          {{- /* Route WebSocket terminal DIRECTLY to lab-service, bypassing the gateway.
+               Spring Cloud Gateway 4.1 re-frames binary WebSocket messages and may close
+               with 1002 (protocol error). Going nginx -> lab-service avoids double proxying.
+               lab-service validates the JWT itself from the ?token= query param. */}}
+          - path: /labs/terminal
+            pathType: Prefix
+            backend:
+              service:
+                name: lab-service
+                port:
+                  name: http
+          {{- end }}
     {{- end }}
     {{- if $.Values.hosts.lms }}
     - host: {{ $.Values.hosts.lms }}
