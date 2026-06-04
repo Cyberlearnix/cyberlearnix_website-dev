@@ -27,6 +27,7 @@ import java.util.Map;
 @RequestMapping("/api/materials")
 public class MaterialUploadController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MaterialUploadController.class);
     private static final String AUTH_REQUIRED = "Authentication required";
     private static final String KEY_ERROR = "error";
     private static final String KEY_SUCCESS = "success";
@@ -51,6 +52,8 @@ public class MaterialUploadController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(KEY_ERROR, AUTH_REQUIRED));
         }
         if (!googleDriveService.isEnabled()) {
+            log.error("Thumbnail upload rejected — GOOGLE_DRIVE_CREDENTIALS_JSON_B64 is not set. "
+                    + "Add it to the cyberlearnix-secrets K8s secret and restart course-service.");
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(Map.of(KEY_ERROR, "Google Drive upload is not configured on this server"));
         }
