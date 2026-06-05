@@ -2,6 +2,31 @@
 
 ## Learnings
 
+### [2026-06-05] Lab Pre-Installation Build Pipeline — DockerClientService + LabImageBuildService
+
+**New files created:**
+- `lab-service/src/main/java/com/cyberlearnix/lab/entity/SetupStatus.java` — enum: `NOT_CONFIGURED`, `BUILDING`, `STAGED`, `ACTIVE`, `FAILED`
+- `lab-service/src/main/java/com/cyberlearnix/lab/service/LabImageBuildService.java` — async build service with SSE streaming
+
+**Files modified:**
+- `CourseLabConfig` — added 5 new fields: `setupScript`, `setupStatus`, `setupLog`, `stagedDockerImage`, `activeDockerImage`
+- `CourseLabConfigRepository` — added `Optional<CourseLabConfig> findByCourseId(Long courseId)`
+- `DockerClientService` — added `createSetupContainer`, `execScript`, `commitContainer` methods; added imports for `ExecCreateCmdResponse`, `Frame`, `ResultCallback`
+- `LabServiceApplication` — added `@EnableAsync`
+
+**Key import paths for docker-java 3.3.4:**
+- `com.github.dockerjava.api.command.ExecCreateCmdResponse`
+- `com.github.dockerjava.api.model.Frame`
+- `com.github.dockerjava.api.async.ResultCallback` (contains inner `Adapter<A_RES_T>`)
+
+**Convention — build pipeline flow:**
+1. Admin saves script → `SetupStatus.NOT_CONFIGURED`
+2. Admin triggers build → `BUILDING` → async exec in temp container → commit image → `STAGED`
+3. Admin clicks Publish → `ACTIVE`; `activeDockerImage` is set; students use this image
+4. On build failure, `activeDockerImage` is **not** touched — students keep previous working image
+
+**SSE approach:** In-memory `ConcurrentHashMap` per courseId buffers logs for reconnect replay. `SseEmitter` timeout set to 600 000 ms (10 min) to cover long-running setup scripts.
+
 ### [2026-06-04] Media API — Helm Drive Credential Wiring Fixes
 
 **Bugs fixed in `helm/templates/deployment.yaml`:**
