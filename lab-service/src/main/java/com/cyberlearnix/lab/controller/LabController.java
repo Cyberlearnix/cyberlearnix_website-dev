@@ -47,7 +47,8 @@ public class LabController {
     public ResponseEntity<LabAssignment> assignLab(@Valid @RequestBody AssignLabRequest request,
                                                    @RequestHeader(value = "X-User-Id", required = false) String callerId) {
         String instructorId = request.getInstructorId() != null ? request.getInstructorId() : callerId;
-        LabAssignment assignment = labService.assignLab(request.getStudentId(), request.getTemplateId(), instructorId);
+        LabAssignment assignment = labService.assignLab(
+                request.getStudentId(), request.getTemplateId(), instructorId, request.getCourseId());
         return ResponseEntity.status(HttpStatus.CREATED).body(assignment);
     }
 
@@ -197,6 +198,7 @@ public class LabController {
 
     /**
      * Student: get their lab assignments for a specific course.
+     * Falls back to any active lab with no course link if no course-specific assignment found.
      */
     @GetMapping("/my-labs/course/{courseId}")
     @PreAuthorize("isAuthenticated()")
@@ -204,6 +206,55 @@ public class LabController {
             @PathVariable Long courseId,
             @RequestHeader("X-User-Id") String studentId) {
         return ResponseEntity.ok(courseLabService.getMyLabsForCourse(studentId, courseId));
+    }
+
+    /**
+     * Student: get active lab status for a course (single object, not a list).
+     * Returns the assignment + connection info if a lab is running, or a status-only
+     * response if the lab is not yet started. Includes the full lab template details.
+     * This endpoint is the preferred way for the student dashboard to check lab status
+     * per course — it handles null-courseId fallback transparently.
+     */
+    @GetMapping("/my-lab/course/{courseId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> getMyLabStatusForCourse(
+            @PathVariable Long courseId,
+            @RequestHeader("X-User-Id") String studentId) {
+        List<LabAssignment> labs = courseLabService.getMyLabsForCourse(studentId, courseId);
+        if (labs.isEmpty()) {
+            // Check if the course even has a lab configured
+            List<com.cyberlearnix.lab.entity.CourseLabConfig> configs =
+                    courseLabService.getCourseLabConfigs(courseId);
+            Map<String, Object> resp = new java.util.LinkedHashMap<>();
+            resp.put("status", "NOT_STARTED");
+            resp.put("hasLabConfigured", !configs.isEmpty());
+            resp.put("labConfig", configs.isEmpty() ? null : configs.get(0));
+            resp.put("assignment", null);
+            return ResponseEntity.ok(resp);
+        }
+        // Return the most relevant assignment (RUNNING > PROVISIONING > PAUSED > others)
+        LabAssignment best = labs.stream()
+                .sorted(java.util.Comparator.comparingInt(a -> {
+                    switch (a.getStatus()) {
+                        case RUNNING: return 0;
+                        case PROVISIONING: return 1;
+                        case PAUSED: return 2;
+                        default: return 3;
+                    }
+                }))
+                .findFirst().get();
+        Map<String, Object> resp = new java.util.LinkedHashMap<>();
+        resp.put("status", best.getStatus().name());
+        resp.put("hasLabConfigured", true);
+        resp.put("assignment", best);
+        if (best.getStatus() == AssignmentStatus.RUNNING) {
+            resp.put("connectionInfo", Map.of(
+                    "websocketPath", "/labs/terminal/" + best.getId(),
+                    "containerId", best.getContainerId() != null ? best.getContainerId() : "",
+                    "containerName", best.getContainerName() != null ? best.getContainerName() : ""
+            ));
+        }
+        return ResponseEntity.ok(resp);
     }
 
     /**

@@ -36,6 +36,16 @@ public class LabService {
      */
     @Transactional
     public LabAssignment assignLab(String studentId, Long templateId, String instructorId) {
+        return assignLab(studentId, templateId, instructorId, null);
+    }
+
+    /**
+     * Creates a LabAssignment with an optional courseId, provisions a container, and starts it.
+     * Providing courseId links the assignment to a specific course so students can see it
+     * in their per-course lab view via GET /api/labs/my-labs/course/{courseId}.
+     */
+    @Transactional
+    public LabAssignment assignLab(String studentId, Long templateId, String instructorId, Long courseId) {
         LabTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new EntityNotFoundException("Lab template not found: " + templateId));
 
@@ -47,6 +57,7 @@ public class LabService {
         assignment.setStudentId(studentId);
         assignment.setInstructorId(instructorId);
         assignment.setLabTemplate(template);
+        assignment.setCourseId(courseId);
         assignment.setStatus(AssignmentStatus.PROVISIONING);
         assignment.setLastActiveAt(Instant.now());
         assignment = assignmentRepository.save(assignment);

@@ -26,5 +26,7 @@ public interface LabAssignmentRepository extends JpaRepository<LabAssignment, Lo
 
     List<LabAssignment> findByStudentIdAndCourseId(String studentId, Long courseId);
 
+    List<LabAssignment> findByStudentIdAndCourseIdIsNullAndStatusIn(String studentId, List<AssignmentStatus> statuses);
+
     List<LabAssignment> findByCourseId(Long courseId);
 }
