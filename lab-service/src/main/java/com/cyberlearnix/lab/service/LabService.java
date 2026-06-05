@@ -1,8 +1,10 @@
 package com.cyberlearnix.lab.service;
 
 import com.cyberlearnix.lab.entity.AssignmentStatus;
+import com.cyberlearnix.lab.entity.CourseLabConfig;
 import com.cyberlearnix.lab.entity.LabAssignment;
 import com.cyberlearnix.lab.entity.LabTemplate;
+import com.cyberlearnix.lab.repository.CourseLabConfigRepository;
 import com.cyberlearnix.lab.repository.LabAssignmentRepository;
 import com.cyberlearnix.lab.repository.LabTemplateRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +28,7 @@ public class LabService {
     private final LabAssignmentRepository assignmentRepository;
     private final LabTemplateRepository templateRepository;
     private final DockerClientService dockerClientService;
+    private final CourseLabConfigRepository courseLabConfigRepository;
 
     @Value("${lab.defaults.idle-timeout-minutes:30}")
     private int idleTimeoutMinutes;
@@ -63,7 +66,20 @@ public class LabService {
         assignment = assignmentRepository.save(assignment);
 
         try {
-            String containerId = dockerClientService.createContainer(template, studentId, assignment.getId());
+            // Check if course has a custom pre-built image; override the template image if so
+            LabTemplate effectiveTemplate = template;
+            if (courseId != null) {
+                effectiveTemplate = courseLabConfigRepository
+                        .findByCourseIdAndLabTemplateId(courseId, templateId)
+                        .filter(cfg -> cfg.getActiveDockerImage() != null && !cfg.getActiveDockerImage().isBlank())
+                        .map(cfg -> {
+                            log.info("Assignment {}: using pre-built image '{}' for course {}",
+                                    assignment.getId(), cfg.getActiveDockerImage(), courseId);
+                            return cloneTemplateWithImage(template, cfg.getActiveDockerImage());
+                        })
+                        .orElse(template);
+            }
+            String containerId = dockerClientService.createContainer(effectiveTemplate, studentId, assignment.getId());
             String containerName = "cyberlearnix-lab-" + studentId + "-" + assignment.getId();
             dockerClientService.startContainer(containerId);
 
@@ -168,5 +184,23 @@ public class LabService {
     private LabAssignment getAssignment(Long assignmentId) {
         return assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Lab assignment not found: " + assignmentId));
+    }
+
+    /**
+     * Returns a transient (non-persisted) copy of the template with the dockerImage overridden.
+     * Used when a course has an active pre-built image that replaces the template's default image.
+     */
+    private LabTemplate cloneTemplateWithImage(LabTemplate source, String dockerImage) {
+        LabTemplate copy = new LabTemplate();
+        // id is intentionally null — this is a transient copy for Docker API use only
+        copy.setName(source.getName());
+        copy.setDockerImage(dockerImage);
+        copy.setCpuLimit(source.getCpuLimit());
+        copy.setMemoryLimit(source.getMemoryLimit());
+        copy.setDescription(source.getDescription());
+        copy.setToolsList(source.getToolsList());
+        copy.setIsActive(source.getIsActive());
+        copy.setCreatedAt(source.getCreatedAt());
+        return copy;
     }
 }

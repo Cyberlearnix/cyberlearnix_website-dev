@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CourseLabConfigRepository extends JpaRepository<CourseLabConfig, Long> {
@@ -14,4 +15,8 @@ public interface CourseLabConfigRepository extends JpaRepository<CourseLabConfig
     List<CourseLabConfig> findByIsActiveTrue();
 
     boolean existsByCourseIdAndLabTemplateId(Long courseId, Long templateId);
+
+    Optional<CourseLabConfig> findByCourseId(Long courseId);
+
+    Optional<CourseLabConfig> findByCourseIdAndLabTemplateId(Long courseId, Long templateId);
 }

@@ -2,10 +2,13 @@ package com.cyberlearnix.lab.service;
 
 import com.cyberlearnix.lab.entity.LabTemplate;
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
+import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.exception.NotFoundException;
+import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.RestartPolicy;
 import lombok.RequiredArgsConstructor;
@@ -117,5 +120,81 @@ public class DockerClientService {
             log.warn("Failed to inspect container {}: {}", containerId, e.getMessage());
             return Map.of("id", containerId, "status", "unknown", "error", e.getMessage());
         }
+    }
+
+    // ── Pre-installation build helpers ────────────────────────────────────────
+
+    /**
+     * Creates (but does not start) a plain container for setup/build purposes.
+     * No resource limits, no labels beyond "managed-by" and "purpose".
+     */
+    public String createSetupContainer(String dockerImage, String containerName) {
+        // Pull image if not present locally
+        try {
+            dockerClient.inspectImageCmd(dockerImage).exec();
+        } catch (NotFoundException e) {
+            log.info("Image {} not found locally, pulling...", dockerImage);
+            try {
+                dockerClient.pullImageCmd(dockerImage)
+                        .exec(new PullImageResultCallback())
+                        .awaitCompletion();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while pulling " + dockerImage, ie);
+            }
+        }
+
+        CreateContainerResponse response = dockerClient.createContainerCmd(dockerImage)
+                .withName(containerName)
+                .withTty(true)
+                .withAttachStdin(true)
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .withLabels(Map.of("managed-by", "cyberlearnix", "purpose", "setup"))
+                .exec();
+
+        log.info("Created setup container {} ({})", containerName, response.getId());
+        return response.getId();
+    }
+
+    /**
+     * Runs a bash script inside a running container and returns the combined stdout+stderr output.
+     * Waits up to timeoutSeconds for the command to complete.
+     */
+    public String execScript(String containerId, String script, int timeoutSeconds) throws Exception {
+        ExecCreateCmdResponse execResp = dockerClient.execCreateCmd(containerId)
+                .withCmd("bash", "-c", script)
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .exec();
+
+        StringBuilder output = new StringBuilder();
+        dockerClient.execStartCmd(execResp.getId())
+                .exec(new ResultCallback.Adapter<Frame>() {
+                    @Override
+                    public void onNext(Frame frame) {
+                        if (frame != null && frame.getPayload() != null) {
+                            output.append(new String(frame.getPayload(), java.nio.charset.StandardCharsets.UTF_8));
+                        }
+                    }
+                })
+                .awaitCompletion(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
+        return output.toString();
+    }
+
+    /**
+     * Commits a running/stopped container as a new Docker image with the given tag.
+     *
+     * @return the full image tag
+     */
+    public String commitContainer(String containerId, String imageTag) {
+        String repo = imageTag.contains(":") ? imageTag.split(":")[0] : imageTag;
+        String tag  = imageTag.contains(":") ? imageTag.split(":")[1] : "latest";
+        dockerClient.commitCmd(containerId)
+                .withRepository(repo)
+                .withTag(tag)
+                .exec();
+        log.info("Committed container {} as image {}", containerId, imageTag);
+        return imageTag;
     }
 }

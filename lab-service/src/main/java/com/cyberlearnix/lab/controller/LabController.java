@@ -14,13 +14,16 @@ import com.cyberlearnix.lab.repository.LabAssignmentRepository;
 import com.cyberlearnix.lab.repository.LabTemplateRepository;
 import com.cyberlearnix.lab.service.CourseLabService;
 import com.cyberlearnix.lab.service.DockerClientService;
+import com.cyberlearnix.lab.service.LabImageBuildService;
 import com.cyberlearnix.lab.service.LabService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
 import java.util.List;
@@ -37,6 +40,7 @@ public class LabController {
     private final LabTemplateRepository templateRepository;
     private final LabAssignmentRepository assignmentRepository;
     private final DockerClientService dockerClientService;
+    private final LabImageBuildService labImageBuildService;
 
     /**
      * Admin / instructor assigns a lab template to a student.
@@ -324,5 +328,56 @@ public class LabController {
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<List<LabApprovalRequest>> getCourseRequests(@PathVariable Long courseId) {
         return ResponseEntity.ok(courseLabService.getCourseRequests(courseId));
+    }
+
+    // ─── Pre-installation Build Pipeline ─────────────────────────────────────
+
+    /**
+     * Admin: save or update the setup script for a course lab.
+     */
+    @PutMapping("/courses/{courseId}/setup-script")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CourseLabConfig> saveSetupScript(
+            @PathVariable Long courseId,
+            @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(labImageBuildService.saveSetupScript(courseId, body.get("setupScript")));
+    }
+
+    /**
+     * Admin: trigger async build of the course lab image.
+     * Returns immediately; log is streamed via /build-log-stream.
+     */
+    @PostMapping("/courses/{courseId}/build-image")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> buildLabImage(@PathVariable Long courseId) {
+        labImageBuildService.triggerBuild(courseId);
+        return ResponseEntity.accepted().body(Map.of("status", "BUILDING", "message", "Build started"));
+    }
+
+    /**
+     * Admin: SSE endpoint — streams live build log output.
+     */
+    @GetMapping(value = "/courses/{courseId}/build-log-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public SseEmitter streamBuildLog(@PathVariable Long courseId) {
+        return labImageBuildService.createLogEmitter(courseId);
+    }
+
+    /**
+     * Admin: get current build status + final log.
+     */
+    @GetMapping("/courses/{courseId}/build-status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getBuildStatus(@PathVariable Long courseId) {
+        return ResponseEntity.ok(labImageBuildService.getBuildStatus(courseId));
+    }
+
+    /**
+     * Admin: publish the staged image — students will get it on next lab start.
+     */
+    @PostMapping("/courses/{courseId}/publish-image")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CourseLabConfig> publishStagedImage(@PathVariable Long courseId) {
+        return ResponseEntity.ok(labImageBuildService.publishStagedImage(courseId));
     }
 }
