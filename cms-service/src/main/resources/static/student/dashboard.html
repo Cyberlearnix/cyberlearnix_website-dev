@@ -559,7 +559,9 @@ function labCard(lab) {
         ${lab.courseId ? `<div style="margin-bottom:8px;"><a href="course.html?courseId=${lab.courseId}" class="btn btn-outline btn-sm btn-full">📚 Go to Course</a></div>` : ''}
         ${isRunning
           ? `<button class="btn btn-primary btn-sm btn-full" onclick="launchLabTerminal(${lab.id})">🖥️ Launch Terminal</button>`
-          : `<div style="font-size:0.82rem;color:var(--cl-text-muted);text-align:center;padding:6px 0;">Terminal unavailable — status: ${status}</div>`
+          : status === 'PAUSED'
+            ? `<button class="btn btn-secondary btn-sm btn-full" onclick="resumeLab(${lab.id}, this)">▶️ Resume Lab</button>`
+            : `<div style="font-size:0.82rem;color:var(--cl-text-muted);text-align:center;padding:6px 0;">Terminal unavailable — status: ${status}</div>`
         }
       </div>
     </div>`;
@@ -568,6 +570,27 @@ function labCard(lab) {
 function launchLabTerminal(assignmentId) {
   const url = `terminal.html?assignmentId=${encodeURIComponent(assignmentId)}&token=${encodeURIComponent(token)}`;
   window.open(url, '_blank', 'width=1000,height=650,noopener,noreferrer');
+}
+
+async function resumeLab(assignmentId, btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Resuming…';
+  try {
+    const res = await apiFetch(`/api/labs/${assignmentId}/resume`, { method: 'POST' });
+    if (res.ok) {
+      showToast('Lab resumed successfully!', 'success');
+      setTimeout(() => loadDashboard(), 1500);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      btn.textContent = '▶️ Resume Lab';
+      btn.disabled = false;
+      showToast('Could not resume lab: ' + (err.message || res.status), 'error');
+    }
+  } catch (e) {
+    btn.textContent = '▶️ Resume Lab';
+    btn.disabled = false;
+    showToast('Network error resuming lab.', 'error');
+  }
 }
 
 /* ── Init ── */

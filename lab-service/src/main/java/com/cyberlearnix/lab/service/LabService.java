@@ -94,6 +94,26 @@ public class LabService {
         return assignmentRepository.save(assignment);
     }
 
+    /** Restarts a PAUSED container and marks the assignment as RUNNING. */
+    @Transactional
+    public LabAssignment resumeLab(Long assignmentId) {
+        LabAssignment assignment = getAssignment(assignmentId);
+        if (assignment.getStatus() != AssignmentStatus.PAUSED) {
+            throw new IllegalStateException("Lab assignment " + assignmentId + " is not paused (status=" + assignment.getStatus() + ")");
+        }
+        if (assignment.getContainerId() == null) {
+            throw new IllegalStateException("Lab assignment " + assignmentId + " has no container to resume");
+        }
+        try {
+            dockerClientService.startContainer(assignment.getContainerId());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to start container " + assignment.getContainerId() + ": " + e.getMessage(), e);
+        }
+        assignment.setStatus(AssignmentStatus.RUNNING);
+        assignment.setLastActiveAt(Instant.now());
+        return assignmentRepository.save(assignment);
+    }
+
     /** Stops and removes the container; marks the assignment TERMINATED (not resumable). */
     @Transactional
     public LabAssignment terminateLab(Long assignmentId) {
