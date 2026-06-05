@@ -394,8 +394,13 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         try {
             synchronized (session) {
                 if (session.isOpen()) {
-                    session.sendMessage(new BinaryMessage(ByteBuffer.wrap(frame.getPayload())));
-                    log.info("📨 Sent {} bytes to browser", frame.getPayload().length);
+                    // Send as text frame so Spring Cloud Gateway proxies it without corruption.
+                    // SCG 4.1 (Reactor Netty) re-frames binary WebSocket messages and the client
+                    // receives a 1002 (Protocol error). Text frames pass through correctly.
+                    // The frontend handles both string and binary data (xterm.js writes either).
+                    String text = new String(frame.getPayload(), java.nio.charset.StandardCharsets.UTF_8);
+                    session.sendMessage(new TextMessage(text));
+                    log.info("📨 Sent {} bytes to browser (as text frame)", frame.getPayload().length);
                 }
             }
         } catch (IOException e) {
