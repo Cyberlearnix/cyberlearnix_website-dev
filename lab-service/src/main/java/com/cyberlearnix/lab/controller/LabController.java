@@ -267,6 +267,34 @@ public class LabController {
     }
 
     /**
+     * Student: self-service start (or request) a lab for a course.
+     * If requiresApproval=false on the course config, the lab is provisioned immediately.
+     * If requiresApproval=true, a PENDING approval request is created.
+     * Returns 200 with { requiresApproval, approvalRequest, assignment? }.
+     * Returns 409 if the student already has an active lab for this course.
+     */
+    @PostMapping("/my-lab/course/{courseId}/start")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> startMyLabForCourse(
+            @PathVariable Long courseId,
+            @RequestHeader("X-User-Id") String studentId) {
+        try {
+            Map<String, Object> result = courseLabService.startLabForCourse(courseId, studentId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalStateException ex) {
+            if (ex.getMessage() != null && ex.getMessage().startsWith("ALREADY_ACTIVE:")) {
+                long assignmentId = Long.parseLong(ex.getMessage().split(":")[1]);
+                LabAssignment existing = assignmentRepository.findById(assignmentId).orElseThrow();
+                Map<String, Object> resp = new java.util.LinkedHashMap<>();
+                resp.put("status", existing.getStatus().name());
+                resp.put("assignment", existing);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(resp);
+            }
+            throw ex;
+        }
+    }
+
+    /**
      * Student: get all their lab assignments across all courses.
      */
     @GetMapping("/my-labs")

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -175,6 +176,50 @@ public class CourseLabService {
         return assignmentRepository.findByStudentIdAndCourseIdIsNullAndStatusIn(
                 studentId,
                 List.of(AssignmentStatus.RUNNING, AssignmentStatus.PROVISIONING, AssignmentStatus.PAUSED));
+    }
+
+    /**
+     * Student: self-service "start lab" for a course.
+     * <p>
+     * - If the student already has an active (RUNNING/PROVISIONING/PAUSED) assignment → return it.
+     * - If the course has an active config with requiresApproval=false → auto-provision.
+     * - If requiresApproval=true → create a PENDING approval request.
+     * - Throws if no lab is configured for the course.
+     */
+    @Transactional
+    public Map<String, Object> startLabForCourse(Long courseId, String studentId) {
+        // Return existing active assignment if any
+        List<LabAssignment> existing = getMyLabsForCourse(studentId, courseId);
+        List<AssignmentStatus> active = List.of(
+                AssignmentStatus.RUNNING, AssignmentStatus.PROVISIONING, AssignmentStatus.PAUSED);
+        existing.stream()
+                .filter(a -> active.contains(a.getStatus()))
+                .findFirst()
+                .ifPresent(a -> {
+                    throw new IllegalStateException("ALREADY_ACTIVE:" + a.getId());
+                });
+
+        List<CourseLabConfig> configs = courseLabConfigRepository.findByCourseIdAndIsActiveTrue(courseId);
+        if (configs.isEmpty()) {
+            throw new EntityNotFoundException("No active lab configuration found for course " + courseId);
+        }
+        CourseLabConfig config = configs.get(0);
+
+        LabRequestDto dto = new LabRequestDto();
+        dto.setCourseId(courseId);
+        dto.setStudentId(studentId);
+        dto.setTemplateId(config.getLabTemplate().getId());
+
+        LabApprovalRequest req = requestLab(dto, studentId);
+
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("requiresApproval", config.getRequiresApproval());
+        result.put("approvalRequest", req);
+        if (req.getResultingAssignmentId() != null) {
+            assignmentRepository.findById(req.getResultingAssignmentId())
+                    .ifPresent(a -> result.put("assignment", a));
+        }
+        return result;
     }
 
     /**
