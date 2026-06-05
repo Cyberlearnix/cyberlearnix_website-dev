@@ -29,7 +29,7 @@ public class LabImageBuildService {
     // ── Script management ─────────────────────────────────────────────────────
 
     public CourseLabConfig saveSetupScript(Long courseId, String script) {
-        CourseLabConfig config = courseLabConfigRepository.findByCourseId(courseId)
+        CourseLabConfig config = courseLabConfigRepository.findFirstByCourseIdAndIsActiveTrue(courseId)
                 .orElseThrow(() -> new EntityNotFoundException("No lab config for course: " + courseId));
         config.setSetupScript(script);
         if (config.getSetupStatus() == null || config.getSetupStatus() == SetupStatus.NOT_CONFIGURED) {
@@ -42,7 +42,7 @@ public class LabImageBuildService {
 
     @Async
     public void triggerBuild(Long courseId) {
-        CourseLabConfig config = courseLabConfigRepository.findByCourseId(courseId)
+        CourseLabConfig config = courseLabConfigRepository.findFirstByCourseIdAndIsActiveTrue(courseId)
                 .orElseThrow(() -> new EntityNotFoundException("No lab config for course: " + courseId));
 
         if (config.getSetupScript() == null || config.getSetupScript().isBlank()) {
@@ -88,7 +88,7 @@ public class LabImageBuildService {
             containerId = null;
 
             // Reload from DB to avoid stale-state overwrite
-            config = courseLabConfigRepository.findByCourseId(courseId).orElseThrow();
+            config = courseLabConfigRepository.findFirstByCourseIdAndIsActiveTrue(courseId).orElseThrow();
             config.setStagedDockerImage(stagedImageTag);
             config.setSetupStatus(SetupStatus.STAGED);
             config.setSetupLog(fullLog.toString());
@@ -102,7 +102,7 @@ public class LabImageBuildService {
             emitLog(courseId, "\n=== BUILD FAILED: " + e.getMessage() + " ===\n");
 
             // DO NOT touch activeDockerImage — students keep using previous good image
-            config = courseLabConfigRepository.findByCourseId(courseId).orElseThrow();
+            config = courseLabConfigRepository.findFirstByCourseIdAndIsActiveTrue(courseId).orElseThrow();
             config.setSetupStatus(SetupStatus.FAILED);
             config.setSetupLog(fullLog + "\nBUILD FAILED: " + e.getMessage());
             courseLabConfigRepository.save(config);
@@ -119,7 +119,7 @@ public class LabImageBuildService {
     // ── Publish ───────────────────────────────────────────────────────────────
 
     public CourseLabConfig publishStagedImage(Long courseId) {
-        CourseLabConfig config = courseLabConfigRepository.findByCourseId(courseId)
+        CourseLabConfig config = courseLabConfigRepository.findFirstByCourseIdAndIsActiveTrue(courseId)
                 .orElseThrow(() -> new EntityNotFoundException("No lab config for course: " + courseId));
         if (config.getStagedDockerImage() == null) {
             throw new IllegalStateException("No staged image to publish for course: " + courseId);
@@ -132,7 +132,7 @@ public class LabImageBuildService {
     // ── Status ────────────────────────────────────────────────────────────────
 
     public Map<String, Object> getBuildStatus(Long courseId) {
-        CourseLabConfig config = courseLabConfigRepository.findByCourseId(courseId)
+        CourseLabConfig config = courseLabConfigRepository.findFirstByCourseIdAndIsActiveTrue(courseId)
                 .orElseThrow(() -> new EntityNotFoundException("No lab config for course: " + courseId));
         return Map.of(
                 "status",       config.getSetupStatus() != null ? config.getSetupStatus().name() : "NOT_CONFIGURED",
