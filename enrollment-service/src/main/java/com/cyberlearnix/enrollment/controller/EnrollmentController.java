@@ -71,9 +71,11 @@ public class EnrollmentController {
         }
 
         if (targetStudentId != null && courseId != null) {
+            // Return as a list so the response shape is consistent with other branches
+            // and Feign clients that expect List<Enrollment>
             return enrollmentRepository.findByStudentIdAndCourseId(targetStudentId, courseId)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+                    .map(e -> ResponseEntity.ok(List.of(e)))
+                    .orElse(ResponseEntity.ok(List.of()));
         } else if (targetStudentId != null && "student".equals(userRole)) {
             // Student sees only their own enrollments
             return ResponseEntity

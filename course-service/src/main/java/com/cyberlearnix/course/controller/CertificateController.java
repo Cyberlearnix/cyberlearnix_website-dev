@@ -30,6 +30,21 @@ public class CertificateController {
         return ResponseEntity.ok(certificateRepository.findAll());
     }
 
+    /**
+     * Student-facing endpoint: returns certificates for the currently authenticated student.
+     * Reads student identity from the X-User-Id header injected by the gateway.
+     */
+    @GetMapping("/student")
+    public ResponseEntity<List<Certificate>> getStudentCertificates(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestParam(required = false) String studentId) {
+        String id = (studentId != null) ? studentId : userId;
+        if (id == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(certificateRepository.findByStudentId(id));
+    }
+
     @PostMapping
     public ResponseEntity<Certificate> issueCertificate(@RequestBody Certificate certificate) {
         // Generate unique certificate ID if not provided

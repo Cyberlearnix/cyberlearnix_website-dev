@@ -444,23 +444,26 @@ public class CourseController {
     public ResponseEntity<?> getCourseCurriculum(@PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = true) String userId,
             @RequestHeader(value = "X-User-Role", required = true) String userRole) {
-        // Verify student is enrolled (skip for admins, instructors, and teachers assigned to the course)
+        // Verify student is enrolled (skip for admins, instructors, teachers, dual, and institute roles)
         boolean isPrivileged = "admin".equals(userRole) || "instructor".equals(userRole)
-                || "dual".equals(userRole) || "institute".equals(userRole);
+                || "teacher".equals(userRole) || "dual".equals(userRole) || "institute".equals(userRole);
         boolean isAssignedTeacher = !isPrivileged && courseTeacherRepository.existsByCourseIdAndTeacherId(id, userId);
         boolean isEnrolled = false;
         if (!isPrivileged && !isAssignedTeacher) {
             try {
-                isEnrolled = enrollmentServiceClient.isEnrolled(userId, id);
+                Boolean enrolledResult = enrollmentServiceClient.isEnrolled(userId, id);
+                isEnrolled = Boolean.TRUE.equals(enrolledResult);
+                log.debug("Enrollment check for student={} course={} → enrolled={}", userId, id, isEnrolled);
             } catch (Exception e) {
                 log.error("Enrollment check failed for student={} course={} — {}: {} (check enrollment-service connectivity)",
                         userId, id, e.getClass().getSimpleName(), e.getMessage());
-                // enrollment-service unavailable — deny access
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                // enrollment-service unavailable — deny access with 503 to distinguish from 403 (not enrolled)
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                         .body(Map.of(KEY_SUCCESS, false, "error",
                                 "Unable to verify enrollment. Please try again or contact support."));
             }
             if (!isEnrolled) {
+                log.warn("Access denied: student={} is not enrolled in course={}", userId, id);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of(KEY_SUCCESS, false, "error", "You are not enrolled in this course"));
             }
