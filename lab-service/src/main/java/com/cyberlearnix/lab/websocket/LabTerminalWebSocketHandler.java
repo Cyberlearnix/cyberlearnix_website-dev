@@ -235,7 +235,8 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
     private String[] resolveCallerIdentity(WebSocketSession session) {
         String userId = session.getHandshakeHeaders().getFirst("X-User-Id");
         String role   = session.getHandshakeHeaders().getFirst("X-User-Role");
-        if (userId == null && session.getUri() != null) {
+        // Treat blank header (nginx stripping spoofed headers) same as absent — fall back to ?token=
+        if ((userId == null || userId.isBlank()) && session.getUri() != null) {
             String[] fromToken = parseCallerFromToken(session.getUri().getQuery());
             userId = fromToken[0];
             role   = fromToken[1];

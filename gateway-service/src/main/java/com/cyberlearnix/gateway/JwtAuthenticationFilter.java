@@ -168,7 +168,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             // NOTE: GET /api/enrollments/responses is intentionally NOT public — it returns
             // all student PII and payment data and requires ADMIN role.
             if (path.startsWith("/api/enrollments/forms/") ||
-                path.equals("/api/enrollments/responses/check")) {
+                path.equals("/api/enrollments/responses/check") ||
+                // Public: inter-service enrollment check (course-service Feign call, no JWT)
+                path.equals("/api/enrollments/check")) {
                 return true;
             }
 
