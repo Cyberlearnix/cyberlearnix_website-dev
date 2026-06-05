@@ -59,6 +59,11 @@ public class GlobalExceptionHandler {
         } else if (message != null && message.equals("Form not found")) {
             status = HttpStatus.NOT_FOUND;
             responseMessage = "The requested form was not found.";
+        } else if (message != null && message.startsWith("DB Save Error:")) {
+            // Temporary diagnostic: surface the DB error class so we can identify the root cause
+            log.error("DB save failed in enrollment-service", ex);
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+            responseMessage = message; // expose for diagnosis; remove after root cause is fixed
         } else {
             // SEC-004: Log full exception internally but never expose stack traces or internal
             // messages (DB errors, Feign details) to callers in 5xx responses.
