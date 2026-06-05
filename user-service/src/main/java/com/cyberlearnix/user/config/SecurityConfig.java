@@ -95,6 +95,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/teams", "/api/teams/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/site-settings", "/api/site-settings/**").permitAll()
                         .requestMatchers("/api/site-settings", "/api/site-settings/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         .requestMatchers("/api/activity/logs", "/api/activity/logs/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/stats/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/profile").authenticated()
