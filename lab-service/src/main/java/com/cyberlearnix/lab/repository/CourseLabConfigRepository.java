@@ -16,7 +16,7 @@ public interface CourseLabConfigRepository extends JpaRepository<CourseLabConfig
 
     boolean existsByCourseIdAndLabTemplateId(Long courseId, Long templateId);
 
-    Optional<CourseLabConfig> findByCourseId(Long courseId);
+    Optional<CourseLabConfig> findFirstByCourseIdAndIsActiveTrue(Long courseId);
 
     Optional<CourseLabConfig> findByCourseIdAndLabTemplateId(Long courseId, Long templateId);
 }
