@@ -223,7 +223,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 5. Deploy to K3s via kubectl (direct API access) ────────────────────────
+  # ── 5. Deploy to K3s via SSH (port 6443 is firewalled; SSH on 9022 is open) ──
   deploy:
     name: Deploy → K3s
     needs: [detect, build-push]
@@ -231,25 +231,33 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Deploy changed services via kubectl
+      - name: Deploy changed services via SSH
         env:
           CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
           GIT_SHA: ${{ github.sha }}
-          KUBECONFIG_DATA: ${{ secrets.K3S_KUBECONFIG }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
           K3S_NAMESPACE: ${{ secrets.K3S_NAMESPACE }}
         run: |
-          echo "$KUBECONFIG_DATA" | base64 -d > /tmp/kubeconfig
-          export KUBECONFIG=/tmp/kubeconfig
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SERVER_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
           SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
           REGISTRY="ghcr.io/cyberlearnix"
+
           for svc in $SERVICES; do
             IMAGE="${REGISTRY}/cyberlearnix-${svc}:${GIT_SHA}"
             echo "🚀 Deploying $svc → $IMAGE"
-            kubectl set image deployment/${svc} ${svc}=${IMAGE} -n "$K3S_NAMESPACE"
-            kubectl rollout status deployment/${svc} -n "$K3S_NAMESPACE" --timeout=300s
+            ssh -i ~/.ssh/id_deploy -p "$SERVER_PORT" \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              "root@${SERVER_HOST}" \
+              "kubectl set image deployment/${svc} ${svc}=${IMAGE} -n ${K3S_NAMESPACE} && \
+               kubectl rollout status deployment/${svc} -n ${K3S_NAMESPACE} --timeout=300s"
           done
-          rm -f /tmp/kubeconfig
+
+          rm -f ~/.ssh/id_deploy
           echo "✅ All services deployed successfully"
