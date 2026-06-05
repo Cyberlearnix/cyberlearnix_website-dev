@@ -64,6 +64,7 @@ public class LabService {
         assignment.setStatus(AssignmentStatus.PROVISIONING);
         assignment.setLastActiveAt(Instant.now());
         assignment = assignmentRepository.save(assignment);
+        final Long savedAssignmentId = assignment.getId();
 
         try {
             // Check if course has a custom pre-built image; override the template image if so
@@ -74,7 +75,7 @@ public class LabService {
                         .filter(cfg -> cfg.getActiveDockerImage() != null && !cfg.getActiveDockerImage().isBlank())
                         .map(cfg -> {
                             log.info("Assignment {}: using pre-built image '{}' for course {}",
-                                    assignment.getId(), cfg.getActiveDockerImage(), courseId);
+                                    savedAssignmentId, cfg.getActiveDockerImage(), courseId);
                             return cloneTemplateWithImage(template, cfg.getActiveDockerImage());
                         })
                         .orElse(template);
