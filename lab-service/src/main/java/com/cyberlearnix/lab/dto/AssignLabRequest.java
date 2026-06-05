@@ -14,4 +14,8 @@ public class AssignLabRequest {
 
     /** Optional: populated by gateway from JWT; fallback for direct calls */
     private String instructorId;
+
+    /** Optional: the course this lab assignment belongs to. When set, the lab
+     *  will appear in the student's per-course lab view. */
+    private Long courseId;
 }

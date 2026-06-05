@@ -4,6 +4,7 @@ import com.cyberlearnix.lab.dto.ApprovalDecisionDto;
 import com.cyberlearnix.lab.dto.CourseLabConfigRequest;
 import com.cyberlearnix.lab.dto.LabRequestDto;
 import com.cyberlearnix.lab.entity.ApprovalStatus;
+import com.cyberlearnix.lab.entity.AssignmentStatus;
 import com.cyberlearnix.lab.entity.CourseLabConfig;
 import com.cyberlearnix.lab.entity.LabApprovalRequest;
 import com.cyberlearnix.lab.entity.LabAssignment;
@@ -159,9 +160,21 @@ public class CourseLabService {
 
     /**
      * Student: get all their lab assignments for a specific course.
+     *
+     * First looks for assignments explicitly linked to the course (courseId = :courseId).
+     * If none are found, falls back to any RUNNING / PROVISIONING / PAUSED assignments
+     * that have no course link (courseId IS NULL) — this handles labs that were assigned
+     * directly by an admin before the courseId field was added.
      */
     public List<LabAssignment> getMyLabsForCourse(String studentId, Long courseId) {
-        return assignmentRepository.findByStudentIdAndCourseId(studentId, courseId);
+        List<LabAssignment> courseSpecific = assignmentRepository.findByStudentIdAndCourseId(studentId, courseId);
+        if (!courseSpecific.isEmpty()) {
+            return courseSpecific;
+        }
+        // Fallback: active labs with no course link
+        return assignmentRepository.findByStudentIdAndCourseIdIsNullAndStatusIn(
+                studentId,
+                List.of(AssignmentStatus.RUNNING, AssignmentStatus.PROVISIONING, AssignmentStatus.PAUSED));
     }
 
     /**
