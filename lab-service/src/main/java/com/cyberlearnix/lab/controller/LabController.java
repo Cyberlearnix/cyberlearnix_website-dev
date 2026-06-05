@@ -86,6 +86,15 @@ public class LabController {
     }
 
     /**
+     * Student resumes their own PAUSED lab (restarts the container).
+     */
+    @PostMapping("/{assignmentId}/resume")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<LabAssignment> resumeLab(@PathVariable Long assignmentId) {
+        return ResponseEntity.ok(labService.resumeLab(assignmentId));
+    }
+
+    /**
      * Admin view: all currently running containers with container stats.
      */
     @GetMapping("/admin/active")
