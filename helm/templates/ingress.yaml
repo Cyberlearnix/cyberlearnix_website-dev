@@ -34,19 +34,6 @@ spec:
                 name: {{ $name }}
                 port:
                   name: http
-          {{- if eq $name "gateway-service" }}
-          {{- /* Route WebSocket terminal DIRECTLY to lab-service, bypassing the gateway.
-               Spring Cloud Gateway 4.1 re-frames binary WebSocket messages and may close
-               with 1002 (protocol error). Going nginx -> lab-service avoids double proxying.
-               lab-service validates the JWT itself from the ?token= query param. */}}
-          - path: /labs/terminal
-            pathType: Prefix
-            backend:
-              service:
-                name: lab-service
-                port:
-                  name: http
-          {{- end }}
     {{- end }}
     {{- if $.Values.hosts.lms }}
     - host: {{ $.Values.hosts.lms }}
@@ -59,15 +46,6 @@ spec:
                 name: {{ $name }}
                 port:
                   name: http
-          {{- if eq $name "gateway-service" }}
-          - path: /labs/terminal
-            pathType: Prefix
-            backend:
-              service:
-                name: lab-service
-                port:
-                  name: http
-          {{- end }}
     {{- end }}
     {{- if not $.Values.hosts.api }}
     - http:
@@ -81,5 +59,46 @@ spec:
                   name: http
     {{- end }}
 {{- end }}
+{{- end }}
+{{- /* ── Dedicated WebSocket Ingress for lab terminal ─────────────────────────────
+     Routes /labs/terminal directly to lab-service, bypassing Spring Cloud Gateway.
+     Spring Cloud Gateway (Reactor Netty WebsocketRoutingFilter) re-encodes frames
+     on the gateway→lab-service leg, causing immediate 1002 close.
+     lab-service validates JWT from the ?token= query param itself.
+     Needs its own Ingress to get 3600s timeouts (shared ingress uses 120s).
+     ──────────────────────────────────────────────────────────────────────────── */}}
+{{- if .Values.hosts.api }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lab-service-terminal
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cyberlearnix.labels" (dict "serviceName" "lab-service" "root" .) | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.hosts.api }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.hosts.api }}
+      http:
+        paths:
+          - path: /labs/terminal
+            pathType: Prefix
+            backend:
+              service:
+                name: lab-service
+                port:
+                  name: http
 {{- end }}
 {{- end }}
