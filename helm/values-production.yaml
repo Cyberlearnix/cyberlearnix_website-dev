@@ -2,6 +2,22 @@
 global:
   environment: production
 
+# ── Image tags — updated automatically by CI on every production branch push ─
+# Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
+images:
+  gateway-service: "latest"
+  user-service: "latest"
+  course-service: "latest"
+  enrollment-service: "latest"
+  notification-service: "latest"
+  shop-service: "latest"
+  form-service: "latest"
+  admin-service: "latest"
+  cms-service: "latest"
+  instructor-service: "latest"
+  attendance-service: "latest"
+  lab-service: "latest"
+
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
   DB_HOST: "cyberlearnix-pg-prod.postgres.database.azure.com"

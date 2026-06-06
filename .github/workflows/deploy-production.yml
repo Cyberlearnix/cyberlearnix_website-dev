@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -62,38 +62,32 @@ jobs:
           cache-from: type=gha,scope=prod-${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=prod-${{ matrix.service }}
 
-  # ── 2. Deploy all services to cyberlearnix-production namespace ────────────
-  deploy:
-    name: Deploy → www.cyberlearnix.com
+  # ── 2. Update image tags in values-production.yaml → ArgoCD deploys to cyberlearnix-production ──
+  update-production-tags:
+    name: Update image tags → production
     needs: [build-push]
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: write
     steps:
-      - name: Deploy all services via SSH
-        env:
-          GIT_SHA: ${{ github.sha }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: production
+          fetch-depth: 0
+
+      - name: Update all image tags in values-production.yaml
         run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "$SERVER_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-
           SERVICES="gateway-service user-service course-service enrollment-service notification-service shop-service form-service admin-service cms-service instructor-service attendance-service lab-service"
-          REGISTRY="ghcr.io/cyberlearnix"
-
           for svc in $SERVICES; do
-            IMAGE="${REGISTRY}/cyberlearnix-${svc}:${GIT_SHA}"
-            echo "Deploying $svc → $IMAGE"
-            ssh -i ~/.ssh/id_deploy -p "$SERVER_PORT" \
-              -o StrictHostKeyChecking=no \
-              -o ConnectTimeout=30 \
-              "root@${SERVER_HOST}" \
-              "kubectl set image deployment/${svc} ${svc}=${IMAGE} -n cyberlearnix-production && \
-               kubectl rollout status deployment/${svc} -n cyberlearnix-production --timeout=300s"
+            sed -i "s|  ${svc}: \".*\"|  ${svc}: \"${{ github.sha }}\"|g" helm/values-production.yaml
           done
 
-          rm -f ~/.ssh/id_deploy
-          echo "All services deployed successfully to production"
+      - name: Commit and push tag update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add helm/values-production.yaml
+          git diff --staged --quiet || git commit -m "ci(prod): update image tags to ${{ github.sha }}"
+          git push origin production
