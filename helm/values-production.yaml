@@ -1,9 +1,14 @@
 # Production environment overrides
 global:
+  registry: "ghcr.io/cyberlearnix"
+  imagePrefix: "cyberlearnix-"
+  pullPolicy: Always
   environment: production
 
+imagePullSecrets:
+  - name: ghcr-secret
+
 # ── Image tags — updated automatically by CI on every production branch push ─
-# Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
   gateway-service: "latest"
   user-service: "latest"
@@ -18,15 +23,50 @@ images:
   attendance-service: "latest"
   lab-service: "latest"
 
+topology:
+  whenUnsatisfiable: ScheduleAnyway
+
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: "cyberlearnix-pg-prod.postgres.database.azure.com"
-  REDIS_HOST: "cyberlearnix-redis-prod.redis.cache.windows.net"
-  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_USER: "postgres"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com"
+  USER_SERVICE_URL: "http://user-service:8081"
+  COURSE_SERVICE_URL: "http://course-service:8082"
+  ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8084"
+  SHOP_SERVICE_URL: "http://shop-service:8085"
+  FORM_SERVICE_URL: "http://form-service:8087"
+  CMS_SERVICE_URL: "http://cms-service:8089"
+  ADMIN_SERVICE_URL: "http://admin-service:8090"
+  INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
+  ATTENDANCE_SERVICE_URL: "http://attendance-service:8092"
+  LAB_SERVICE_URL: "http://lab-service:8090"
 
 hosts:
-  api: api.cyberlearnix.com
+  api: "apis.cyberlearnix.com"
 
 ingress:
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
   tls:
+    enabled: true
     secretName: cyberlearnix-prod-tls
+
+postgres:
+  enabled: true
+  user: postgres
+  storage: 20Gi
+
+redis:
+  enabled: true
+
+resourceQuota:
+  enabled: false
