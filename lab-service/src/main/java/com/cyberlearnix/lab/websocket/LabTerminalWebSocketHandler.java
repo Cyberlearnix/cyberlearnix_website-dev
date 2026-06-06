@@ -147,6 +147,11 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        // Increase limits to prevent Tomcat from closing the session with code 1002
+        // (Protocol Error) when terminal output or pasted input is large.
+        session.setBinaryMessageSizeLimit(10 * 1024 * 1024);
+        session.setTextMessageSizeLimit(10 * 1024 * 1024);
+
         String assignmentIdStr = extractAssignmentId(session);
         if (assignmentIdStr == null) {
             session.close(CloseStatus.BAD_DATA.withReason("Missing assignment ID in path"));
@@ -230,7 +235,8 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
     private String[] resolveCallerIdentity(WebSocketSession session) {
         String userId = session.getHandshakeHeaders().getFirst("X-User-Id");
         String role   = session.getHandshakeHeaders().getFirst("X-User-Role");
-        if (userId == null && session.getUri() != null) {
+        // Treat blank header (nginx stripping spoofed headers) same as absent — fall back to ?token=
+        if ((userId == null || userId.isBlank()) && session.getUri() != null) {
             String[] fromToken = parseCallerFromToken(session.getUri().getQuery());
             userId = fromToken[0];
             role   = fromToken[1];
@@ -389,8 +395,13 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         try {
             synchronized (session) {
                 if (session.isOpen()) {
-                    session.sendMessage(new BinaryMessage(ByteBuffer.wrap(frame.getPayload())));
-                    log.info("📨 Sent {} bytes to browser", frame.getPayload().length);
+                    // Send as text frame so Spring Cloud Gateway proxies it without corruption.
+                    // SCG 4.1 (Reactor Netty) re-frames binary WebSocket messages and the client
+                    // receives a 1002 (Protocol error). Text frames pass through correctly.
+                    // The frontend handles both string and binary data (xterm.js writes either).
+                    String text = new String(frame.getPayload(), java.nio.charset.StandardCharsets.UTF_8);
+                    session.sendMessage(new TextMessage(text));
+                    log.info("📨 Sent {} bytes to browser (as text frame)", frame.getPayload().length);
                 }
             }
         } catch (IOException e) {

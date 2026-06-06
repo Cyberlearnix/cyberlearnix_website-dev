@@ -2,6 +2,41 @@
 
 ## Learnings
 
+### [2026-06-05] Lab Pre-Installation Build Pipeline — DockerClientService + LabImageBuildService
+
+**New files created:**
+- `lab-service/src/main/java/com/cyberlearnix/lab/entity/SetupStatus.java` — enum: `NOT_CONFIGURED`, `BUILDING`, `STAGED`, `ACTIVE`, `FAILED`
+- `lab-service/src/main/java/com/cyberlearnix/lab/service/LabImageBuildService.java` — async build service with SSE streaming
+
+**Files modified:**
+- `CourseLabConfig` — added 5 new fields: `setupScript`, `setupStatus`, `setupLog`, `stagedDockerImage`, `activeDockerImage`
+- `CourseLabConfigRepository` — added `Optional<CourseLabConfig> findByCourseId(Long courseId)`
+- `DockerClientService` — added `createSetupContainer`, `execScript`, `commitContainer` methods; added imports for `ExecCreateCmdResponse`, `Frame`, `ResultCallback`
+- `LabServiceApplication` — added `@EnableAsync`
+
+**Key import paths for docker-java 3.3.4:**
+- `com.github.dockerjava.api.command.ExecCreateCmdResponse`
+- `com.github.dockerjava.api.model.Frame`
+- `com.github.dockerjava.api.async.ResultCallback` (contains inner `Adapter<A_RES_T>`)
+
+**Convention — build pipeline flow:**
+1. Admin saves script → `SetupStatus.NOT_CONFIGURED`
+2. Admin triggers build → `BUILDING` → async exec in temp container → commit image → `STAGED`
+3. Admin clicks Publish → `ACTIVE`; `activeDockerImage` is set; students use this image
+4. On build failure, `activeDockerImage` is **not** touched — students keep previous working image
+
+**SSE approach:** In-memory `ConcurrentHashMap` per courseId buffers logs for reconnect replay. `SseEmitter` timeout set to 600 000 ms (10 min) to cover long-running setup scripts.
+
+### [2026-06-04] Media API — Helm Drive Credential Wiring Fixes
+
+**Bugs fixed in `helm/templates/deployment.yaml`:**
+
+1. **`user-service` missing from Drive credentials injection** — The Helm `if or` condition only covered `course-service`, `cms-service`, `lab-service`. `user-service` has `PhotoUploadController` that needs `GoogleDriveService` (and has `google.drive.*` in `application.properties` + Drive env vars in `docker-compose.yml`). Without this fix, profile photo uploads always returned 503 on K3s/production. Added `user-service` to the condition.
+
+2. **Duplicate `optional:` YAML keys** — Both `MAIL_PASSWORD` and `RESEND_API_KEY` secretKeyRef blocks had two `optional:` keys (`true` then `false`). In Go's yaml.v3 last value wins → `optional: false`, causing pods to crash if secrets are absent. Removed the duplicate `optional: false` lines, leaving only `optional: true`.
+
+**Convention:** Any service that uses `GoogleDriveService` from `shared-lib` needs `GOOGLE_DRIVE_CREDENTIALS_JSON_B64` + `GOOGLE_DRIVE_FOLDER_ID` injected in the Helm deployment `if or` block AND in `docker-compose.yml` environment block AND has `google.drive.*` properties in `application.properties`.
+
 ### [2026-05-30] Course-Linked Labs — DB Schema + Docker Deploy (Rohit)
 - **New tables in lab_db:** `course_lab_configs`, `lab_approval_requests` — added alongside existing `lab_templates` and `lab_assignments` (which gained `course_id` + `approval_request_id`). 5 indexes added for query performance.
 - **lab-service port:** runs internally on **8090** (set in `application.yml`). Docker-compose exposed it as `8093:8090` (host 8093 → container 8090). The gateway uses `http://lab-service:8090` internally. Historical history.md had 8090 listed for admin-service — that's the host-accessible port for admin; lab-service is 8093 externally.

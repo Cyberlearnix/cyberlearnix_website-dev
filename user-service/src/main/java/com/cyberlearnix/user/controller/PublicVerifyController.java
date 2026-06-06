@@ -43,13 +43,16 @@ public class PublicVerifyController {
             ));
         }
 
-        // Return only safe public fields — no email, no PII beyond what's needed
-        return ResponseEntity.ok(Map.of(
-            "valid", true,
-            "enrollmentNumber", p.getEnrollmentNumber(),
-            "fullName", p.getFullName() != null ? p.getFullName() : "Student",
-            "enrolledAt", p.getCreatedAt() != null ? p.getCreatedAt().toString() : "",
-            "institute", "Cyberlearnix Private Limited"
-        ));
+        // Return only safe public fields — no email, no phone, no sensitive PII
+        java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("valid", true);
+        response.put("enrollmentNumber", p.getEnrollmentNumber());
+        response.put("fullName", p.getFullName() != null ? p.getFullName() : "Student");
+        response.put("role", p.getRole() != null ? p.getRole() : "student");
+        response.put("photoUrl", p.getPhotoUrl());
+        response.put("location", p.getLocation());
+        response.put("enrolledAt", p.getCreatedAt() != null ? p.getCreatedAt().toString() : "");
+        response.put("institute", "Cyberlearnix Private Limited");
+        return ResponseEntity.ok(response);
     }
 }

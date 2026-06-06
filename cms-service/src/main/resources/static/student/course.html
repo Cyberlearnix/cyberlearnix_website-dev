@@ -135,13 +135,17 @@ const params   = new URLSearchParams(window.location.search);
 const courseId = params.get('courseId');
 if (!courseId) window.location.href = 'dashboard.html';
 
-/* ── Lab assignments for this course ── */
-let myLabsForCourse = [];
+/* ── Lab status for this course ── */
+let courseLabStatus = { status: 'NOT_STARTED', hasLabConfigured: false, labConfig: null, assignment: null };
+let myLabsForCourse = [];  // kept for backward compat
 
 async function loadMyLabsForCourse() {
   try {
-    const res = await apiFetch(`/api/labs/my-labs/course/${courseId}`);
-    if (res.ok) myLabsForCourse = await res.json();
+    const res = await apiFetch(`/api/labs/my-lab/course/${courseId}`);
+    if (res.ok) {
+      courseLabStatus = await res.json();
+      myLabsForCourse = courseLabStatus.assignment ? [courseLabStatus.assignment] : [];
+    }
   } catch (e) { /* non-fatal */ }
 }
 
@@ -150,8 +154,47 @@ function launchLabTerminal(assignmentId) {
   window.open(url, '_blank', 'width=1000,height=650,noopener,noreferrer');
 }
 
-function requestLabAccess() {
-  showToast('Lab access is managed by your instructor or admin. Please contact them directly.', 'info');
+async function startLab(btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Starting…';
+  try {
+    const res = await apiFetch(`/api/labs/my-lab/course/${courseId}/start`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok || res.status === 409) {
+      showToast(data.requiresApproval ? 'Lab access requested — awaiting admin approval.' : 'Lab is being provisioned!', 'success');
+      await loadMyLabsForCourse();
+      loadContent(currentContentId);
+    } else {
+      btn.textContent = '▶️ Start Lab';
+      btn.disabled = false;
+      showToast('Could not start lab: ' + (data.message || res.status), 'error');
+    }
+  } catch (e) {
+    btn.textContent = '▶️ Start Lab';
+    btn.disabled = false;
+    showToast('Network error starting lab.', 'error');
+  }
+}
+
+async function resumeLabFromCourse(assignmentId, btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Resuming…';
+  try {
+    const res = await apiFetch(`/api/labs/${assignmentId}/resume`, { method: 'POST' });
+    if (res.ok) {
+      showToast('Lab resumed!', 'success');
+      await loadMyLabsForCourse();
+      loadContent(currentContentId);
+    } else {
+      btn.textContent = '▶️ Resume Lab';
+      btn.disabled = false;
+      showToast('Could not resume lab.', 'error');
+    }
+  } catch (e) {
+    btn.textContent = '▶️ Resume Lab';
+    btn.disabled = false;
+    showToast('Network error.', 'error');
+  }
 }
 
 /* ── Helpers ── */
@@ -307,9 +350,11 @@ async function loadContent(contentId) {
     }
     bodyHtml = `${embedHtml}${c.description ? `<p style="margin-top:12px;color:var(--cl-text-muted);">${c.description}</p>` : ''}`;
   } else if (ct === 'LAB') {
-    const runningLab = myLabsForCourse.find(l => l.status === 'RUNNING');
-    const pendingLab = myLabsForCourse.find(l => l.status === 'PENDING' || l.status === 'ASSIGNED');
-    const activeLab  = runningLab || pendingLab;
+    const s = courseLabStatus.status;
+    const assignment = courseLabStatus.assignment;
+    const runningLab = s === 'RUNNING' ? assignment : null;
+    const pausedLab  = s === 'PAUSED'  ? assignment : null;
+    const pendingLab = (s === 'PROVISIONING' || s === 'PENDING') ? assignment : null;
 
     let labActionHtml;
     if (runningLab) {
@@ -320,16 +365,32 @@ async function loadContent(contentId) {
         </div>
         <button class="btn btn-primary" onclick="launchLabTerminal(${runningLab.id})">🖥️ Launch Terminal</button>
       </div>`;
-    } else if (activeLab) {
+    } else if (pausedLab) {
+      labActionHtml = `<div class="lab-section" style="background:#fef9c3;border:1px solid #fde047;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h4 style="color:#a16207;margin:0 0 4px;">⏸️ Lab Paused</h4>
+          <div style="color:#a16207;font-size:0.85rem;">Your lab was paused due to inactivity. Resume to continue.</div>
+        </div>
+        <button class="btn btn-secondary" onclick="resumeLabFromCourse(${pausedLab.id}, this)">▶️ Resume Lab</button>
+      </div>`;
+    } else if (pendingLab) {
       labActionHtml = `<div class="lab-section" style="background:#fefce8;border:1px solid #fde047;">
-        <h4 style="color:#a16207;margin:0 0 4px;">⏳ Lab Assignment ${activeLab.status}</h4>
+        <h4 style="color:#a16207;margin:0 0 4px;">⏳ Lab ${s}</h4>
         <p style="color:#a16207;font-size:0.85rem;margin:0;">Your lab environment is being prepared. Refresh in a few minutes.</p>
+      </div>`;
+    } else if (courseLabStatus.hasLabConfigured) {
+      const needsApproval = courseLabStatus.labConfig && courseLabStatus.labConfig.requiresApproval;
+      labActionHtml = `<div class="lab-section" style="background:#f0f9ff;border:1px solid #bae6fd;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h4 style="color:#0369a1;margin:0 0 4px;">🔬 Lab Environment Available</h4>
+          <div style="color:#0369a1;font-size:0.85rem;">${needsApproval ? 'Click to request access — your instructor will approve.' : 'Click to provision your personal lab environment.'}</div>
+        </div>
+        <button class="btn btn-primary" onclick="startLab(this)">${needsApproval ? '📩 Request Lab Access' : '▶️ Start Lab'}</button>
       </div>`;
     } else {
       labActionHtml = `<div class="lab-section" style="background:#f8fafc;border:1px dashed #cbd5e1;">
         <h4 style="margin:0 0 6px;">🔬 Lab Access</h4>
-        <p style="color:var(--cl-text-muted);font-size:0.85rem;margin:0 0 12px;">No lab has been assigned to you for this course yet. Contact your instructor or request access.</p>
-        <button class="btn btn-outline btn-sm" onclick="requestLabAccess()">Request Lab Access</button>
+        <p style="color:var(--cl-text-muted);font-size:0.85rem;margin:0;">No lab has been configured for this course yet.</p>
       </div>`;
     }
 

@@ -117,11 +117,15 @@ public class EnrollmentService {
                 .orElseThrow(() -> new RuntimeException("Form not found"));
 
         // 2. Check "One Response Limit"
-        if (config.isLimitOneResponse()) {
-            boolean alreadyResponded = responseRepository.existsByFormIdAndStudentEmailAndDeletedAtIsNull(
-                    response.getFormId(), response.getStudentEmail());
-            if (alreadyResponded) {
-                throw new RuntimeException("You have already submitted a response for this form.");
+        if (config.isLimitOneResponse() && response.getStudentEmail() != null) {
+            try {
+                boolean alreadyResponded = responseRepository.existsByFormIdAndStudentEmailAndDeletedAtIsNull(
+                        response.getFormId(), response.getStudentEmail());
+                if (alreadyResponded) {
+                    throw new RuntimeException("You have already submitted a response for this form.");
+                }
+            } catch (RuntimeException re) {
+                throw re; // re-throw business exceptions and unexpected DB errors
             }
         }
 
@@ -132,11 +136,17 @@ public class EnrollmentService {
             throw new RuntimeException("Validation Error: " + e.getMessage());
         }
 
-        // 4. Save
+        // 4. Save — wrap to surface the actual exception for diagnostics
         response.setCreatedAt(LocalDateTime.now());
         // If this form requires payment, start in PENDING state; else UNPAID (manual/free)
         response.setPaymentStatus(config.isPaymentEnabled() ? "PENDING" : "UNPAID");
-        EnrollmentFormResponse saved = responseRepository.save(response);
+        EnrollmentFormResponse saved;
+        try {
+            saved = responseRepository.save(response);
+        } catch (Exception e) {
+            log.error("submitResponse: DB save failed [{}]: {}", e.getClass().getSimpleName(), e.getMessage(), e);
+            throw new RuntimeException("DB Save Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
 
         // 5. Trigger Confirmation Email
         try {

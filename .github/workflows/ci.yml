@@ -191,7 +191,8 @@ jobs:
           # -Dgroups=unit maps to includeTags in build.gradle test block
           ./gradlew test jacocoTestReport sonar --no-daemon \
             -Dspring.profiles.active=test \
-            -Dgroups=unit
+            -Dgroups=unit \
+            -Dsonar.scanner.skipJreProvisioning=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN:  ${{ secrets.SONAR_TOKEN }}

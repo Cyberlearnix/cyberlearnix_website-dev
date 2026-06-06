@@ -13,6 +13,9 @@
 #   REDIS_PASSWORD  — (optional) Redis password
 #   MAIL_PASSWORD   — Gmail App Password for OTP email sending
 #   RESEND_API_KEY   — Resend API key for transactional email notifications
+#   GOOGLE_DRIVE_CREDENTIALS_JSON_B64 — base64-encoded Google service account JSON
+#                     (required for thumbnail/media/file uploads via Google Drive)
+#   GOOGLE_DRIVE_FOLDER_ID — Google Drive folder ID for uploads
 #
 # Usage from local Mac:
 #   export GHCR_TOKEN=... GHCR_USERNAME=Cyberlearnix DB_PASSWORD=... JWT_SECRET=... GITHUB_REPO=Cyberlearnix/cyberlearnix_website-dev
@@ -29,6 +32,13 @@ set -euo pipefail
 REDIS_PASSWORD="${REDIS_PASSWORD:-}"
 MAIL_PASSWORD="${MAIL_PASSWORD:-}"
 RESEND_API_KEY="${RESEND_API_KEY:-}"
+# Google Drive credentials — required for thumbnail/media/file uploads to work.
+# GOOGLE_DRIVE_CREDENTIALS_JSON_B64: base64-encoded Google service account JSON.
+#   Generate: base64 -w0 service-account.json
+# GOOGLE_DRIVE_FOLDER_ID: Drive folder ID where uploads are stored.
+#   Get from the Drive folder URL: https://drive.google.com/drive/folders/<FOLDER_ID>
+GOOGLE_DRIVE_CREDENTIALS_JSON_B64="${GOOGLE_DRIVE_CREDENTIALS_JSON_B64:-}"
+GOOGLE_DRIVE_FOLDER_ID="${GOOGLE_DRIVE_FOLDER_ID:-}"
 
 log() { echo -e "\n\033[1;34m==> $*\033[0m"; }
 ok()  { echo -e "\033[1;32m    ✓ $*\033[0m"; }
@@ -176,9 +186,16 @@ kubectl create secret generic cyberlearnix-secrets \
   --from-literal=redis-password="$REDIS_PASSWORD" \
   --from-literal=mail-password="$MAIL_PASSWORD" \
   --from-literal=resend-api-key="$RESEND_API_KEY" \
+  --from-literal=google-drive-credentials-json-b64="$GOOGLE_DRIVE_CREDENTIALS_JSON_B64" \
+  --from-literal=google-drive-folder-id="$GOOGLE_DRIVE_FOLDER_ID" \
   --namespace cyberlearnix \
   --dry-run=client -o yaml | kubectl apply -f -
 ok "Application secrets created"
+if [[ -z "$GOOGLE_DRIVE_CREDENTIALS_JSON_B64" ]]; then
+  echo "  ⚠️  GOOGLE_DRIVE_CREDENTIALS_JSON_B64 not set — file/thumbnail/media uploads will return 503 until configured."
+  echo "     To fix later: kubectl patch secret cyberlearnix-secrets -n cyberlearnix \\"
+  echo "       --type merge -p '{\"stringData\":{\"google-drive-credentials-json-b64\":\"<b64-json>\",\"google-drive-folder-id\":\"<folder-id>\"}}'"
+fi
 
 # ── 10. Apply ArgoCD Application manifest ─────────────────────────────────────
 log "Registering Cyberlearnix app in ArgoCD..."
