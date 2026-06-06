@@ -34,20 +34,29 @@
 - `main` → active development, deploys to `cyberlearnix` namespace (dev/staging)
 - `production` → live production code, deploys to `cyberlearnix-production` namespace
 
-**Merge Rules (strictly enforced):**
-- Feature/fix branches → `main` (via PR) ✅
-- `main` → `production` (via PR) ✅
-- Any other branch → `production` directly ❌ **REJECTED**
+**Merge Rules:**
+
+| Action | Allowed? | How |
+|--------|----------|-----|
+| Any branch → `main` | ✅ | Direct push or merge — no PR required |
+| `main` → `production` | ✅ | PR only |
+| Any branch other than `main` → `production` | ❌ | Auto-rejected by CI |
+| Direct push to `production` | ❌ | Blocked by branch protection |
+
+**`main` branch:** Unprotected. Developers can push or merge directly. No PR required.
+
+**`production` branch:** Fully protected.
+- PR required — no direct pushes ever.
+- PR source must be `main` — all other sources are automatically rejected.
 
 **Enforcement:**
-- `.github/workflows/protect-production.yml` — GitHub Actions workflow that runs on every PR targeting `production`. Automatically fails (blocks merge) if the source branch is anything other than `main`.
-- Additionally, set `production` as a **protected branch** in GitHub repo settings:
-  - Require status checks to pass before merging (check: `Reject PRs not from main`)
+- `.github/workflows/protect-production.yml` — runs on every PR targeting `production`. Fails with a clear error if source branch is not `main`.
+- GitHub branch protection on `production`:
+  - Require status checks to pass (check: `Reject PRs not from main`)
   - Require a pull request before merging
-  - Do not allow bypassing the above settings
+  - Do not allow bypassing
 
 **Other Rules:**
-- `production` branch: no direct pushes — PR only.
 - `production` always reflects exactly what is running on the live server (`cyberlearnix-production` namespace).
 - `main` may be ahead of `production` — that is expected and normal.
 
