@@ -33,7 +33,7 @@ appConfig:
   DB_USER: "postgres"
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
-  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com"
+  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com"
   USER_SERVICE_URL: "http://user-service:8081"
   COURSE_SERVICE_URL: "http://course-service:8082"
   ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
@@ -47,7 +47,7 @@ appConfig:
   LAB_SERVICE_URL: "http://lab-service:8090"
 
 hosts:
-  api: "apis.cyberlearnix.com"
+  api: "prod-apis.cyberlearnix.com"
 
 ingress:
   className: nginx
