@@ -29,6 +29,32 @@
 **Decision:** Secrets (DB password, JWT secret, Redis password) stored in Azure Key Vault AND synced to GitHub Secrets. Kubernetes Secrets created/updated by GitHub Actions deploy workflow. No secrets in images, ConfigMaps, or git.
 **Status:** Accepted
 
+### [2026-06-06] ADR-006: Git Branch Strategy
+**Decision:** Two long-lived branches:
+- `main` → active development, deploys to `cyberlearnix` namespace (dev/staging)
+- `production` → live production code, deploys to `cyberlearnix-production` namespace
+
+**Merge Rules (strictly enforced):**
+- Feature/fix branches → `main` (via PR) ✅
+- `main` → `production` (via PR) ✅
+- Any other branch → `production` directly ❌ **REJECTED**
+
+**Enforcement:**
+- `.github/workflows/protect-production.yml` — GitHub Actions workflow that runs on every PR targeting `production`. Automatically fails (blocks merge) if the source branch is anything other than `main`.
+- Additionally, set `production` as a **protected branch** in GitHub repo settings:
+  - Require status checks to pass before merging (check: `Reject PRs not from main`)
+  - Require a pull request before merging
+  - Do not allow bypassing the above settings
+
+**Other Rules:**
+- `production` branch: no direct pushes — PR only.
+- `production` always reflects exactly what is running on the live server (`cyberlearnix-production` namespace).
+- `main` may be ahead of `production` — that is expected and normal.
+
+**Rationale:** Prevents accidental or unauthorised code reaching production. All code must pass through `main` review first.
+**Owner:** Rohit (DevOps)
+**Status:** Accepted
+
 ---
 <!-- Merged from inbox by Scribe on 2026-05-30 -->
 

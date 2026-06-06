@@ -17,3 +17,9 @@ active_issues: []
 - All enrollment form CRUD confirmed saving/loading from PostgreSQL `enrollment_forms_config` table
 
 **Team is ready for next task.**
+
+## Branch Strategy (ADR-006)
+| Branch | Purpose | K8s Namespace |
+|--------|---------|---------------|
+| `main` | Development | `cyberlearnix` |
+| `production` | Live / Go-live | `cyberlearnix-production` |
