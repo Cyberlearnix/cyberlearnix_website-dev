@@ -69,6 +69,48 @@ spec:
      ──────────────────────────────────────────────────────────────────────────── */}}
 {{- if .Values.hosts.api }}
 ---
+# ── Dedicated SSE Ingress for build-log-stream ───────────────────────────────
+# SSE (Server-Sent Events) requires proxy buffering to be disabled.
+# Without this, nginx buffers the chunked response and the browser gets
+# net::ERR_HTTP2_PROTOCOL_ERROR because the stream never flushes over HTTP/2.
+# This ingress must come BEFORE the generic /api/ ingress so the regex wins.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lab-service-sse
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cyberlearnix.labels" (dict "serviceName" "lab-service" "root" .) | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Accel-Buffering "no" always;
+      gzip off;
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.hosts.api }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.hosts.api }}
+      http:
+        paths:
+          - path: /api/labs/courses/[0-9]+/build-log-stream
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  name: http
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
