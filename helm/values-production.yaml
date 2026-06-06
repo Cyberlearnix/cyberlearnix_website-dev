@@ -5,18 +5,18 @@ global:
 # ── Image tags — updated automatically by CI on every production branch push ─
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
-  gateway-service: "latest"
-  user-service: "latest"
-  course-service: "latest"
-  enrollment-service: "latest"
-  notification-service: "latest"
-  shop-service: "latest"
-  form-service: "latest"
-  admin-service: "latest"
-  cms-service: "latest"
-  instructor-service: "latest"
-  attendance-service: "latest"
-  lab-service: "latest"
+  gateway-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  user-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  course-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  enrollment-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  notification-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  shop-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  form-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  admin-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  cms-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  instructor-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  attendance-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
+  lab-service: "2f6ba78c2706cb4d7bf7b21462ac3ff2a487e398"
 
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
