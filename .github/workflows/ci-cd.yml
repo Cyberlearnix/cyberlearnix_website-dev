@@ -252,3 +252,11 @@ jobs:
           git add helm/values-k3s.yaml
           git diff --staged --quiet || git commit -m "ci(dev): update image tags to ${{ github.sha }}"
           git push origin main
+
+      - name: Trigger ArgoCD sync – dev
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            -X POST https://argocd.cyberlearnix.com/api/v1/applications/cyberlearnix/sync \
+            -H "Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"prune": true}' | grep -qE '^2' && echo "ArgoCD sync triggered" || echo "ArgoCD sync skipped (token not set or unreachable)"
