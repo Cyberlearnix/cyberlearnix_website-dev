@@ -386,4 +386,160 @@ public class LabController {
     public ResponseEntity<CourseLabConfig> publishStagedImage(@PathVariable Long courseId) {
         return ResponseEntity.ok(labImageBuildService.publishStagedImage(courseId));
     }
+
+    // ─── Container Dependency Verification ───────────────────────────────────
+
+    /**
+     * Admin: verify that all expected dependencies are installed and working
+     * inside a running student container.
+     *
+     * Runs the built-in check script (scripts/check-lab-dependencies.sh) inside
+     * the specified assignment's container and returns a structured JSON report:
+     * {
+     *   "assignmentId": 32,
+     *   "studentId": "...",
+     *   "summary": { "passed": 28, "failed": 2, "total": 30 },
+     *   "results": [
+     *     { "tool": "python3", "status": "PASS", "version": "Python 3.10.12" },
+     *     { "tool": "nmap",    "status": "FAIL", "detail": "binary not found in PATH" }
+     *   ]
+     * }
+     *
+     * The container must be in RUNNING status.
+     */
+    @PostMapping("/admin/containers/{assignmentId}/verify-deps")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> verifyContainerDeps(@PathVariable Long assignmentId) {
+        LabAssignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Assignment not found: " + assignmentId));
+
+        if (assignment.getContainerId() == null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Assignment " + assignmentId + " has no container"));
+        }
+        if (assignment.getStatus() != AssignmentStatus.RUNNING) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Container is not running (status=" + assignment.getStatus() + ")",
+                    "assignmentId", assignmentId,
+                    "status", assignment.getStatus().name()
+            ));
+        }
+
+        String checkScript = buildDepCheckScript();
+        String rawOutput;
+        try {
+            rawOutput = dockerClientService.execScript(assignment.getContainerId(), checkScript, 90);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "error", "Failed to exec check script: " + e.getMessage(),
+                    "assignmentId", assignmentId
+            ));
+        }
+
+        // Parse RESULT|STATUS|TOOL|DETAIL lines
+        java.util.List<Map<String, String>> results = new java.util.ArrayList<>();
+        long passed = 0, failed = 0, warned = 0;
+        for (String line : rawOutput.split("\\n")) {
+            if (!line.startsWith("RESULT|")) continue;
+            String[] parts = line.split("\\|", 4);
+            if (parts.length < 4) continue;
+            String status = parts[1].trim();
+            String tool   = parts[2].trim();
+            String detail = parts[3].trim();
+            Map<String, String> entry = new java.util.LinkedHashMap<>();
+            entry.put("tool", tool);
+            entry.put("status", status);
+            entry.put("detail", detail);
+            results.add(entry);
+            if ("PASS".equals(status)) passed++;
+            else if ("FAIL".equals(status)) failed++;
+            else warned++;
+        }
+
+        // Parse SUMMARY line
+        long total = passed + failed;
+        for (String line : rawOutput.split("\\n")) {
+            if (line.startsWith("SUMMARY|")) {
+                String[] s = line.split("\\|");
+                if (s.length >= 4) {
+                    try { total = Long.parseLong(s[3].trim()); } catch (NumberFormatException ignored) {}
+                }
+                break;
+            }
+        }
+
+        Map<String, Object> summary = Map.of(
+                "passed", passed,
+                "failed", failed,
+                "warnings", warned,
+                "total", total
+        );
+
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("assignmentId", assignmentId);
+        response.put("studentId", assignment.getStudentId());
+        response.put("containerId", assignment.getContainerId());
+        response.put("containerName", assignment.getContainerName());
+        response.put("summary", summary);
+        response.put("results", results);
+        return ResponseEntity.ok(response);
+    }
+
+    /** Inline dependency check script — mirrors scripts/check-lab-dependencies.sh */
+    private static String buildDepCheckScript() {
+        return "#!/bin/bash\n" +
+               "PASS=0; FAIL=0\n" +
+               "chk() { local t=$1 c=$2; local v; v=$(eval \"$c\" 2>&1 | head -1 | tr -d '\\n');" +
+               " if [ $? -eq 0 ] && [ -n \"$v\" ]; then echo \"RESULT|PASS|$t|$v\"; PASS=$((PASS+1));" +
+               " else echo \"RESULT|FAIL|$t|not found or not working\"; FAIL=$((FAIL+1)); fi; }\n" +
+               "chkc() { local t=$1 b=$2 v=$3; if command -v \"$b\" &>/dev/null; then" +
+               " local ver; ver=$(eval \"$v\" 2>&1 | head -1 | tr -d '\\n'); echo \"RESULT|PASS|$t|$ver\"; PASS=$((PASS+1));" +
+               " else echo \"RESULT|FAIL|$t|binary not found\"; FAIL=$((FAIL+1)); fi; }\n" +
+               "chkpy() { local p=$1; if python3 -c \"import $p\" 2>/dev/null; then" +
+               " v=$(python3 -c \"import $p; print(getattr($p,'__version__','installed'))\" 2>/dev/null || echo installed);" +
+               " echo \"RESULT|PASS|python:$p|$v\"; PASS=$((PASS+1));" +
+               " else echo \"RESULT|FAIL|python:$p|import failed\"; FAIL=$((FAIL+1)); fi; }\n" +
+               // System
+               "chkc bash bash 'bash --version'\n" +
+               "chkc curl curl 'curl --version'\n" +
+               "chkc wget wget 'wget --version'\n" +
+               "chkc git git 'git --version'\n" +
+               "chkc vim vim 'vim --version'\n" +
+               "chkc nano nano 'nano --version'\n" +
+               // Python
+               "chkc python3 python3 'python3 --version'\n" +
+               "chkc pip3 pip3 'pip3 --version'\n" +
+               "chkpy requests\n" +
+               "chkpy cryptography\n" +
+               "chkpy flask\n" +
+               "chkpy pytest\n" +
+               // Node
+               "chkc node node 'node --version'\n" +
+               "chkc npm npm 'npm --version'\n" +
+               // Java
+               "chkc java java 'java -version 2>&1'\n" +
+               "chkc javac javac 'javac -version 2>&1'\n" +
+               // Build
+               "chkc gcc gcc 'gcc --version'\n" +
+               "chkc g++ g++ 'g++ --version'\n" +
+               "chkc make make 'make --version'\n" +
+               // Network/security
+               "chkc nmap nmap 'nmap --version'\n" +
+               "chkc netcat nc 'nc --version 2>&1 || echo netcat-installed'\n" +
+               "chkc ping ping 'ping -V 2>&1 || echo ping-installed'\n" +
+               "chkc ssh ssh 'ssh -V 2>&1'\n" +
+               "chkc ip ip 'ip -V 2>&1'\n" +
+               // DB clients
+               "chkc sqlite3 sqlite3 'sqlite3 --version'\n" +
+               "chkc psql psql 'psql --version'\n" +
+               // Runtime sanity
+               "if python3 -c \"import socket;s=socket.socket();s.bind(('127.0.0.1',0));s.close();print('ok')\" 2>/dev/null|grep -q ok;" +
+               " then echo \"RESULT|PASS|python:runtime|socket bind ok\"; PASS=$((PASS+1));" +
+               " else echo \"RESULT|FAIL|python:runtime|socket test failed\"; FAIL=$((FAIL+1)); fi\n" +
+               "if node -e \"require('http');console.log('ok')\" 2>/dev/null|grep -q ok;" +
+               " then echo \"RESULT|PASS|node:runtime|http module ok\"; PASS=$((PASS+1));" +
+               " else echo \"RESULT|FAIL|node:runtime|http module failed\"; FAIL=$((FAIL+1)); fi\n" +
+               "echo \"SUMMARY|$PASS|$FAIL|$((PASS+FAIL))\"\n";
+    }
 }
