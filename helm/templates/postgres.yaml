@@ -128,7 +128,7 @@ spec:
     - name: postgres
       port: 5432
       targetPort: 5432
-      nodePort: 30432
+      nodePort: {{ .Values.postgres.nodePort | default 30432 }}
       protocol: TCP
 ---
 # ── Init scripts ConfigMap — creates all 8 databases ─────────────────────────

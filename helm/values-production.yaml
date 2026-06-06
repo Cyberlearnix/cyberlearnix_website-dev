@@ -64,6 +64,7 @@ postgres:
   enabled: true
   user: postgres
   storage: 20Gi
+  nodePort: 30433
 
 redis:
   enabled: true
