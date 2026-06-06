@@ -60,6 +60,7 @@ spec:
     {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 {{- /* ── Dedicated WebSocket Ingress for lab terminal ─────────────────────────────
      Routes /labs/terminal directly to lab-service, bypassing Spring Cloud Gateway.
      Spring Cloud Gateway (Reactor Netty WebsocketRoutingFilter) re-encodes frames
