@@ -43,7 +43,7 @@ images:
   cms-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
   instructor-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
   attendance-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
-  lab-service: "6bde9154100cb52b25b7e27e2ee0630187364eb8"
+  lab-service: "0dba13bb30ade2c6e1cb18ce47e3226e310f7aef"
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
