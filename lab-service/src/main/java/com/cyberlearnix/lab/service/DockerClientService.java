@@ -6,6 +6,7 @@ import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.command.InspectExecResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.Frame;
@@ -146,10 +147,8 @@ public class DockerClientService {
 
         CreateContainerResponse response = dockerClient.createContainerCmd(dockerImage)
                 .withName(containerName)
-                .withTty(true)
-                .withAttachStdin(true)
-                .withAttachStdout(true)
-                .withAttachStderr(true)
+                // NO withTty(true) — TTY mode routes exec output to the TTY stream instead of
+                // the exec capture stream, causing execScript() to receive empty output.
                 .withLabels(Map.of("managed-by", "cyberlearnix", "purpose", "setup"))
                 .exec();
 
@@ -179,6 +178,17 @@ public class DockerClientService {
                     }
                 })
                 .awaitCompletion(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
+
+        // Check the exit code so the caller can detect script failures
+        InspectExecResponse inspect = dockerClient.inspectExecCmd(execResp.getId()).exec();
+        Integer exitCode = inspect.getExitCodeLong() != null ? inspect.getExitCodeLong().intValue() : null;
+        if (exitCode != null && exitCode != 0) {
+            log.warn("exec in container {} exited with code {}; output={}...",
+                    containerId, exitCode,
+                    output.length() > 200 ? output.substring(0, 200) : output.toString());
+            // Append exit code marker so the caller's log reflects the failure
+            output.append("\n[EXIT CODE: ").append(exitCode).append("]\n");
+        }
         return output.toString();
     }
 
