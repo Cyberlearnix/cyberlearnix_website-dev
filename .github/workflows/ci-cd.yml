@@ -256,7 +256,7 @@ jobs:
       - name: Trigger ArgoCD sync – dev
         run: |
           curl -s -o /dev/null -w "%{http_code}" \
-            -X POST https://argocd.cyberlearnix.com/api/v1/applications/cyberlearnix/sync \
+            -X POST https://argocd.cyberlearnix.com/argocd/api/v1/applications/cyberlearnix/sync \
             -H "Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"prune": true}' | grep -qE '^2' && echo "ArgoCD sync triggered" || echo "ArgoCD sync skipped (token not set or unreachable)"
