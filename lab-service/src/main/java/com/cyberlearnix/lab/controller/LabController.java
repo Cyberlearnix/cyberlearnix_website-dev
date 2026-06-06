@@ -356,10 +356,16 @@ public class LabController {
 
     /**
      * Admin: SSE endpoint — streams live build log output.
+     * X-Accel-Buffering: no tells nginx to pass events through immediately without
+     * buffering, which prevents net::ERR_HTTP2_PROTOCOL_ERROR in the browser.
      */
     @GetMapping(value = "/courses/{courseId}/build-log-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public SseEmitter streamBuildLog(@PathVariable Long courseId) {
+    public SseEmitter streamBuildLog(@PathVariable Long courseId,
+                                     jakarta.servlet.http.HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        response.setHeader("Pragma", "no-cache");
         return labImageBuildService.createLogEmitter(courseId);
     }
 
