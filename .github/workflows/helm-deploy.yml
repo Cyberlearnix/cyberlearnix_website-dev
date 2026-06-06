@@ -59,11 +59,11 @@ jobs:
       matrix: ${{ steps.decide.outputs.matrix }}
       helm_only: ${{ steps.decide.outputs.helm_only }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -146,10 +146,10 @@ jobs:
       matrix:
         service: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Cache Gradle packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -193,7 +193,7 @@ jobs:
           mkdir -p /tmp/image-tags
           echo "${{ steps.meta.outputs.short-sha }}" > /tmp/image-tags/${{ matrix.service }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: k3s-image-tag-${{ matrix.service }}
           path: /tmp/image-tags/${{ matrix.service }}
@@ -210,10 +210,10 @@ jobs:
       needs.changes.result == 'success' &&
       (needs.build-push.result == 'success' || needs.build-push.result == 'skipped')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download image tag artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: k3s-image-tag-*
