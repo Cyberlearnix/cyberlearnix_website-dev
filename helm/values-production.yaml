@@ -70,3 +70,39 @@ redis:
 
 resourceQuota:
   enabled: false
+
+# ── Service overrides — only differences from values.yaml defaults ────────────
+services:
+  user-service:
+    dbRequired: true
+    dbName: cyberlearnix_users
+  course-service:
+    dbRequired: true
+    dbName: cyberlearnix_courses
+  enrollment-service:
+    dbRequired: true
+    dbName: cyberlearnix_enrollments
+  notification-service:
+    dbRequired: true
+    dbName: cyberlearnix_notifications
+  shop-service:
+    dbRequired: true
+    dbName: cyberlearnix_shop
+  form-service:
+    dbRequired: true
+    dbName: cyberlearnix_forms
+  admin-service:
+    dbRequired: true
+    dbName: cyberlearnix_admin
+  cms-service:
+    dbRequired: true
+    dbName: cyberlearnix_cms
+  instructor-service:
+    dbRequired: true
+    dbName: cyberlearnix_instructor
+  attendance-service:
+    dbRequired: true
+    dbName: cyberlearnix_attendance
+  lab-service:
+    dbRequired: true
+    dbName: lab_db
