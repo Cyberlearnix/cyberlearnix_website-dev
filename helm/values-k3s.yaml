@@ -98,6 +98,11 @@ ingress:
     enabled: true
     secretName: apis-cyberlearnix-tls
 
+# ── Hostnames ─────────────────────────────────────────────────────────────────
+hosts:
+  api: dev.cyberlearnix.com
+  lms: ""
+
 # ── External access host ──────────────────────────────────────────────────────
 hosts:
   api: "apis.cyberlearnix.com"
