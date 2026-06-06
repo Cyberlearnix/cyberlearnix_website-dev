@@ -1,4 +1,4 @@
-name: CI/CD
+name: Deploy to Dev
 
 on:
   push:
@@ -223,41 +223,32 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 5. Deploy to K3s via SSH (port 6443 is firewalled; SSH on 9022 is open) ──
-  deploy:
-    name: Deploy → K3s
+  # ── 5. Update image tags in values-k3s.yaml → ArgoCD deploys to cyberlearnix ─
+  update-dev-tags:
+    name: Update image tags → dev
     needs: [detect, build-push]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
-    environment: production
+    permissions:
+      contents: write
     steps:
-      - name: Deploy changed services via SSH
-        env:
-          CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
-          GIT_SHA: ${{ github.sha }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
-          K3S_NAMESPACE: ${{ secrets.K3S_NAMESPACE }}
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          fetch-depth: 0
+
+      - name: Update image tags in values-k3s.yaml
         run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "$SERVER_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-
-          SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
-          REGISTRY="ghcr.io/cyberlearnix"
-
+          SERVICES=$(echo '${{ needs.detect.outputs.matrix }}' | python3 -c "import sys,json; print('\n'.join(json.load(sys.stdin)))")
           for svc in $SERVICES; do
-            IMAGE="${REGISTRY}/cyberlearnix-${svc}:${GIT_SHA}"
-            echo "🚀 Deploying $svc → $IMAGE"
-            ssh -i ~/.ssh/id_deploy -p "$SERVER_PORT" \
-              -o StrictHostKeyChecking=no \
-              -o ConnectTimeout=30 \
-              "root@${SERVER_HOST}" \
-              "kubectl set image deployment/${svc} ${svc}=${IMAGE} -n ${K3S_NAMESPACE} && \
-               kubectl rollout status deployment/${svc} -n ${K3S_NAMESPACE} --timeout=300s"
+            sed -i "s|  ${svc}: \".*\"|  ${svc}: \"${{ github.sha }}\"|g" helm/values-k3s.yaml
           done
 
-          rm -f ~/.ssh/id_deploy
-          echo "✅ All services deployed successfully"
+      - name: Commit and push tag update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add helm/values-k3s.yaml
+          git diff --staged --quiet || git commit -m "ci(dev): update image tags to ${{ github.sha }}"
+          git push origin main
