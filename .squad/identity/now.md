@@ -1,7 +1,8 @@
 ---
-updated_at: 2026-06-01T00:00:00.000Z
-focus_area: Cyberlearnix — Admin Portal UI + Enrollment Service
-active_issues: []
+updated_at: 2026-06-06T00:00:00.000Z
+focus_area: Cyberlearnix — Two-Environment CI/CD Pipeline
+active_issues:
+  - "GitHub Secret DEV_BASIC_AUTH_PASSWORD not yet set — dev basic auth non-functional until resolved"
 ---
 
 # What We're Focused On
@@ -10,16 +11,15 @@ active_issues: []
 
 **Active Services:** admin, cms, course, enrollment, form, gateway, instructor, notification, shop, user + shared-lib.
 
-**Last Sprint (2026-06-01):** Admin portal bug-fix + enrollment forms fully dynamic from DB.
-- AdminNavbar scroll timing fixed (ResizeObserver + RAF + scroll-to-active)
-- CourseManagement "0 Enrolled" → real count from `/api/admin/reports/courses`
-- Enrollment Forms FormsTab: fields count bug fixed (`parseFieldCount` helper), response counts added via new `GET /api/enrollments/forms/response-counts` endpoint
-- All enrollment form CRUD confirmed saving/loading from PostgreSQL `enrollment_forms_config` table
+**Last Sprint (2026-06-06):** Two-environment CI/CD pipeline is live.
+- Created `.github/workflows/deploy-production.yml` — triggered on push to `production`; deploys to `www.cyberlearnix.com` (no basic auth)
+- Updated `.github/workflows/ci-cd.yml` — deploy job renamed to `deploy-dev`; basic auth setup added for `dev.cyberlearnix.com`
+- Pipeline now correctly separates dev (main branch) from production (production branch)
 
-**Team is ready for next task.**
+**Pending:** GitHub Secret `DEV_BASIC_AUTH_PASSWORD` must be added to repo settings before dev basic auth is active.
 
 ## Branch Strategy (ADR-006)
-| Branch | Purpose | K8s Namespace |
-|--------|---------|---------------|
-| `main` | Development | `cyberlearnix` |
-| `production` | Live / Go-live | `cyberlearnix-production` |
+| Branch | Domain | Auth | K8s Namespace |
+|--------|--------|------|---------------|
+| `main` | `dev.cyberlearnix.com` | Basic Auth (htpasswd) | `cyberlearnix` |
+| `production` | `www.cyberlearnix.com` | None (live) | `cyberlearnix-production` |
