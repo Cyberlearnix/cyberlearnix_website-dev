@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Verification – Cyberlearnix</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f4ff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 32px rgba(0,0,0,.12);
+      max-width: 480px;
+      width: 100%;
+      padding: 40px 32px 36px;
+      text-align: center;
+    }
+    .logo { height: 72px; margin-bottom: 28px; }
+    /* ── Loading ── */
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #1a2756;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Valid ── */
+    .icon-valid { font-size: 56px; margin-bottom: 16px; }
+    .badge {
+      display: inline-block;
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .photo {
+      width: 96px; height: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #1a2756;
+      margin: 0 auto 18px;
+      display: block;
+    }
+    .student-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a2756;
+      margin-bottom: 6px;
+    }
+    .info-grid {
+      margin-top: 20px;
+      text-align: left;
+      display: grid;
+      gap: 10px;
+    }
+    .info-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      background: #f8faff;
+      border-radius: 10px;
+    }
+    .info-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      color: #7c8db0;
+      min-width: 90px;
+      padding-top: 1px;
+    }
+    .info-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+      word-break: break-word;
+    }
+    .divider { border: none; border-top: 1px solid #e8ecf5; margin: 24px 0; }
+    /* ── Invalid ── */
+    .icon-invalid { font-size: 56px; margin-bottom: 16px; color: #c62828; }
+    .error-title { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    .error-sub { color: #c62828; font-size: 14px; margin-bottom: 24px; }
+    /* ── Button ── */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #1a2756;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      text-decoration: none;
+      margin-top: 20px;
+    }
+    .btn:hover { background: #263670; }
+    .footer {
+      margin-top: 28px;
+      font-size: 12px;
+      color: #aab4c8;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img
+      src="https://cyberlearnix.com/assets/logo.png"
+      onerror="this.style.display='none'"
+      alt="Cyberlearnix"
+      class="logo"
+    />
+
+    <!-- Loading state -->
+    <div id="loading">
+      <div class="spinner"></div>
+      <p style="color:#7c8db0;font-size:14px;">Verifying enrollment…</p>
+    </div>
+
+    <!-- Valid state -->
+    <div id="valid" class="hidden">
+      <div class="icon-valid">✅</div>
+      <div class="badge">Verified Student</div>
+      <img id="photo" src="" alt="Photo" class="photo hidden" />
+      <p class="student-name" id="name"></p>
+      <div class="info-grid">
+        <div class="info-row">
+          <span class="info-label">ID</span>
+          <span class="info-value" id="enrollmentId"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email</span>
+          <span class="info-value" id="email"></span>
+        </div>
+        <div class="info-row" id="locationRow">
+          <span class="info-label">Location</span>
+          <span class="info-value" id="location"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Institute</span>
+          <span class="info-value" id="institute"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Enrolled</span>
+          <span class="info-value" id="enrolledAt"></span>
+        </div>
+      </div>
+      <hr class="divider" />
+      <a href="https://cyberlearnix.com" class="btn">Go to Cyberlearnix</a>
+    </div>
+
+    <!-- Invalid state -->
+    <div id="invalid" class="hidden">
+      <div class="icon-invalid">✗</div>
+      <p class="error-title">Invalid Enrollment</p>
+      <p class="error-sub" id="errorMsg">Enrollment not found.</p>
+      <a href="https://cyberlearnix.com" class="btn">Go to Cyberlearnix</a>
+    </div>
+
+    <p class="footer">Cyberlearnix Private Limited · ISO 9001:2015 Certified</p>
+  </div>
+
+  <script>
+    const API_BASE = 'https://apis.cyberlearnix.com';
+
+    function show(id) {
+      ['loading', 'valid', 'invalid'].forEach(s => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+      });
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      try {
+        return new Date(iso).toLocaleDateString('en-IN', {
+          year: 'numeric', month: 'long', day: 'numeric'
+        });
+      } catch (_) { return iso; }
+    }
+
+    async function verify() {
+      const params = new URLSearchParams(window.location.search);
+      const enrollment = params.get('enrollment') || params.get('id') || '';
+
+      if (!enrollment) {
+        document.getElementById('errorMsg').textContent = 'No enrollment number provided.';
+        show('invalid');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/public/verify/${encodeURIComponent(enrollment)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.valid) {
+          document.getElementById('errorMsg').textContent =
+            data.message || data.error || 'Enrollment not found.';
+          show('invalid');
+          return;
+        }
+
+        // Populate valid card
+        document.getElementById('name').textContent = data.fullName || 'Student';
+        document.getElementById('enrollmentId').textContent = data.enrollmentNumber || enrollment;
+        document.getElementById('email').textContent = data.email || '—';
+        document.getElementById('institute').textContent = data.institute || 'Cyberlearnix Private Limited';
+        document.getElementById('enrolledAt').textContent = formatDate(data.enrolledAt);
+
+        // Location row
+        if (data.location) {
+          document.getElementById('location').textContent = data.location;
+        } else {
+          document.getElementById('locationRow').classList.add('hidden');
+        }
+
+        // Photo — only show if a URL is returned
+        if (data.photoUrl) {
+          const img = document.getElementById('photo');
+          img.src = data.photoUrl;
+          img.classList.remove('hidden');
+          img.onerror = () => img.classList.add('hidden');
+        }
+
+        show('valid');
+      } catch (err) {
+        document.getElementById('errorMsg').textContent = 'Could not reach the verification server. Please try again.';
+        show('invalid');
+      }
+    }
+
+    verify();
+  </script>
+</body>
+</html>
