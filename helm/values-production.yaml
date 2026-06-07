@@ -10,18 +10,18 @@ imagePullSecrets:
 
 # * Image tags * updated automatically by CI on every production branch push *
 images:
-  gateway-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  user-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  course-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  enrollment-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  notification-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  shop-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  form-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  admin-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  cms-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  instructor-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  attendance-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
-  lab-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
+  gateway-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  user-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  course-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  enrollment-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  notification-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  shop-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  form-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  admin-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  cms-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  instructor-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  attendance-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  lab-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
 
 topology:
   whenUnsatisfiable: ScheduleAnyway
@@ -51,6 +51,7 @@ hosts:
 
 ingress:
   className: nginx
+  corsAllowOrigin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com"
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
