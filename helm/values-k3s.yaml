@@ -143,7 +143,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -167,7 +167,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -190,7 +190,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -213,7 +213,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -259,7 +259,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -282,7 +282,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -305,7 +305,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -328,7 +328,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -351,7 +351,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -374,7 +374,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -404,3 +404,35 @@ services:
       enabled: false
     pdb:
       minAvailable: 1
+
+    pdb:
+      minAvailable: 1
+
+# -- Dev scale-to-zero schedule ------------------------------------------------
+# Scales all dev services to 0 at midnight IST, back up at 08:00 IST.
+# Saves ~5GB RAM during off-hours on the shared single node.
+devScaleSchedule:
+  enabled: true
+  downCron: "30 18 * * *"   # 18:30 UTC = 00:00 IST
+  upCron: "30 2 * * *"      # 02:30 UTC = 08:00 IST
+
+# -- PgBouncer -----------------------------------------------------------------
+# Transaction-mode pooling: caps real Postgres connections at ~20 regardless of pod count.
+pgbouncer:
+  enabled: true
+
+    pdb:
+      minAvailable: 1
+
+# -- Dev scale-to-zero schedule ------------------------------------------------
+# Scales all dev services to 0 at midnight IST, back up at 08:00 IST.
+# Saves ~5GB RAM during off-hours on the shared single node.
+devScaleSchedule:
+  enabled: true
+  downCron: "30 18 * * *"   # 18:30 UTC = 00:00 IST
+  upCron: "30 2 * * *"      # 02:30 UTC = 08:00 IST
+
+# -- PgBouncer -----------------------------------------------------------------
+# Transaction-mode pooling: caps real Postgres connections at ~20 regardless of pod count.
+pgbouncer:
+  enabled: true

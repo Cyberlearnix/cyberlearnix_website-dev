@@ -10,25 +10,25 @@ imagePullSecrets:
 
 # ── Image tags — updated automatically by CI on every production branch push ─
 images:
-  gateway-service: "latest"
-  user-service: "latest"
-  course-service: "latest"
-  enrollment-service: "latest"
-  notification-service: "latest"
-  shop-service: "latest"
-  form-service: "latest"
-  admin-service: "latest"
-  cms-service: "latest"
-  instructor-service: "latest"
-  attendance-service: "latest"
-  lab-service: "latest"
+  gateway-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  user-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  course-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  enrollment-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  notification-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  shop-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  form-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  admin-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  cms-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  instructor-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  attendance-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
+  lab-service: "3938682d169e70d2e3307cdcea358dcc55947f27"
 
 topology:
   whenUnsatisfiable: ScheduleAnyway
 
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: "postgres"
+  DB_HOST: "pgbouncer"      # connection pooler — caps raw DB connections to ~20
   DB_PORT: "5432"
   DB_USER: "postgres"
   REDIS_HOST: "redis"
@@ -107,3 +107,11 @@ services:
   lab-service:
     dbRequired: true
     dbName: lab_db
+
+# -- PgBouncer -----------------------------------------------------------------
+pgbouncer:
+  enabled: true
+
+# -- PgBouncer -----------------------------------------------------------------
+pgbouncer:
+  enabled: true
