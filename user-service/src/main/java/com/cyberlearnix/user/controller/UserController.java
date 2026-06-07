@@ -38,16 +38,24 @@ public class UserController {
     public ResponseEntity<?> generateEnrollmentCard(@PathVariable String userId) {
         return userProfileRepository.findById(userId)
                 .<ResponseEntity<?>>map(profile -> {
-                    try {
-                        enrollmentCardService.issueCard(profile);
-                        return ResponseEntity.ok(Map.of(
-                            "enrollmentNumber", profile.getEnrollmentNumber() != null ? profile.getEnrollmentNumber() : "",
-                            "qrCodeData", profile.getQrCodeData() != null ? profile.getQrCodeData() : ""
-                        ));
-                    } catch (Exception e) {
+                    boolean saved = enrollmentCardService.issueCard(profile);
+                    if (!saved) {
                         return ResponseEntity.internalServerError()
-                            .body(Map.of("error", "Failed to generate card: " + e.getMessage()));
+                            .body(Map.of("error", "Failed to generate or persist enrollment card. Check server logs."));
                     }
+                    // Re-read from DB to confirm the enrollment number was actually persisted.
+                    return userProfileRepository.findById(userId)
+                            .<ResponseEntity<?>>map(persisted -> {
+                                if (persisted.getEnrollmentNumber() == null) {
+                                    return ResponseEntity.internalServerError()
+                                        .body(Map.of("error", "Card generated but enrollment number was not saved to database."));
+                                }
+                                return ResponseEntity.ok(Map.of(
+                                    "enrollmentNumber", persisted.getEnrollmentNumber(),
+                                    "qrCodeData", persisted.getQrCodeData() != null ? persisted.getQrCodeData() : ""
+                                ));
+                            })
+                            .orElse(ResponseEntity.notFound().build());
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

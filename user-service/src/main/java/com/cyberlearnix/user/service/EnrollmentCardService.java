@@ -38,19 +38,33 @@ public class EnrollmentCardService {
 
     /**
      * Generates and saves enrollment number + QR code for a student profile.
+     * Returns true if the card was successfully persisted; false otherwise.
+     * On failure the in-memory profile is NOT mutated so callers never observe
+     * a stale enrollment number that was never written to the database.
      */
-    public void issueCard(UserProfile profile) {
+    public boolean issueCard(UserProfile profile) {
+        String enrollmentNumber = null;
+        String qrBase64 = null;
         try {
-            String enrollmentNumber = generateEnrollmentNumber();
+            enrollmentNumber = generateEnrollmentNumber();
             String verifyUrl = publicUrl + "/verify.html?enrollment=" + enrollmentNumber;
-            String qrBase64 = generateQrCode(verifyUrl);
+            qrBase64 = generateQrCode(verifyUrl);
 
+            // Set on the profile only just before saving so that a save failure
+            // leaves the in-memory object in its original (no enrollment number) state.
             profile.setEnrollmentNumber(enrollmentNumber);
             profile.setQrCodeData(qrBase64);
             userProfileRepository.save(profile);
+            return true;
         } catch (Exception e) {
-            // Non-fatal — log and continue. Student account still created.
-            System.err.println("[EnrollmentCard] Failed to issue card for " + profile.getEmail() + ": " + e.getMessage());
+            // Reset in-memory state so callers don't see a phantom enrollment number
+            // that was never actually written to the database.
+            profile.setEnrollmentNumber(null);
+            profile.setQrCodeData(null);
+            System.err.println("[EnrollmentCard] Failed to issue card for "
+                    + profile.getEmail() + ": " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 
