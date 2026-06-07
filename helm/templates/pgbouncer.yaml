@@ -70,6 +70,8 @@ spec:
               value: "DISCARD ALL"
             - name: PGBOUNCER_IGNORE_STARTUP_PARAMETERS
               value: "extra_float_digits,options"
+            - name: PGBOUNCER_LISTEN_PORT
+              value: "5432"
             - name: PGBOUNCER_ADMIN_USERS
               value: "postgres"
             - name: DATABASES_USER
