@@ -19,8 +19,10 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 0   # never remove old pod until new pod passes readiness — zero downtime
-      maxSurge: 1         # allow 1 extra pod during rollout; DB connections: 10 svcs × 3 pool × 2 = 60 (safe under Postgres 100)
+      maxUnavailable: 1   # terminate old pod first to free CPU before scheduling new pod
+      maxSurge: 0         # no surge — single node has insufficient CPU headroom for extra pods during rollout
+                          # zero downtime for services with replicas≥2 (gateway/user/course/enrollment always have 1 pod serving)
+                          # single-replica internal services have ~90s gap during their own rollout only
   template:
     metadata:
       labels:
