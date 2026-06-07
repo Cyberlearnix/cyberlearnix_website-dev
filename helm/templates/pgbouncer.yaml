@@ -28,24 +28,18 @@ spec:
         app.kubernetes.io/name: pgbouncer
         app.kubernetes.io/part-of: cyberlearnix
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
       terminationGracePeriodSeconds: 30
       containers:
         - name: pgbouncer
           image: pgbouncer/pgbouncer:latest
           imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: [ALL]
           ports:
             - name: postgres
               containerPort: 5432
               protocol: TCP
           env:
+            # pgbouncer/pgbouncer image: env-var driven config
+            # Writes /etc/pgbouncer/pgbouncer.ini at startup from these vars
             - name: DATABASES_HOST
               value: "postgres"
             - name: DATABASES_PORT
