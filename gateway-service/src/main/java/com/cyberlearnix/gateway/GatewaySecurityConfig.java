@@ -19,7 +19,7 @@ import java.util.Arrays;
 @EnableWebFluxSecurity
 public class GatewaySecurityConfig {
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:5174}")
+    @Value("${cors.allowed-origins:https://cyberlearnix.com,http://localhost:3000,http://localhost:5173,http://localhost:5174}")
     private String allowedOrigins;
 
     @Bean
