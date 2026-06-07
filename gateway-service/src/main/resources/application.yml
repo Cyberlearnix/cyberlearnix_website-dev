@@ -63,6 +63,12 @@ spring:
                 regexp: /api/manage-course-teachers
                 replacement: /api/courses/teachers
 
+        # Public QR verification — no auth required
+        - id: user-service-public
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/public/**, /verify.html
+
         - id: user-service
           uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:

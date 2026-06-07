@@ -43,11 +43,12 @@ public class PublicVerifyController {
             ));
         }
 
-        // Return only safe public fields — no email, no phone, no sensitive PII
+        // Return safe public fields — email included for QR verification display
         java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
         response.put("valid", true);
         response.put("enrollmentNumber", p.getEnrollmentNumber());
         response.put("fullName", p.getFullName() != null ? p.getFullName() : "Student");
+        response.put("email", p.getEmail());
         response.put("role", p.getRole() != null ? p.getRole() : "student");
         response.put("photoUrl", p.getPhotoUrl());
         response.put("location", p.getLocation());
