@@ -344,3 +344,19 @@ ingress:
 # ── NGINX Ingress hosts (override per environment) ───────────────────────────
 hosts:
   api: api.cyberlearnix.com
+
+# ── PgBouncer connection pooler ───────────────────────────────────────────────
+# When enabled, apps connect to pgbouncer:5432 instead of postgres:5432.
+# Pools ~60 raw JVM connections down to ~20 real Postgres connections.
+# Disabled by default — enable per-environment in values-*.yaml
+pgbouncer:
+  enabled: false
+
+# ── Dev namespace scale schedule ─────────────────────────────────────────────
+# Scales all services to 0 at night and back up in the morning.
+# Only enable in the dev (cyberlearnix) namespace — NOT in production.
+# Times are in IST (Asia/Kolkata). Saves ~5GB RAM during off-hours.
+devScaleSchedule:
+  enabled: false
+  downCron: "30 18 * * *"   # 18:30 UTC = midnight IST (00:00)
+  upCron: "30 2 * * *"      # 02:30 UTC = 08:00 IST

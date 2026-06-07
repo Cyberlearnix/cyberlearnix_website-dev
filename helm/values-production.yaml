@@ -28,7 +28,7 @@ topology:
 
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: "postgres"
+  DB_HOST: "pgbouncer"      # connection pooler — caps raw DB connections to ~20
   DB_PORT: "5432"
   DB_USER: "postgres"
   REDIS_HOST: "redis"
@@ -107,3 +107,11 @@ services:
   lab-service:
     dbRequired: true
     dbName: lab_db
+
+# -- PgBouncer -----------------------------------------------------------------
+pgbouncer:
+  enabled: true
+
+# -- PgBouncer -----------------------------------------------------------------
+pgbouncer:
+  enabled: true

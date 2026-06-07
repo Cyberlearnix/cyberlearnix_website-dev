@@ -1,5 +1,6 @@
 {{- range $name, $svc := .Values.services }}
 {{- if $svc.pdb }}
+{{- $replicas := $svc.replicas | default 1 }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -9,9 +10,14 @@ metadata:
   labels:
     {{- include "cyberlearnix.labels" (dict "serviceName" $name "root" $) | nindent 4 }}
 spec:
-  # Guarantee at least 1 pod survives voluntary disruptions
-  # (node drain, cluster upgrades, etc.)
-  minAvailable: {{ $svc.pdb.minAvailable | default 1 }}
+  {{- if gt (int $replicas) 1 }}
+  # Multi-replica: keep at least 1 alive during disruptions
+  minAvailable: 1
+  {{- else }}
+  # Single-replica: allow 1 unavailable so node drain is never permanently blocked.
+  # Brief downtime during drain is acceptable; use maxUnavailable not minAvailable.
+  maxUnavailable: 1
+  {{- end }}
   selector:
     matchLabels:
       {{- include "cyberlearnix.selectorLabels" (dict "serviceName" $name "root" $) | nindent 6 }}

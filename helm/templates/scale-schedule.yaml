@@ -1,0 +1,139 @@
+{{- if .Values.devScaleSchedule.enabled }}
+---
+# ── RBAC for scale CronJobs ───────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scale-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: scale-scheduler
+    app.kubernetes.io/part-of: cyberlearnix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scale-scheduler
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    verbs: ["get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scale-scheduler
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: scale-scheduler
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: scale-scheduler
+  apiGroup: rbac.authorization.k8s.io
+---
+# ── Scale DOWN at night ───────────────────────────────────────────────────────
+# Runs at 18:30 UTC = midnight IST (UTC+5:30). Scales all services to 0.
+# postgres and redis are left running (lightweight, needed for wake-up checks).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scale-down
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: scale-down
+    app.kubernetes.io/part-of: cyberlearnix
+spec:
+  schedule: {{ .Values.devScaleSchedule.downCron | quote }}
+  timeZone: "Asia/Kolkata"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: scale-scheduler
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+          containers:
+            - name: scale-down
+              image: bitnami/kubectl:1.28
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              command:
+                - sh
+                - -c
+                - |
+                  echo "Scaling down dev namespace at $(date)"
+                  kubectl scale deployment \
+                    {{- range $name, $svc := .Values.services }}
+                    {{ $name }} \
+                    {{- end }}
+                    --replicas=0 -n {{ .Release.Namespace }}
+                  echo "Done. All services scaled to 0."
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "32Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "64Mi"
+---
+# ── Scale UP in the morning ───────────────────────────────────────────────────
+# Runs at 02:30 UTC = 08:00 IST. Restores each service to its configured replica count.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scale-up
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: scale-up
+    app.kubernetes.io/part-of: cyberlearnix
+spec:
+  schedule: {{ .Values.devScaleSchedule.upCron | quote }}
+  timeZone: "Asia/Kolkata"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: scale-scheduler
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+          containers:
+            - name: scale-up
+              image: bitnami/kubectl:1.28
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              command:
+                - sh
+                - -c
+                - |
+                  echo "Scaling up dev namespace at $(date)"
+                  {{- range $name, $svc := .Values.services }}
+                  kubectl scale deployment {{ $name }} --replicas={{ $svc.replicas | default 1 }} -n {{ $.Release.Namespace }}
+                  {{- end }}
+                  echo "Done. All services restored."
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "32Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "64Mi"
+{{- end }}
