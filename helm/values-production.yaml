@@ -8,7 +8,7 @@ global:
 imagePullSecrets:
   - name: ghcr-secret
 
-# ── Image tags — updated automatically by CI on every production branch push ─
+# * Image tags * updated automatically by CI on every production branch push *
 images:
   gateway-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
   user-service: "2a54d6d146d1590f388c7b9e9e93acdac6c6d461"
@@ -55,6 +55,12 @@ ingress:
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,x-user-id,x-user-role,Content-Disposition"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-max-age: "3600"
     cert-manager.io/cluster-issuer: letsencrypt-prod
   tls:
     enabled: true
@@ -72,7 +78,7 @@ redis:
 resourceQuota:
   enabled: false
 
-# ── Service overrides — only differences from values.yaml defaults ────────────
+# * Service overrides * only differences from values.yaml defaults *
 services:
   user-service:
     dbRequired: true
