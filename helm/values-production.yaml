@@ -1,16 +1,124 @@
 # Production environment overrides
 global:
+  registry: "ghcr.io/cyberlearnix"
+  imagePrefix: "cyberlearnix-"
+  pullPolicy: Always
   environment: production
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+# * Image tags * updated automatically by CI on every production branch push *
+images:
+  gateway-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  user-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  course-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  enrollment-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  notification-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  shop-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  form-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  admin-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  cms-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  instructor-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  attendance-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+  lab-service: "b0511f653947accd023a59507ad62b0d517bbaf4"
+
+topology:
+  whenUnsatisfiable: ScheduleAnyway
 
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: "cyberlearnix-pg-prod.postgres.database.azure.com"
-  REDIS_HOST: "cyberlearnix-redis-prod.redis.cache.windows.net"
-  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com"
+  DB_HOST: "pgbouncer"      # connection pooler — caps raw DB connections to ~20
+  DB_PORT: "5432"
+  DB_USER: "postgres"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com"
+  USER_SERVICE_URL: "http://user-service:8081"
+  COURSE_SERVICE_URL: "http://course-service:8082"
+  ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8084"
+  SHOP_SERVICE_URL: "http://shop-service:8085"
+  FORM_SERVICE_URL: "http://form-service:8087"
+  CMS_SERVICE_URL: "http://cms-service:8089"
+  ADMIN_SERVICE_URL: "http://admin-service:8090"
+  INSTRUCTOR_SERVICE_URL: "http://instructor-service:8091"
+  ATTENDANCE_SERVICE_URL: "http://attendance-service:8092"
+  LAB_SERVICE_URL: "http://lab-service:8090"
 
 hosts:
-  api: api.cyberlearnix.com
+  api: "prod-apis.cyberlearnix.com"
 
 ingress:
+  className: nginx
+  corsAllowOrigin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com"
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,x-user-id,x-user-role,Content-Disposition"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-max-age: "3600"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
   tls:
+    enabled: true
     secretName: cyberlearnix-prod-tls
+
+postgres:
+  enabled: true
+  user: postgres
+  storage: 20Gi
+  nodePort: 30433
+
+redis:
+  enabled: true
+
+resourceQuota:
+  enabled: false
+
+# * Service overrides * only differences from values.yaml defaults *
+services:
+  user-service:
+    dbRequired: true
+    dbName: cyberlearnix_users
+  course-service:
+    dbRequired: true
+    dbName: cyberlearnix_courses
+  enrollment-service:
+    dbRequired: true
+    dbName: cyberlearnix_enrollments
+  notification-service:
+    dbRequired: true
+    dbName: cyberlearnix_notifications
+  shop-service:
+    dbRequired: true
+    dbName: cyberlearnix_shop
+  form-service:
+    dbRequired: true
+    dbName: cyberlearnix_forms
+  admin-service:
+    dbRequired: true
+    dbName: cyberlearnix_admin
+  cms-service:
+    dbRequired: true
+    dbName: cyberlearnix_cms
+  instructor-service:
+    dbRequired: true
+    dbName: cyberlearnix_instructor
+  attendance-service:
+    dbRequired: true
+    dbName: cyberlearnix_attendance
+  lab-service:
+    dbRequired: true
+    dbName: lab_db
+
+# -- PgBouncer -----------------------------------------------------------------
+pgbouncer:
+  enabled: true
+
+# -- PgBouncer -----------------------------------------------------------------
+pgbouncer:
+  enabled: true

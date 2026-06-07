@@ -291,3 +291,5 @@ springdoc:
         url: /api/cms/v3/api-docs
       - name: admin-service
         url: /api/admin/v3/api-docs
+
+# deploy-test: 2026-06-06 19:34:36

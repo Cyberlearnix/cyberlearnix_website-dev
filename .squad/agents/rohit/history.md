@@ -2,6 +2,23 @@
 
 ## Learnings
 
+### [2026-06-06] GitOps Architecture — ArgoCD as CD, GitHub Actions as CI only
+
+- **GitOps pattern:** GitHub Actions = CI (build + push + image tag update in git). ArgoCD = CD (watches git, auto-syncs cluster). No SSH or kubectl in GitHub Actions.
+- **Dev flow:** `ci-cd.yml` on `main` push → builds images, pushes to ghcr.io, updates `helm/values-k3s.yaml` image tags, commits back → ArgoCD app `cyberlearnix` detects change → syncs to `cyberlearnix` namespace.
+- **Production flow:** `deploy-production.yml` on `production` push → builds images, pushes to ghcr.io, updates `helm/values-production.yaml` image tags, commits back → ArgoCD app `cyberlearnix-production` detects change → syncs to `cyberlearnix-production` namespace.
+- **Production ArgoCD app** is defined in `k8s/argocd-app-production.yaml` — must be applied to cluster once: `kubectl apply -f k8s/argocd-app-production.yaml -n argocd`.
+- **Image tag format:** Quoted strings in values YAML (`"abc123"`) so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches reliably.
+- **Secrets removed:** `SSH_DEPLOY_KEY`, `SERVER_HOST`, `SERVER_PORT`, `DEV_BASIC_AUTH_PASSWORD` no longer needed in GitHub Actions. Basic auth annotation set once manually on cluster.
+
+
+
+- **Two-environment pipeline pattern:** `main` → `cyberlearnix` namespace (dev, basic-auth protected); `production` → `cyberlearnix-production` namespace (live, no auth).
+- **Basic auth via nginx ingress:** K8s `generic` secret named `basic-auth` in the target namespace (from-file `auth=<htpasswd-file>`) + three `nginx.ingress.kubernetes.io/auth-*` annotations on each ingress. htpasswd generated on runner with `htpasswd -nbB`, base64-encoded and piped via SSH heredoc to avoid special-character escaping issues with strong passwords.
+- **`deploy-production.yml` is a separate workflow** triggered on `production` branch. No change-detection job — production always does a full deploy of all 12 services. Uses `prod-latest` + `sha` tags (separate from dev's `latest` + `sha` tags).
+- **`ci-cd.yml` deploy job renamed** to `deploy-dev`, `environment: dev`, namespace hardcoded to `cyberlearnix` (removed `K3S_NAMESPACE` secret reference).
+- **Security rule:** Raw password from `DEV_BASIC_AUTH_PASSWORD` secret stays in runner env var only — never echoed. Only the bcrypt hash (base64-encoded) travels over SSH.
+
 ### [2026-06-05] Lab Pre-Installation Build Pipeline — DockerClientService + LabImageBuildService
 
 **New files created:**

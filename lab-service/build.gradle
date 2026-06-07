@@ -1,4 +1,5 @@
 // lab-service — Spring Boot microservice for managing student Linux lab containers
+// chore: trigger image rebuild
 plugins {
     id 'org.springframework.boot'
 }

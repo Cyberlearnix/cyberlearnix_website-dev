@@ -1,11 +1,11 @@
 # =============================================================================
-# Cyberlearnix Helm Values — K3s single-node (no Azure, SSH-only)
+# Cyberlearnix Helm Values G* K3s single-node (no Azure, SSH-only)
 #
 # Architecture:
-#   • K3s on the existing Azure VM (IP: 20.197.21.226)
-#   • Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
-#   • K3s handles:           10 Spring Boot microservices
-#   • Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
+#   G* K3s on the existing Azure VM (IP: 20.197.21.226)
+#   G* Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
+#   G* K3s handles:           10 Spring Boot microservices
+#   G* Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
 #
 # Usage (from setup script / CI):
 #   helm upgrade --install cyberlearnix ./helm \
@@ -28,37 +28,38 @@ global:
 imagePullSecrets:
   - name: ghcr-secret
 
-# ── Image tags — updated automatically by CI on every main push ──────────────
+# G*G* Image tags G* updated automatically by CI on every main push G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
+# Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
-  gateway-service:      63b21f73b8c3f627ef1b56af06f948833fee9425
-  user-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  course-service:       f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  enrollment-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  notification-service: f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  shop-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  form-service:         f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  admin-service:        f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  cms-service:          f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  instructor-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  attendance-service:   f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad
-  lab-service:          6bde9154100cb52b25b7e27e2ee0630187364eb8
+  gateway-service: "2e7bf0b15246c5ed3aaad0b592cf71d502a7003e"
+  user-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  course-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  enrollment-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  notification-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  shop-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  form-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  admin-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  cms-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  instructor-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  attendance-service: "f02ca3352d05e92122e2fe0d3eeda3e4caa3c8ad"
+  lab-service: "0dba13bb30ade2c6e1cb18ce47e3226e310f7aef"
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
   whenUnsatisfiable: ScheduleAnyway
 
-# ── Shared application config ─────────────────────────────────────────────────
+# G*G* Shared application config G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 # DB_HOST and REDIS_HOST point to Docker Compose containers on the same VM.
 # They are injected via --set appConfig.DB_HOST=$VM_PRIVATE_IP at deploy time.
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: "postgres"       # k8s service name — resolves within namespace
+  DB_HOST: "postgres"       # k8s service name G* resolves within namespace
   DB_PORT: "5432"
   DB_USER: "postgres"
-  REDIS_HOST: "redis"       # k8s service name — resolves within namespace
+  REDIS_HOST: "redis"       # k8s service name G* resolves within namespace
   REDIS_PORT: "6379"
-  # K8s DNS — services resolve within the cyberlearnix namespace
+  # K8s DNS G* services resolve within the cyberlearnix namespace
   USER_SERVICE_URL: "http://user-service:8081"
   COURSE_SERVICE_URL: "http://course-service:8082"
   ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
@@ -71,16 +72,16 @@ appConfig:
   ATTENDANCE_SERVICE_URL: "http://attendance-service:8092"
   LAB_SERVICE_URL: "http://lab-service:8090"
   FRONTEND_URL: "https://cyberlearnix.com"
-  BACKEND_URL: "https://cyberlearnix.com"
-  CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app"
+  BACKEND_URL: "https://apis.cyberlearnix.com"
+  CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://dev.cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app,https://*.vercel.app"
   SERVER_COOKIE_SECURE: "true"
-  # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
+  # Reduce connection pool: 10 services +* 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
   # JVM heap size optimization for 4 CPU / 16GB server
   # Balanced settings for performance while staying under 50% resource usage
   JAVA_OPTS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:CompressedClassSpaceSize=48m -XX:MaxDirectMemorySize=64m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+UseStringDeduplication -XX:StringDeduplicationAgeThreshold=3 -XX:MaxGCPauseMillis=200 -XX:InitiatingHeapOccupancyPercent=35"
 
-# ── Ingress — NGINX Ingress Controller (installed by k3s-setup.sh) ─────────
+# G*G* Ingress G* NGINX Ingress Controller (installed by k3s-setup.sh) G*G*G*G*G*G*G*G*G*
 ingress:
   className: nginx
   annotations:
@@ -97,35 +98,35 @@ ingress:
     enabled: true
     secretName: apis-cyberlearnix-tls
 
-# ── External access host ──────────────────────────────────────────────────────
+# G*G* External access host G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 hosts:
   api: "apis.cyberlearnix.com"
   lms: "lmsclass.cyberlearnix.com"
 
-# ── PostgreSQL (deployed as k8s StatefulSet) ──────────────────────────────────
+# G*G* PostgreSQL (deployed as k8s StatefulSet) G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 postgres:
   enabled: true
   user: postgres
   storage: 10Gi
 
-# ── ResourceQuota — managed by Helm so ArgoCD keeps it in sync ───────────────
+# G*G* ResourceQuota G* managed by Helm so ArgoCD keeps it in sync G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 resourceQuota:
   enabled: true
   hard:
     pods: "44"
     requestsCpu: "6"
-    # 11 services × 3 max replicas × 384Mi + infra (postgres/redis) = ~13Gi
+    # 11 services +* 3 max replicas +* 384Mi + infra (postgres/redis) = ~13Gi
     requestsMemory: "13Gi"
-    # 22 CPUs: 11 services × up to ~500m + HPA surge (up to 3 replicas × 11 svcs) + rolling update headroom
+    # 22 CPUs: 11 services +* up to ~500m + HPA surge (up to 3 replicas +* 11 svcs) + rolling update headroom
     limitsCpu: "22"
     limitsMemory: "17Gi"
     pvcs: "10"
 
-# ── Redis (deployed as k8s Deployment) ───────────────────────────────────────
+# G*G* Redis (deployed as k8s Deployment) G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 redis:
   enabled: true
 
-# ── Per-service overrides — single replica, HPA/PDB disabled (single node) ──
+# G*G* Per-service overrides G* single replica, HPA/PDB disabled (single node) G*G*
 services:
 
   gateway-service:
@@ -142,14 +143,14 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      # no targetMemoryUtilizationPercentage — JVM heap is constant, not load-driven
+      # no targetMemoryUtilizationPercentage G* JVM heap is constant, not load-driven
     pdb:
       minAvailable: 1
 
@@ -166,7 +167,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -189,7 +190,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -212,7 +213,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -258,7 +259,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -281,7 +282,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -304,7 +305,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -327,7 +328,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -350,7 +351,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -373,7 +374,7 @@ services:
         memory: "384Mi"
         cpu: "100m"
       limits:
-        memory: "768Mi"
+        memory: "384Mi"
         cpu: "500m"
     hpa:
       enabled: true
@@ -403,3 +404,13 @@ services:
       enabled: false
     pdb:
       minAvailable: 1
+
+# Dev scale-to-zero schedule
+devScaleSchedule:
+  enabled: true
+  downCron: "30 18 * * *"
+  upCron: "30 2 * * *"
+
+# PgBouncer connection pooler
+pgbouncer:
+  enabled: true

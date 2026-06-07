@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cyberlearnix-production
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Cyberlearnix/cyberlearnix_website-dev.git
+    targetRevision: production
+    path: helm
+    helm:
+      valueFiles:
+        - values-production.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cyberlearnix-production
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      managedFieldsManagers:
+        - k3s
+      jsonPointers:
+        - /spec/replicas
+        - /spec/template/spec/serviceAccount
+        - /metadata/annotations/deployment.kubernetes.io~1revision
+    - group: apps
+      kind: StatefulSet
+      managedFieldsManagers:
+        - k3s
+      jsonPointers:
+        - /metadata/annotations/deployment.kubernetes.io~1revision
+        - /spec/volumeClaimTemplates
