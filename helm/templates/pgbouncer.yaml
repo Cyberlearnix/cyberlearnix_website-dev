@@ -29,6 +29,16 @@ spec:
         app.kubernetes.io/part-of: cyberlearnix
     spec:
       terminationGracePeriodSeconds: 30
+      initContainers:
+        # The pgbouncer/pgbouncer image writes config to /etc/pgbouncer at startup
+        # and needs to own that directory. Mount an emptyDir and pre-create owned by uid 70.
+        - name: fix-perms
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "mkdir -p /etc/pgbouncer && chown 70:70 /etc/pgbouncer && chmod 750 /etc/pgbouncer"]
+          volumeMounts:
+            - name: pgbouncer-cfg
+              mountPath: /etc/pgbouncer
       containers:
         - name: pgbouncer
           image: pgbouncer/pgbouncer:latest
@@ -69,6 +79,9 @@ spec:
                 secretKeyRef:
                   name: cyberlearnix-secrets
                   key: db-password
+          volumeMounts:
+            - name: pgbouncer-cfg
+              mountPath: /etc/pgbouncer
           readinessProbe:
             tcpSocket:
               port: 5432
@@ -86,6 +99,9 @@ spec:
             limits:
               cpu: "200m"
               memory: "128Mi"
+      volumes:
+        - name: pgbouncer-cfg
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
