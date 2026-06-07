@@ -1,11 +1,11 @@
 # =============================================================================
-# Cyberlearnix Helm Values GÇö K3s single-node (no Azure, SSH-only)
+# Cyberlearnix Helm Values G* K3s single-node (no Azure, SSH-only)
 #
 # Architecture:
-#   GÇó K3s on the existing Azure VM (IP: 20.197.21.226)
-#   GÇó Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
-#   GÇó K3s handles:           10 Spring Boot microservices
-#   GÇó Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
+#   G* K3s on the existing Azure VM (IP: 20.197.21.226)
+#   G* Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
+#   G* K3s handles:           10 Spring Boot microservices
+#   G* Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
 #
 # Usage (from setup script / CI):
 #   helm upgrade --install cyberlearnix ./helm \
@@ -28,7 +28,7 @@ global:
 imagePullSecrets:
   - name: ghcr-secret
 
-# GöÇGöÇ Image tags GÇö updated automatically by CI on every main push GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+# G*G* Image tags G* updated automatically by CI on every main push G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
@@ -49,17 +49,17 @@ images:
 topology:
   whenUnsatisfiable: ScheduleAnyway
 
-# GöÇGöÇ Shared application config GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+# G*G* Shared application config G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 # DB_HOST and REDIS_HOST point to Docker Compose containers on the same VM.
 # They are injected via --set appConfig.DB_HOST=$VM_PRIVATE_IP at deploy time.
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: "postgres"       # k8s service name GÇö resolves within namespace
+  DB_HOST: "postgres"       # k8s service name G* resolves within namespace
   DB_PORT: "5432"
   DB_USER: "postgres"
-  REDIS_HOST: "redis"       # k8s service name GÇö resolves within namespace
+  REDIS_HOST: "redis"       # k8s service name G* resolves within namespace
   REDIS_PORT: "6379"
-  # K8s DNS GÇö services resolve within the cyberlearnix namespace
+  # K8s DNS G* services resolve within the cyberlearnix namespace
   USER_SERVICE_URL: "http://user-service:8081"
   COURSE_SERVICE_URL: "http://course-service:8082"
   ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
@@ -75,13 +75,13 @@ appConfig:
   BACKEND_URL: "https://apis.cyberlearnix.com"
   CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://dev.cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app,https://*.vercel.app"
   SERVER_COOKIE_SECURE: "true"
-  # Reduce connection pool: 10 services +ù 3 = 30 connections (well within Postgres default 100)
+  # Reduce connection pool: 10 services +* 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
   # JVM heap size optimization for 4 CPU / 16GB server
   # Balanced settings for performance while staying under 50% resource usage
   JAVA_OPTS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:CompressedClassSpaceSize=48m -XX:MaxDirectMemorySize=64m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+UseStringDeduplication -XX:StringDeduplicationAgeThreshold=3 -XX:MaxGCPauseMillis=200 -XX:InitiatingHeapOccupancyPercent=35"
 
-# GöÇGöÇ Ingress GÇö NGINX Ingress Controller (installed by k3s-setup.sh) GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+# G*G* Ingress G* NGINX Ingress Controller (installed by k3s-setup.sh) G*G*G*G*G*G*G*G*G*
 ingress:
   className: nginx
   annotations:
@@ -98,35 +98,35 @@ ingress:
     enabled: true
     secretName: apis-cyberlearnix-tls
 
-# GöÇGöÇ External access host GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+# G*G* External access host G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 hosts:
   api: "apis.cyberlearnix.com"
   lms: "lmsclass.cyberlearnix.com"
 
-# GöÇGöÇ PostgreSQL (deployed as k8s StatefulSet) GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+# G*G* PostgreSQL (deployed as k8s StatefulSet) G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 postgres:
   enabled: true
   user: postgres
   storage: 10Gi
 
-# GöÇGöÇ ResourceQuota GÇö managed by Helm so ArgoCD keeps it in sync GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+# G*G* ResourceQuota G* managed by Helm so ArgoCD keeps it in sync G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 resourceQuota:
   enabled: true
   hard:
     pods: "44"
     requestsCpu: "6"
-    # 11 services +ù 3 max replicas +ù 384Mi + infra (postgres/redis) = ~13Gi
+    # 11 services +* 3 max replicas +* 384Mi + infra (postgres/redis) = ~13Gi
     requestsMemory: "13Gi"
-    # 22 CPUs: 11 services +ù up to ~500m + HPA surge (up to 3 replicas +ù 11 svcs) + rolling update headroom
+    # 22 CPUs: 11 services +* up to ~500m + HPA surge (up to 3 replicas +* 11 svcs) + rolling update headroom
     limitsCpu: "22"
     limitsMemory: "17Gi"
     pvcs: "10"
 
-# GöÇGöÇ Redis (deployed as k8s Deployment) GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+# G*G* Redis (deployed as k8s Deployment) G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*G*
 redis:
   enabled: true
 
-# GöÇGöÇ Per-service overrides GÇö single replica, HPA/PDB disabled (single node) GöÇGöÇ
+# G*G* Per-service overrides G* single replica, HPA/PDB disabled (single node) G*G*
 services:
 
   gateway-service:
@@ -150,7 +150,7 @@ services:
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      # no targetMemoryUtilizationPercentage GÇö JVM heap is constant, not load-driven
+      # no targetMemoryUtilizationPercentage G* JVM heap is constant, not load-driven
     pdb:
       minAvailable: 1
 
