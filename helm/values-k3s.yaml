@@ -1,11 +1,11 @@
-# =============================================================================
-# Cyberlearnix Helm Values — K3s single-node (no Azure, SSH-only)
+﻿# =============================================================================
+# Cyberlearnix Helm Values ΓÇö K3s single-node (no Azure, SSH-only)
 #
 # Architecture:
-#   • K3s on the existing Azure VM (IP: 20.197.21.226)
-#   • Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
-#   • K3s handles:           10 Spring Boot microservices
-#   • Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
+#   ΓÇó K3s on the existing Azure VM (IP: 20.197.21.226)
+#   ΓÇó Docker Compose handles: Postgres, Redis, Prometheus, Grafana, Loki, Promtail
+#   ΓÇó K3s handles:           10 Spring Boot microservices
+#   ΓÇó Spring Boot pods reach Postgres/Redis via VM's private IP (injected at deploy)
 #
 # Usage (from setup script / CI):
 #   helm upgrade --install cyberlearnix ./helm \
@@ -28,7 +28,7 @@ global:
 imagePullSecrets:
   - name: ghcr-secret
 
-# ── Image tags — updated automatically by CI on every main push ──────────────
+# ΓöÇΓöÇ Image tags ΓÇö updated automatically by CI on every main push ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
@@ -49,17 +49,17 @@ images:
 topology:
   whenUnsatisfiable: ScheduleAnyway
 
-# ── Shared application config ─────────────────────────────────────────────────
+# ΓöÇΓöÇ Shared application config ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 # DB_HOST and REDIS_HOST point to Docker Compose containers on the same VM.
 # They are injected via --set appConfig.DB_HOST=$VM_PRIVATE_IP at deploy time.
 appConfig:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_HOST: "postgres"       # k8s service name — resolves within namespace
+  DB_HOST: "postgres"       # k8s service name ΓÇö resolves within namespace
   DB_PORT: "5432"
   DB_USER: "postgres"
-  REDIS_HOST: "redis"       # k8s service name — resolves within namespace
+  REDIS_HOST: "redis"       # k8s service name ΓÇö resolves within namespace
   REDIS_PORT: "6379"
-  # K8s DNS — services resolve within the cyberlearnix namespace
+  # K8s DNS ΓÇö services resolve within the cyberlearnix namespace
   USER_SERVICE_URL: "http://user-service:8081"
   COURSE_SERVICE_URL: "http://course-service:8082"
   ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
@@ -75,13 +75,13 @@ appConfig:
   BACKEND_URL: "https://apis.cyberlearnix.com"
   CORS_ALLOWED_ORIGINS: "http://localhost:5173,https://www.cyberlearnix.com,https://cyberlearnix.com,https://app.cyberlearnix.com,https://apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,https://radiant-stroopwafel-8dc51d.netlify.app,https://*.netlify.app"
   SERVER_COOKIE_SECURE: "true"
-  # Reduce connection pool: 10 services × 3 = 30 connections (well within Postgres default 100)
+  # Reduce connection pool: 10 services ├ù 3 = 30 connections (well within Postgres default 100)
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
   # JVM heap size optimization for 4 CPU / 16GB server
   # Balanced settings for performance while staying under 50% resource usage
   JAVA_OPTS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:CompressedClassSpaceSize=48m -XX:MaxDirectMemorySize=64m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+UseStringDeduplication -XX:StringDeduplicationAgeThreshold=3 -XX:MaxGCPauseMillis=200 -XX:InitiatingHeapOccupancyPercent=35"
 
-# ── Ingress — NGINX Ingress Controller (installed by k3s-setup.sh) ─────────
+# ΓöÇΓöÇ Ingress ΓÇö NGINX Ingress Controller (installed by k3s-setup.sh) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 ingress:
   className: nginx
   annotations:
@@ -98,35 +98,35 @@ ingress:
     enabled: true
     secretName: apis-cyberlearnix-tls
 
-# ── External access host ──────────────────────────────────────────────────────
+# ΓöÇΓöÇ External access host ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 hosts:
   api: "apis.cyberlearnix.com"
   lms: "lmsclass.cyberlearnix.com"
 
-# ── PostgreSQL (deployed as k8s StatefulSet) ──────────────────────────────────
+# ΓöÇΓöÇ PostgreSQL (deployed as k8s StatefulSet) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 postgres:
   enabled: true
   user: postgres
   storage: 10Gi
 
-# ── ResourceQuota — managed by Helm so ArgoCD keeps it in sync ───────────────
+# ΓöÇΓöÇ ResourceQuota ΓÇö managed by Helm so ArgoCD keeps it in sync ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 resourceQuota:
   enabled: true
   hard:
     pods: "44"
     requestsCpu: "6"
-    # 11 services × 3 max replicas × 384Mi + infra (postgres/redis) = ~13Gi
+    # 11 services ├ù 3 max replicas ├ù 384Mi + infra (postgres/redis) = ~13Gi
     requestsMemory: "13Gi"
-    # 22 CPUs: 11 services × up to ~500m + HPA surge (up to 3 replicas × 11 svcs) + rolling update headroom
+    # 22 CPUs: 11 services ├ù up to ~500m + HPA surge (up to 3 replicas ├ù 11 svcs) + rolling update headroom
     limitsCpu: "22"
     limitsMemory: "17Gi"
     pvcs: "10"
 
-# ── Redis (deployed as k8s Deployment) ───────────────────────────────────────
+# ΓöÇΓöÇ Redis (deployed as k8s Deployment) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 redis:
   enabled: true
 
-# ── Per-service overrides — single replica, HPA/PDB disabled (single node) ──
+# ΓöÇΓöÇ Per-service overrides ΓÇö single replica, HPA/PDB disabled (single node) ΓöÇΓöÇ
 services:
 
   gateway-service:
@@ -150,7 +150,7 @@ services:
       minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
-      # no targetMemoryUtilizationPercentage — JVM heap is constant, not load-driven
+      # no targetMemoryUtilizationPercentage ΓÇö JVM heap is constant, not load-driven
     pdb:
       minAvailable: 1
 
@@ -405,34 +405,12 @@ services:
     pdb:
       minAvailable: 1
 
-    pdb:
-      minAvailable: 1
-
-# -- Dev scale-to-zero schedule ------------------------------------------------
-# Scales all dev services to 0 at midnight IST, back up at 08:00 IST.
-# Saves ~5GB RAM during off-hours on the shared single node.
+# Dev scale-to-zero schedule
 devScaleSchedule:
   enabled: true
-  downCron: "30 18 * * *"   # 18:30 UTC = 00:00 IST
-  upCron: "30 2 * * *"      # 02:30 UTC = 08:00 IST
+  downCron: "30 18 * * *"
+  upCron: "30 2 * * *"
 
-# -- PgBouncer -----------------------------------------------------------------
-# Transaction-mode pooling: caps real Postgres connections at ~20 regardless of pod count.
-pgbouncer:
-  enabled: true
-
-    pdb:
-      minAvailable: 1
-
-# -- Dev scale-to-zero schedule ------------------------------------------------
-# Scales all dev services to 0 at midnight IST, back up at 08:00 IST.
-# Saves ~5GB RAM during off-hours on the shared single node.
-devScaleSchedule:
-  enabled: true
-  downCron: "30 18 * * *"   # 18:30 UTC = 00:00 IST
-  upCron: "30 2 * * *"      # 02:30 UTC = 08:00 IST
-
-# -- PgBouncer -----------------------------------------------------------------
-# Transaction-mode pooling: caps real Postgres connections at ~20 regardless of pod count.
+# PgBouncer connection pooler
 pgbouncer:
   enabled: true
