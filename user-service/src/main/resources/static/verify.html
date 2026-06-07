@@ -209,6 +209,17 @@
 
       try {
         const res = await fetch(`${API_BASE}/api/public/verify/${encodeURIComponent(enrollment)}`);
+
+        // Guard against HTML error pages (502/503) which aren't valid JSON
+        if (!res.ok) {
+          const msg = res.status >= 500
+            ? 'Verification service is temporarily unavailable. Please try again later.'
+            : 'Enrollment not found.';
+          document.getElementById('errorMsg').textContent = msg;
+          show('invalid');
+          return;
+        }
+
         const data = await res.json();
 
         if (!res.ok || !data.valid) {
