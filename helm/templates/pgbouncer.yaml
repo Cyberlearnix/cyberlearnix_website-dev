@@ -65,7 +65,7 @@ spec:
             - name: PGBOUNCER_RESERVE_POOL_SIZE
               value: "5"
             - name: PGBOUNCER_AUTH_TYPE
-              value: "scram-sha-256"
+              value: "any"
             - name: PGBOUNCER_SERVER_RESET_QUERY
               value: "DISCARD ALL"
             - name: PGBOUNCER_IGNORE_STARTUP_PARAMETERS
