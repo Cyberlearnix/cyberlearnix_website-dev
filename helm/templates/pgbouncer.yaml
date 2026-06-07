@@ -2,8 +2,118 @@
 ---
 # ── PgBouncer connection pooler ───────────────────────────────────────────────
 # Apps connect to pgbouncer:5432 (transaction pooling).
-# PgBouncer maintains a small pool of real Postgres connections (~20 total)
-# instead of each JVM holding its own open connections (~60-120 raw connections).
+# Caps real Postgres connections at ~20 regardless of how many JVMs connect.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/part-of: cyberlearnix
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pgbouncer
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pgbouncer
+        app.kubernetes.io/part-of: cyberlearnix
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: pgbouncer
+          image: pgbouncer/pgbouncer:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            # pgbouncer/pgbouncer image uses env vars for all config
+            - name: DATABASES_HOST
+              value: "postgres"
+            - name: DATABASES_PORT
+              value: "5432"
+            - name: DATABASES_DBNAME
+              value: "*"
+            - name: PGBOUNCER_POOL_MODE
+              value: "transaction"
+            - name: PGBOUNCER_MAX_CLIENT_CONN
+              value: "200"
+            - name: PGBOUNCER_DEFAULT_POOL_SIZE
+              value: "20"
+            - name: PGBOUNCER_MIN_POOL_SIZE
+              value: "2"
+            - name: PGBOUNCER_RESERVE_POOL_SIZE
+              value: "5"
+            - name: PGBOUNCER_AUTH_TYPE
+              value: "scram-sha-256"
+            - name: PGBOUNCER_SERVER_RESET_QUERY
+              value: "DISCARD ALL"
+            - name: PGBOUNCER_IGNORE_STARTUP_PARAMETERS
+              value: "extra_float_digits,options"
+            - name: PGBOUNCER_ADMIN_USERS
+              value: "postgres"
+            - name: DATABASES_USER
+              value: "postgres"
+            - name: DATABASES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: db-password
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/part-of: cyberlearnix
+spec:
+  selector:
+    app.kubernetes.io/name: pgbouncer
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+{{- end }}
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -94,7 +204,7 @@ spec:
               mountPath: /etc/pgbouncer
       containers:
         - name: pgbouncer
-          image: bitnami/pgbouncer:1.22.1
+          image: pgbouncer/pgbouncer:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
