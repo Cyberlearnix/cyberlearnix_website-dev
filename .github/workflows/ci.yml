@@ -35,8 +35,8 @@ jobs:
       attendance:      ${{ steps.filter.outputs.attendance-service }}
       lab:             ${{ steps.filter.outputs.lab-service }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -102,12 +102,12 @@ jobs:
           - service: lab-service
             changed: ${{ needs.changes.outputs.lab }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up JDK 21
         # matrix context is only valid inside steps, not at job-level if
         if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -142,7 +142,7 @@ jobs:
           comment_mode: off
 
       - name: Upload test reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure() && (matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true')
         with:
           name: test-report-${{ matrix.service }}
@@ -153,8 +153,8 @@ jobs:
     name: Dockerfile Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: actions/checkout@v6
+      - uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile
           failure-threshold: error   # only fail on errors, warnings are informational
@@ -167,12 +167,12 @@ jobs:
     if: always() && needs.build.result != 'failure'
     continue-on-error: true  # non-blocking — SONAR_TOKEN may be expired
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0          # SonarCloud needs full git history for blame annotations
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
