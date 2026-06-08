@@ -82,7 +82,6 @@ async function testTerminal(token, assignmentId) {
 
   return new Promise((resolve) => {
     const ws = new WebSocket(wsUrl, {
-      perMessageDeflate: false,          // disable compression to avoid RSV1 mismatch through gateway proxy
       handshakeTimeout: 10000
     });
     let received = '';
@@ -95,10 +94,14 @@ async function testTerminal(token, assignmentId) {
     });
 
     ws.on('open', () => {
-      console.log('  PASS WebSocket connected');
-      // send echo right away
-      ws.send('echo TERMINAL_WORKS\n');
-      console.log('  >> Sent: echo TERMINAL_WORKS');
+      console.log(`  PASS WebSocket connected (t=0ms)`);
+      const t0 = Date.now();
+      // Delay sending so we can see if server sends anything first
+      setTimeout(() => {
+        console.log(`  >> Sending at t=${Date.now()-t0}ms`);
+        ws.send('echo TERMINAL_WORKS\n');
+        console.log('  >> Sent: echo TERMINAL_WORKS');
+      }, 2000);
 
       // overall timeout
       timer = setTimeout(() => {

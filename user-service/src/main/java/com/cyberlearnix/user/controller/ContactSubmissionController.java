@@ -29,6 +29,13 @@ public class ContactSubmissionController {
         return ResponseEntity.ok(contactSubmissionRepository.findByDeletedAtIsNullOrderByCreatedAtDesc());
     }
 
+    @GetMapping("/count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Long>> getCount() {
+        long total = contactSubmissionRepository.countByDeletedAtIsNull();
+        return ResponseEntity.ok(Map.of("count", total));
+    }
+
     @PostMapping
     public ResponseEntity<ContactSubmission> createSubmission(@RequestBody ContactSubmission submission) {
         System.out.println("ContactSubmissionController: createSubmission called for: " + submission.getEmail());

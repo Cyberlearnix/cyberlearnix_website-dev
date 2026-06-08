@@ -8,6 +8,7 @@ import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.InspectExecResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
+import com.github.dockerjava.api.exception.DockerException;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
@@ -147,8 +148,10 @@ public class DockerClientService {
 
         CreateContainerResponse response = dockerClient.createContainerCmd(dockerImage)
                 .withName(containerName)
-                // NO withTty(true) — TTY mode routes exec output to the TTY stream instead of
-                // the exec capture stream, causing execScript() to receive empty output.
+                // sleep infinity keeps the container alive so docker exec can run the setup
+                // script. NO withTty(true) — TTY mode routes exec output to the TTY stream
+                // instead of the exec capture stream, causing execScript() to receive empty output.
+                .withCmd("sleep", "infinity")
                 .withLabels(Map.of("managed-by", "cyberlearnix", "purpose", "setup"))
                 .exec();
 
@@ -179,32 +182,47 @@ public class DockerClientService {
                 })
                 .awaitCompletion(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
 
-        // Check the exit code so the caller can detect script failures
+        // Check the exit code and fail fast — the caller must not commit a broken container
         InspectExecResponse inspect = dockerClient.inspectExecCmd(execResp.getId()).exec();
         Integer exitCode = inspect.getExitCodeLong() != null ? inspect.getExitCodeLong().intValue() : null;
         if (exitCode != null && exitCode != 0) {
-            log.warn("exec in container {} exited with code {}; output={}...",
-                    containerId, exitCode,
-                    output.length() > 200 ? output.substring(0, 200) : output.toString());
-            // Append exit code marker so the caller's log reflects the failure
+            String snippet = output.length() > 300 ? output.substring(0, 300) + "..." : output.toString();
+            log.warn("exec in container {} exited with code {}; output={}",
+                    containerId, exitCode, snippet);
+            // Append exit code marker then throw so triggerBuild catches it cleanly
             output.append("\n[EXIT CODE: ").append(exitCode).append("]\n");
+            throw new RuntimeException("Script exited with code " + exitCode + "\n" + output);
         }
         return output.toString();
     }
 
     /**
      * Commits a running/stopped container as a new Docker image with the given tag.
+     * HTTP 304 from the Docker daemon means the container filesystem is identical to
+     * its source image (no new layers) — we treat that as a successful no-op commit
+     * and return the tag as-is, because the base image already has all required tools.
      *
      * @return the full image tag
      */
     public String commitContainer(String containerId, String imageTag) {
         String repo = imageTag.contains(":") ? imageTag.split(":")[0] : imageTag;
         String tag  = imageTag.contains(":") ? imageTag.split(":")[1] : "latest";
-        dockerClient.commitCmd(containerId)
-                .withRepository(repo)
-                .withTag(tag)
-                .exec();
-        log.info("Committed container {} as image {}", containerId, imageTag);
+        try {
+            dockerClient.commitCmd(containerId)
+                    .withRepository(repo)
+                    .withTag(tag)
+                    .exec();
+            log.info("Committed container {} as image {}", containerId, imageTag);
+        } catch (DockerException de) {
+            // 304 Not Modified: container filesystem is identical to its parent image.
+            // The tools are already present — treat as success.
+            if (de.getHttpStatus() == 304) {
+                log.info("commitContainer 304 for {} — container unchanged, reusing base image tag {}",
+                        containerId, imageTag);
+            } else {
+                throw de;
+            }
+        }
         return imageTag;
     }
 }
