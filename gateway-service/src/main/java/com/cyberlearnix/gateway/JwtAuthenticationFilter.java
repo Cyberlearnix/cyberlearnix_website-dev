@@ -130,6 +130,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (path.equals("/api/enrollments/payments/initiate")) return true;
             if (path.equals("/api/enrollments/payments/webhook")) return true;
             if (path.equals("/api/enrollments/payu-payment")) return true;
+            if (path.equals("/api/contact-submissions")) return true;  // Public contact form
             return path.endsWith("/responses") || path.endsWith("/responses/check");
         }
 

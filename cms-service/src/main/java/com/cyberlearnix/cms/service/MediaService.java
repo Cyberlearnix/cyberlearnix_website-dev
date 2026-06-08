@@ -34,8 +34,17 @@ public class MediaService {
             try {
                 Map<String, String> result = googleDriveService.uploadFile(file);
                 String fileId = result.get("fileId");
-                fileUrl = "https://drive.google.com/uc?export=view&id=" + fileId;
-                log.info("CMS media uploaded to Google Drive: fileId={}", fileId);
+
+                // Videos: use backend stream proxy so playback works without Drive login requirement.
+                // Images/docs: direct Drive embed URL is reliable for public content.
+                String contentType = file.getContentType() != null ? file.getContentType() : "";
+                if (contentType.startsWith("video/")) {
+                    fileUrl = "/api/cms/media/drive/stream/" + fileId;
+                } else {
+                    fileUrl = "https://drive.google.com/uc?export=view&id=" + fileId;
+                }
+
+                log.info("CMS media uploaded to Google Drive: fileId={} type={}", fileId, type);
             } catch (Exception e) {
                 log.error("Google Drive upload failed for CMS media: {}", e.getMessage());
                 throw new RuntimeException("Media upload failed: " + e.getMessage(), e);

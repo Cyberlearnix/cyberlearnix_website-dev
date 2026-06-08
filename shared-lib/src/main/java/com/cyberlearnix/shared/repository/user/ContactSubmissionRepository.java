@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface ContactSubmissionRepository extends JpaRepository<ContactSubmission, Long> {
     List<ContactSubmission> findByDeletedAtIsNullOrderByCreatedAtDesc();
+    long countByDeletedAtIsNull();
 }

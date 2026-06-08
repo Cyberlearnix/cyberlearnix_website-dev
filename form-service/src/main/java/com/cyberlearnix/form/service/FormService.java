@@ -50,17 +50,20 @@ public class FormService {
     }
 
     public FormResponseDTO getFormPublic(String id, String token) {
-        GeneralForm form = formRepository.findByIdAndToken(id, token)
-                .orElseThrow(() -> new RuntimeException("Form not found or invalid token"));
-        
-        if (form.getDeletedAt() != null) {
-            throw new RuntimeException("Form '" + form.getTitle() + "' is no longer available.");
+        // Find by ID first so we can give a proper 404 vs token-mismatch error
+        GeneralForm form = formRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Form not found"));
+
+        // Validate token only when the form has one stored (legacy forms without a token are accessible as-is)
+        if (form.getToken() != null && !form.getToken().isEmpty()
+                && (token == null || !form.getToken().equals(token))) {
+            throw new jakarta.persistence.EntityNotFoundException("Form not found or invalid token");
         }
-        
+
         if (!form.isActive()) {
             throw new RuntimeException("Form '" + form.getTitle() + "' is currently not accepting responses.");
         }
-        
+
         LocalDateTime now = LocalDateTime.now();
         if (form.getStartTime() != null && now.isBefore(form.getStartTime())) {
             throw new RuntimeException("Form '" + form.getTitle() + "' has not started yet (Starts at: " + form.getStartTime() + ")");
