@@ -47,6 +47,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> handleBusinessError(RuntimeException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        // Distinguish "not found / invalid token" business errors from unexpected failures
+        boolean isNotFound = msg.toLowerCase().contains("not found")
+                || msg.toLowerCase().contains("invalid token");
+        boolean isConflict = msg.toLowerCase().contains("already responded");
+        HttpStatus status = isNotFound ? HttpStatus.NOT_FOUND
+                : isConflict ? HttpStatus.CONFLICT
+                : HttpStatus.BAD_REQUEST;
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", msg.isEmpty() ? "Request could not be processed" : msg);
+        return ResponseEntity.status(status).body(body);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
         Map<String, Object> body = new LinkedHashMap<>();

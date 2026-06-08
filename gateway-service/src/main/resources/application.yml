@@ -73,6 +73,14 @@ spring:
           uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:
             - Path=/api/users/**, /api/send-form-receipt, /api/send-form-notification, /api/send-reply, /api/send-email, /api/send-enrollment-credentials, /api/careers, /api/careers/**, /api/contact-submissions, /api/contact-submissions/**, /api/site-settings, /api/site-settings/**, /api/menus, /api/menus/**, /api/chatbot, /api/chatbot/**, /api/teams, /api/teams/**
+
+        # Bridge: legacy /api/contact/count → /api/contact-submissions/count
+        - id: contact-count-bridge
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/contact/count
+          filters:
+            - RewritePath=/api/contact/count, /api/contact-submissions/count
         
         # User-status toggle (PATCH /api/users/{id}/status)
         - id: user-status-service
