@@ -471,7 +471,9 @@ public class CourseController {
 
         return courseRepository.findById(id).map(course -> {
             List<CourseModule> modules = moduleRepository.findByCourseIdOrderByOrderIndex(id);
-            List<Map<String, Object>> moduleMaps = modules.stream().map(this::toModuleResponse).collect(Collectors.toList());
+            List<Map<String, Object>> moduleMaps = modules.stream()
+                    .map(m -> toModuleResponse(m, userRole))
+                    .collect(Collectors.toList());
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
                     "courseId", course.getId(),
@@ -480,7 +482,7 @@ public class CourseController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    private Map<String, Object> toModuleResponse(CourseModule module) {
+    private Map<String, Object> toModuleResponse(CourseModule module, String userRole) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", module.getId());
         map.put("title", module.getTitle());
@@ -493,6 +495,30 @@ public class CourseController {
 
         // Fetch content for this module
         List<ModuleContent> contents = contentRepository.findByModuleIdOrderByOrderIndex(module.getId());
+        
+        // Filter content for students (exclude DRAFT and future SCHEDULED content)
+        if ("student".equalsIgnoreCase(userRole)) {
+            LocalDateTime now = LocalDateTime.now();
+            contents = contents.stream().filter(c -> {
+                if (c == null) return false;
+                if (Boolean.FALSE.equals(c.getActive())) return false;
+                
+                String status = c.getStatus();
+                if (status != null) {
+                    String upperStatus = status.toUpperCase();
+                    if ("DRAFT".equals(upperStatus)) {
+                        return false;
+                    }
+                    if ("SCHEDULED".equals(upperStatus)) {
+                        if (c.getScheduledAt() == null || c.getScheduledAt().isAfter(now)) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }).collect(Collectors.toList());
+        }
+
         List<Map<String, Object>> contentMaps = contents.stream().map(this::toContentResponse).collect(Collectors.toList());
         map.put("contents", contentMaps);
 
