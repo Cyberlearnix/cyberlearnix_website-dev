@@ -303,6 +303,7 @@ public class CourseManagementController {
             content.setCreatedBy(userId);
             content.setCreatedAt(LocalDateTime.now());
             content.setUpdatedAt(LocalDateTime.now());
+            copySettingsFields(contentDTO, content);
 
             if (content.getOrderIndex() == null || content.getOrderIndex() == 0) {
                 Integer maxOrder = contentRepository.findMaxOrderIndexByModuleId(moduleId);
@@ -433,6 +434,7 @@ public class CourseManagementController {
             if (contentDTO.getOrderIndex() != null)
                 content.setOrderIndex(contentDTO.getOrderIndex());
             content.setUpdatedAt(LocalDateTime.now());
+            copySettingsFields(contentDTO, content);
 
             ModuleContent savedContent;
             String type = content.getContentType();
@@ -440,7 +442,16 @@ public class CourseManagementController {
                 LabContent lab = (LabContent) content;
                 if (contentDTO.getLabType() != null) lab.setLabType(contentDTO.getLabType());
                 if (contentDTO.getInstructions() != null) lab.setInstructions(contentDTO.getInstructions());
-                if (contentDTO.getEnvironmentConfig() != null) lab.setEnvironmentConfig(contentDTO.getEnvironmentConfig());
+                if (contentDTO.getEnvironmentConfig() != null) {
+                    lab.setEnvironmentConfig(contentDTO.getEnvironmentConfig());
+                    try {
+                        Map<String, Object> config = new com.fasterxml.jackson.databind.ObjectMapper()
+                            .readValue(contentDTO.getEnvironmentConfig(), Map.class);
+                        if (config.get("difficulty") != null) lab.setDifficultyLevel(config.get("difficulty").toString());
+                        if (config.get("prerequisites") != null) lab.setPrerequisites(config.get("prerequisites").toString());
+                        if (config.get("objectives") != null) lab.setLearningObjectives(config.get("objectives").toString());
+                    } catch (Exception ignored) {}
+                }
                 if (contentDTO.getDurationMinutes() != null) lab.setDurationMinutes(contentDTO.getDurationMinutes());
                 savedContent = labRepository.save(lab);
             } else if ("ASSIGNMENT".equals(type) && content instanceof AssignmentContent) {
@@ -448,6 +459,20 @@ public class CourseManagementController {
                 if (contentDTO.getAssignmentType() != null) ass.setAssignmentType(contentDTO.getAssignmentType());
                 if (contentDTO.getInstructions() != null) ass.setInstructions(contentDTO.getInstructions());
                 if (contentDTO.getMaxScore() != null) ass.setMaxScore(contentDTO.getMaxScore());
+                if (contentDTO.getAssignmentMetadata() != null) {
+                    ass.setAssignmentMetadata(contentDTO.getAssignmentMetadata());
+                    try {
+                        Map<String, Object> meta = new com.fasterxml.jackson.databind.ObjectMapper()
+                            .readValue(contentDTO.getAssignmentMetadata(), Map.class);
+                        if (meta.get("gradingMode") != null) ass.setGradingMode(meta.get("gradingMode").toString());
+                        if (meta.get("difficulty") != null) ass.setDifficulty(meta.get("difficulty").toString());
+                        if (meta.get("passingScore") != null) ass.setPassingScore(((Number) meta.get("passingScore")).intValue());
+                        if (meta.get("maxAttempts") != null) ass.setMaxAttempts(((Number) meta.get("maxAttempts")).intValue());
+                        if (meta.get("dueDate") != null && !meta.get("dueDate").toString().isEmpty()) {
+                            try { ass.setDueDate(LocalDateTime.parse(meta.get("dueDate").toString())); } catch (Exception ignored) {}
+                        }
+                    } catch (Exception ignored) {}
+                }
                 savedContent = assignmentRepository.save(ass);
             } else if (("LECTURE".equals(type) || "VIDEO".equals(type) || "IMAGE".equals(type) || "TEXT".equals(type)) && content instanceof LectureContent) {
                 LectureContent lect = (LectureContent) content;
@@ -940,12 +965,35 @@ public class CourseManagementController {
             lab.setInstructions(contentDTO.getInstructions());
             lab.setEnvironmentConfig(contentDTO.getEnvironmentConfig());
             lab.setDurationMinutes(contentDTO.getDurationMinutes());
+            if (contentDTO.getEnvironmentConfig() != null) {
+                try {
+                    Map<String, Object> config = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(contentDTO.getEnvironmentConfig(), Map.class);
+                    if (config.get("difficulty") != null) lab.setDifficultyLevel(config.get("difficulty").toString());
+                    if (config.get("prerequisites") != null) lab.setPrerequisites(config.get("prerequisites").toString());
+                    if (config.get("objectives") != null) lab.setLearningObjectives(config.get("objectives").toString());
+                } catch (Exception ignored) {}
+            }
             return lab;
         } else if ("ASSIGNMENT".equals(type)) {
             AssignmentContent ass = new AssignmentContent();
             ass.setAssignmentType(contentDTO.getAssignmentType());
             ass.setInstructions(contentDTO.getInstructions());
             ass.setMaxScore(contentDTO.getMaxScore());
+            if (contentDTO.getAssignmentMetadata() != null) {
+                ass.setAssignmentMetadata(contentDTO.getAssignmentMetadata());
+                try {
+                    Map<String, Object> meta = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(contentDTO.getAssignmentMetadata(), Map.class);
+                    if (meta.get("gradingMode") != null) ass.setGradingMode(meta.get("gradingMode").toString());
+                    if (meta.get("difficulty") != null) ass.setDifficulty(meta.get("difficulty").toString());
+                    if (meta.get("passingScore") != null) ass.setPassingScore(((Number) meta.get("passingScore")).intValue());
+                    if (meta.get("maxAttempts") != null) ass.setMaxAttempts(((Number) meta.get("maxAttempts")).intValue());
+                    if (meta.get("dueDate") != null && !meta.get("dueDate").toString().isEmpty()) {
+                        try { ass.setDueDate(LocalDateTime.parse(meta.get("dueDate").toString())); } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {}
+            }
             return ass;
         } else if ("LECTURE".equals(type) || "VIDEO".equals(type)) {
             LectureContent lect = new LectureContent();
@@ -1076,6 +1124,25 @@ public class CourseManagementController {
         if (content.getModuleId() != null) {
             response.put("moduleId", content.getModuleId());
         }
+        
+        response.put("scheduledAt", content.getScheduledAt() != null ? content.getScheduledAt().toString() : null);
+        response.put("isFreePreview", content.getIsFreePreview());
+        response.put("requiresEnrollment", content.getRequiresEnrollment());
+        response.put("visibility", content.getVisibility());
+        response.put("availableFrom", content.getAvailableFrom() != null ? content.getAvailableFrom().toString() : null);
+        response.put("availableUntil", content.getAvailableUntil() != null ? content.getAvailableUntil().toString() : null);
+        response.put("drip", content.getDrip());
+        response.put("dripDays", content.getDripDays());
+        response.put("mandatory", content.getMandatory());
+        response.put("completionType", content.getCompletionType());
+        response.put("watchPercent", content.getWatchPercent());
+        response.put("passPercent", content.getPassPercent());
+        response.put("slug", content.getSlug());
+        response.put("metaDesc", content.getMetaDesc());
+        response.put("tags", content.getTags());
+        response.put("estimatedMinutes", content.getEstimatedMinutes());
+        response.put("hasPrerequisite", content.getHasPrerequisite());
+        response.put("prerequisiteId", content.getPrerequisiteId());
 
         if (content instanceof LectureContent lecture) {
             response.put("videoUrl", lecture.getVideoUrl());
@@ -1111,6 +1178,12 @@ public class CourseManagementController {
             response.put("rubric", assignment.getRubric());
             response.put("autoGrade", assignment.getAutoGrade());
             response.put("plagiarismCheck", assignment.getPlagiarismCheck());
+            response.put("assignmentMetadata", assignment.getAssignmentMetadata());
+            response.put("gradingMode", assignment.getGradingMode());
+            response.put("passingScore", assignment.getPassingScore());
+            response.put("difficulty", assignment.getDifficulty());
+            response.put("durationMinutes", assignment.getDurationMinutes());
+            response.put("maxAttempts", assignment.getMaxAttempts());
         } else if (content instanceof QuizContent quiz) {
             response.put("quizId", quiz.getQuizId());
             response.put("timeLimitMinutes", quiz.getTimeLimitMinutes());
@@ -1128,5 +1201,46 @@ public class CourseManagementController {
         }
 
         return response;
+    }
+
+    private void copySettingsFields(ContentCreateDTO dto, ModuleContent content) {
+        if (dto.getStatus() != null) content.setStatus(dto.getStatus());
+        if (dto.getIsFreePreview() != null) content.setIsFreePreview(dto.getIsFreePreview());
+        if (dto.getRequiresEnrollment() != null) content.setRequiresEnrollment(dto.getRequiresEnrollment());
+        if (dto.getVisibility() != null) content.setVisibility(dto.getVisibility());
+        if (dto.getDrip() != null) content.setDrip(dto.getDrip());
+        if (dto.getDripDays() != null) content.setDripDays(dto.getDripDays());
+        if (dto.getMandatory() != null) content.setMandatory(dto.getMandatory());
+        if (dto.getCompletionType() != null) content.setCompletionType(dto.getCompletionType());
+        if (dto.getWatchPercent() != null) content.setWatchPercent(dto.getWatchPercent());
+        if (dto.getPassPercent() != null) content.setPassPercent(dto.getPassPercent());
+        if (dto.getSlug() != null) content.setSlug(dto.getSlug());
+        if (dto.getMetaDesc() != null) content.setMetaDesc(dto.getMetaDesc());
+        if (dto.getTags() != null) content.setTags(dto.getTags());
+        if (dto.getEstimatedMinutes() != null) content.setEstimatedMinutes(dto.getEstimatedMinutes());
+        if (dto.getHasPrerequisite() != null) content.setHasPrerequisite(dto.getHasPrerequisite());
+        if (dto.getPrerequisiteId() != null) content.setPrerequisiteId(dto.getPrerequisiteId());
+
+        if (dto.getScheduledAt() != null) {
+            if (dto.getScheduledAt().trim().isEmpty()) {
+                content.setScheduledAt(null);
+            } else {
+                try { content.setScheduledAt(LocalDateTime.parse(dto.getScheduledAt())); } catch (Exception ignored) {}
+            }
+        }
+        if (dto.getAvailableFrom() != null) {
+            if (dto.getAvailableFrom().trim().isEmpty()) {
+                content.setAvailableFrom(null);
+            } else {
+                try { content.setAvailableFrom(LocalDateTime.parse(dto.getAvailableFrom())); } catch (Exception ignored) {}
+            }
+        }
+        if (dto.getAvailableUntil() != null) {
+            if (dto.getAvailableUntil().trim().isEmpty()) {
+                content.setAvailableUntil(null);
+            } else {
+                try { content.setAvailableUntil(LocalDateTime.parse(dto.getAvailableUntil())); } catch (Exception ignored) {}
+            }
+        }
     }
 }
