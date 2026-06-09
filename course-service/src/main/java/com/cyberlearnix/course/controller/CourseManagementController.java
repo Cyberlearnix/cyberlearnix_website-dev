@@ -556,7 +556,7 @@ public class CourseManagementController {
         }
     }
 
-    // Delete module
+    // Delete module — teachers can delete modules in courses they are assigned to
     @DeleteMapping("/modules/{id}")
     public ResponseEntity<?> deleteModule(@PathVariable Long id,
             @RequestHeader("X-User-Id") String userId,
@@ -564,8 +564,24 @@ public class CourseManagementController {
 
         return moduleRepository.findById(id).map(module -> {
             if (!"admin".equalsIgnoreCase(userRole)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Only administrators can delete modules"));
+                // Teachers may only delete modules in courses they are assigned to
+                Long courseId = module.getCourse() != null ? module.getCourse().getId() :
+                        (module.getParentModule() != null && module.getParentModule().getCourse() != null
+                                ? module.getParentModule().getCourse().getId() : null);
+                if (courseId == null || !courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", NOT_ASSIGNED_MSG));
+                }
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canEditModules"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to delete modules"));
+                    }
+                } catch (Exception ex) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "You don't have permission to delete modules"));
+                }
             }
 
             moduleRepository.delete(module);
@@ -573,7 +589,7 @@ public class CourseManagementController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // Delete content
+    // Delete content — teachers can delete content in courses they are assigned to
     @DeleteMapping("/contents/{id}")
     public ResponseEntity<?> deleteContent(@PathVariable Long id,
             @RequestHeader("X-User-Id") String userId,
@@ -581,13 +597,83 @@ public class CourseManagementController {
 
         return contentRepository.findById(id).map(content -> {
             if (!"admin".equalsIgnoreCase(userRole)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Only administrators can delete content"));
+                Long courseId = content.getModule() != null && content.getModule().getCourse() != null
+                        ? content.getModule().getCourse().getId() : null;
+                if (courseId == null || !courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, userId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", NOT_ASSIGNED_MSG));
+                }
+                try {
+                    Map<String, Object> perm = userServiceClient.getTeacherPermission(userId);
+                    if (!Boolean.TRUE.equals(perm.get("canEditContent"))) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Map.of("error", "You don't have permission to delete content"));
+                    }
+                } catch (Exception ex) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "You don't have permission to delete content"));
+                }
             }
 
             contentRepository.delete(content);
             return ResponseEntity.ok(Map.of("success", true, "message", "Content deleted successfully"));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // Reorder modules — accepts [{id, orderIndex}, ...]
+    @PutMapping("/modules/reorder")
+    @Transactional
+    public ResponseEntity<?> reorderModules(
+            @RequestBody List<Map<String, Object>> items,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Role") String userRole) {
+
+        if (!"admin".equalsIgnoreCase(userRole) && !"teacher".equalsIgnoreCase(userRole)
+                && !"dual".equalsIgnoreCase(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
+        }
+        int updated = 0;
+        for (Map<String, Object> item : items) {
+            try {
+                Long moduleId = ((Number) item.get("id")).longValue();
+                Integer newOrder = ((Number) item.get("orderIndex")).intValue();
+                moduleRepository.findById(moduleId).ifPresent(m -> {
+                    m.setOrderIndex(newOrder);
+                    m.setUpdatedAt(LocalDateTime.now());
+                    moduleRepository.save(m);
+                });
+                updated++;
+            } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok(Map.of("success", true, "updated", updated));
+    }
+
+    // Reorder contents — accepts [{id, orderIndex}, ...]
+    @PutMapping("/contents/reorder")
+    @Transactional
+    public ResponseEntity<?> reorderContents(
+            @RequestBody List<Map<String, Object>> items,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Role") String userRole) {
+
+        if (!"admin".equalsIgnoreCase(userRole) && !"teacher".equalsIgnoreCase(userRole)
+                && !"dual".equalsIgnoreCase(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
+        }
+        int updated = 0;
+        for (Map<String, Object> item : items) {
+            try {
+                Long contentId = ((Number) item.get("id")).longValue();
+                Integer newOrder = ((Number) item.get("orderIndex")).intValue();
+                contentRepository.findById(contentId).ifPresent(c -> {
+                    c.setOrderIndex(newOrder);
+                    c.setUpdatedAt(LocalDateTime.now());
+                    contentRepository.save(c);
+                });
+                updated++;
+            } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok(Map.of("success", true, "updated", updated));
     }
 
     // Get all contents of a specific module

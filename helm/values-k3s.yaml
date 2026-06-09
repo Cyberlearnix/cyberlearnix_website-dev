@@ -34,7 +34,7 @@ imagePullSecrets:
 images:
   gateway-service: "6ff1b3620d4bcc053a5bf02666c93d5e6b49a7d2"
   user-service: "6ff1b3620d4bcc053a5bf02666c93d5e6b49a7d2"
-  course-service: "6ff1b3620d4bcc053a5bf02666c93d5e6b49a7d2"
+  course-service: "f737b47d48becf6969628e5d9cab53d27046e39d"
   enrollment-service: "6ff1b3620d4bcc053a5bf02666c93d5e6b49a7d2"
   notification-service: "6ff1b3620d4bcc053a5bf02666c93d5e6b49a7d2"
   shop-service: "6ff1b3620d4bcc053a5bf02666c93d5e6b49a7d2"
