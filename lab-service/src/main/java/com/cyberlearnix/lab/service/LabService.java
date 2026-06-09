@@ -123,6 +123,35 @@ public class LabService {
         }
         try {
             dockerClientService.startContainer(assignment.getContainerId());
+        } catch (com.github.dockerjava.api.exception.NotFoundException e) {
+            log.warn("Container {} not found for assignment {} while resuming. Recreating...", assignment.getContainerId(), assignmentId);
+            try {
+                LabTemplate template = assignment.getLabTemplate();
+                String studentId = assignment.getStudentId();
+                Long courseId = assignment.getCourseId();
+
+                LabTemplate effectiveTemplate = template;
+                if (courseId != null) {
+                    effectiveTemplate = courseLabConfigRepository
+                            .findByCourseIdAndLabTemplateId(courseId, template.getId())
+                            .filter(cfg -> cfg.getActiveDockerImage() != null && !cfg.getActiveDockerImage().isBlank())
+                            .map(cfg -> {
+                                log.info("Re-assignment {}: using pre-built image '{}' for course {}",
+                                        assignmentId, cfg.getActiveDockerImage(), courseId);
+                                return cloneTemplateWithImage(template, cfg.getActiveDockerImage());
+                            })
+                            .orElse(template);
+                }
+                String containerId = dockerClientService.createContainer(effectiveTemplate, studentId, assignmentId);
+                String containerName = "cyberlearnix-lab-" + studentId + "-" + assignmentId;
+                dockerClientService.startContainer(containerId);
+
+                assignment.setContainerId(containerId);
+                assignment.setContainerName(containerName);
+            } catch (Exception ex) {
+                log.error("Failed to recreate container for assignment {} on resume: {}", assignmentId, ex.getMessage(), ex);
+                throw new RuntimeException("Failed to recreate and start container: " + ex.getMessage(), ex);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to start container " + assignment.getContainerId() + ": " + e.getMessage(), e);
         }

@@ -34,7 +34,7 @@ imagePullSecrets:
 images:
   gateway-service: "5087885975608a79f5bc32a51712f351d8eadf07"
   user-service: "5087885975608a79f5bc32a51712f351d8eadf07"
-  course-service: "5087885975608a79f5bc32a51712f351d8eadf07"
+  course-service: "a9777f65b79b7b998ab4e52c1dd06a8f9a8fcadb"
   enrollment-service: "5087885975608a79f5bc32a51712f351d8eadf07"
   notification-service: "5087885975608a79f5bc32a51712f351d8eadf07"
   shop-service: "5087885975608a79f5bc32a51712f351d8eadf07"
@@ -43,7 +43,7 @@ images:
   cms-service: "5087885975608a79f5bc32a51712f351d8eadf07"
   instructor-service: "5087885975608a79f5bc32a51712f351d8eadf07"
   attendance-service: "5087885975608a79f5bc32a51712f351d8eadf07"
-  lab-service: "5087885975608a79f5bc32a51712f351d8eadf07"
+  lab-service: "a9777f65b79b7b998ab4e52c1dd06a8f9a8fcadb"
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
