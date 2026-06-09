@@ -64,6 +64,60 @@ public abstract class ModuleContent {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
+    @Column(name = "is_free_preview")
+    private Boolean isFreePreview = false;
+
+    @Column(name = "requires_enrollment")
+    private Boolean requiresEnrollment = true;
+
+    @Column(name = "visibility")
+    private String visibility = "ENROLLED";
+
+    @Column(name = "available_from")
+    private LocalDateTime availableFrom;
+
+    @Column(name = "available_until")
+    private LocalDateTime availableUntil;
+
+    @Column(name = "drip")
+    private Boolean drip = false;
+
+    @Column(name = "drip_days")
+    private Integer dripDays;
+
+    @Column(name = "mandatory")
+    private Boolean mandatory = true;
+
+    @Column(name = "completion_type")
+    private String completionType = "VIEW";
+
+    @Column(name = "watch_percent")
+    private Integer watchPercent = 80;
+
+    @Column(name = "pass_percent")
+    private Integer passPercent = 70;
+
+    @Column(name = "slug")
+    private String slug;
+
+    @Column(name = "meta_desc", columnDefinition = "TEXT")
+    private String metaDesc;
+
+    @Column(name = "tags")
+    private String tags;
+
+    @Column(name = "estimated_minutes")
+    private Integer estimatedMinutes;
+
+    @Column(name = "has_prerequisite")
+    private Boolean hasPrerequisite = false;
+
+    @Column(name = "prerequisite_id")
+    private String prerequisiteId;
+
     // Manual setters for Lombok compatibility
     public void setActive(Boolean isActive) {
         this.isActive = isActive;

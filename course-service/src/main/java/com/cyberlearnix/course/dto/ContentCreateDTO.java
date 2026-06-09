@@ -17,6 +17,7 @@ public class ContentCreateDTO {
     
     private String assignmentType;
     private Integer maxScore;
+    private String assignmentMetadata;
     
     private String videoUrl;
     private String videoWidth;
@@ -46,4 +47,24 @@ public class ContentCreateDTO {
     private String agenda;
     private Boolean recordSession;
     private String sessionAt; // ISO String
+
+    private String status;
+    private String scheduledAt;
+    private Boolean isFreePreview;
+    private Boolean requiresEnrollment;
+    private String visibility;
+    private String availableFrom;
+    private String availableUntil;
+    private Boolean drip;
+    private Integer dripDays;
+    private Boolean mandatory;
+    private String completionType;
+    private Integer watchPercent;
+    private Integer passPercent;
+    private String slug;
+    private String metaDesc;
+    private String tags;
+    private Integer estimatedMinutes;
+    private Boolean hasPrerequisite;
+    private String prerequisiteId;
 }
