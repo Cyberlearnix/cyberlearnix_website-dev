@@ -10,18 +10,18 @@ imagePullSecrets:
 
 # * Image tags * updated automatically by CI on every production branch push *
 images:
-  gateway-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  user-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  course-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  enrollment-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  notification-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  shop-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  form-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  admin-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  cms-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  instructor-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  attendance-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
-  lab-service: "af55f1fcb42ef8f5461d8af2f7d326052b9b232f"
+  gateway-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  user-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  course-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  enrollment-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  notification-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  shop-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  form-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  admin-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  cms-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  instructor-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  attendance-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
+  lab-service: "47e8df6252d4b09caec99f0fd7a8d63cecd829c9"
 
 topology:
   whenUnsatisfiable: ScheduleAnyway
