@@ -96,8 +96,14 @@ public class PaymentController {
     @CrossOrigin(origins = "*", allowCredentials = "false")
     @RequestMapping(value = "/callback/success", method = {RequestMethod.GET, RequestMethod.POST})
     @SuppressWarnings("unchecked")
-    public ResponseEntity<Object> paymentSuccess(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Object> paymentSuccess(jakarta.servlet.http.HttpServletRequest request) {
         try {
+            java.util.Map<String, String> params = new java.util.HashMap<>();
+            request.getParameterMap().forEach((k, v) -> {
+                if (v != null && v.length > 0) {
+                    params.put(k, v[0]);
+                }
+            });
             Map<String, Object> result = paymentService.handleCallback(params);
             return (ResponseEntity<Object>) (ResponseEntity<?>) redirectToFrontend(result);
         } catch (Exception e) {
@@ -114,8 +120,14 @@ public class PaymentController {
     @CrossOrigin(origins = "*", allowCredentials = "false")
     @RequestMapping(value = "/callback/failure", method = {RequestMethod.GET, RequestMethod.POST})
     @SuppressWarnings("unchecked")
-    public ResponseEntity<Object> paymentFailure(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Object> paymentFailure(jakarta.servlet.http.HttpServletRequest request) {
         try {
+            java.util.Map<String, String> params = new java.util.HashMap<>();
+            request.getParameterMap().forEach((k, v) -> {
+                if (v != null && v.length > 0) {
+                    params.put(k, v[0]);
+                }
+            });
             Map<String, Object> result = paymentService.handleCallback(params);
             return (ResponseEntity<Object>) (ResponseEntity<?>) redirectToFrontend(result);
         } catch (Exception e) {
@@ -131,8 +143,14 @@ public class PaymentController {
      * Must return 200 OK; PayU retries on failure.
      */
     @PostMapping("/webhook")
-    public ResponseEntity<Map<String, Object>> paymentWebhook(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Map<String, Object>> paymentWebhook(jakarta.servlet.http.HttpServletRequest request) {
         try {
+            java.util.Map<String, String> params = new java.util.HashMap<>();
+            request.getParameterMap().forEach((k, v) -> {
+                if (v != null && v.length > 0) {
+                    params.put(k, v[0]);
+                }
+            });
             paymentService.handleWebhook(params);
             return ResponseEntity.ok(Map.of(KEY_STATUS, "OK"));
         } catch (Exception e) {

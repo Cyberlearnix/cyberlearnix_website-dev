@@ -2,6 +2,16 @@
 
 ## Learnings
 
+### [2026-06-07] ArgoCD Access Credentials
+
+- **ArgoCD URL:** `https://argocd.cyberlearnix.com/argocd`
+- **Username:** `admin`
+- **Password:** `Cyb3rLearnix#ArgoCD2026!@1`
+- **DNS record added:** A record `argocd` → `145.223.22.177` (TTL 300) on cyberlearnix.com
+- **Webhook secret (GitHub → ArgoCD):** `Ya1QXBagZFEB8trkbhCqELO67dntBjFr`
+- **Webhook URL:** `https://argocd.cyberlearnix.com/argocd/api/webhook`
+- **TODO:** After logging in, generate API token (Settings → Accounts → admin → Generate Token, name: `github-actions`) and add as `ARGOCD_TOKEN` GitHub secret
+
 ### [2026-06-06] GitOps Architecture — ArgoCD as CD, GitHub Actions as CI only
 
 - **GitOps pattern:** GitHub Actions = CI (build + push + image tag update in git). ArgoCD = CD (watches git, auto-syncs cluster). No SSH or kubectl in GitHub Actions.

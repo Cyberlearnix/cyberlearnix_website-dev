@@ -87,7 +87,7 @@ foreach ($svc in $services) {
 
     # ── 4. Docker build ──────────────────────────────────────────────────────
     Write-Host "  [2/4] Docker build -> $imageLocal..."
-    docker build -t $imageLocal "./$svc" --quiet
+    docker build -t $imageLocal -f "./$svc/Dockerfile" . --quiet
     if ($LASTEXITCODE -ne 0) { throw "Docker build failed for $svc" }
 
     if ($PushGhcr) {
@@ -99,9 +99,15 @@ foreach ($svc in $services) {
         $deployImage = $imageTag
     } else {
         # ── Direct import into k3s containerd via SSH ─────────────────────
-        Write-Host "  [3/4] Importing image directly into k3s on $Server..."
-        docker save $imageLocal | & ssh -p $Port root@$Server "k3s ctr images import -"
-        if ($LASTEXITCODE -ne 0) { throw "Image import failed for $svc" }
+        Write-Host "  [3/4] Importing image directly into k3s on $Server (using temp tar file to avoid PowerShell pipe corruption)..."
+        docker save -o "$svc-temp.tar" $imageLocal
+        if ($LASTEXITCODE -ne 0) { throw "Failed to save docker image locally" }
+        & cmd /c "ssh -p $Port root@$Server /usr/local/bin/k3s ctr images import - < $svc-temp.tar"
+        if ($LASTEXITCODE -ne 0) {
+            Remove-Item "$svc-temp.tar" -ErrorAction SilentlyContinue
+            throw "Image import failed for $svc"
+        }
+        Remove-Item "$svc-temp.tar" -ErrorAction SilentlyContinue
         $deployImage = $imageLocal
     }
 
