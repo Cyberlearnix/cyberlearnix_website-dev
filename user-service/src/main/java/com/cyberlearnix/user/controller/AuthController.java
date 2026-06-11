@@ -5,6 +5,7 @@ import com.cyberlearnix.shared.repository.user.UserRepository;
 import com.cyberlearnix.user.dto.*;
 import com.cyberlearnix.user.service.AuthService;
 import com.cyberlearnix.user.service.OtpService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Map;
 
 @Slf4j
@@ -36,8 +38,11 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
-    @Value("${jwt.expiration:3600000}")
+    @Value("${jwt.expiration:900000}")
     private long jwtExpiration;
+
+    @Value("${jwt.refreshExpiration:2592000000}")
+    private long jwtRefreshExpiration;
 
     @Value("${server.cookie.secure:false}")
     private boolean cookieSecure;
@@ -48,7 +53,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     @AuditLog(action = "LOGIN")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
             String email = loginRequest.getEmail();
             String password = loginRequest.getPassword();
@@ -58,8 +63,12 @@ public class AuthController {
                         .body(Map.of(KEY_ERROR, "Email and password are required"));
             }
 
+            // Compute device fingerprint for refresh token binding
+            String fingerprint = AuthService.deviceFingerprint(
+                    request.getHeader("User-Agent"), request.getRemoteAddr());
+
             // Perform authentication
-            Map<String, Object> authResult = authService.login(email, password);
+            Map<String, Object> authResult = authService.login(email, password, fingerprint);
             String accessToken = (String) authResult.get("token");
             String refreshToken = (String) authResult.get("refreshToken");
             @SuppressWarnings("unchecked")
@@ -71,7 +80,7 @@ public class AuthController {
                     .httpOnly(true)
                     .secure(cookieSecure)
                     .path("/api/auth")
-                    .maxAge(7200) // 2 hours
+                    .maxAge(2592000) // 30 days
                     .sameSite("Strict")
                     .build();
 
@@ -80,8 +89,10 @@ public class AuthController {
             // Build secure response
             AuthResponse authResponse = AuthResponse.builder()
                     .token(accessToken)
-                    .expiresIn(jwtExpiration / 1000) // Convert to seconds
+                    .expiresIn(jwtExpiration / 1000)
                     .tokenType("Bearer")
+                    .refreshExpiresIn(jwtRefreshExpiration / 1000)
+                    .refreshExpiresAt(Instant.now().plusMillis(jwtRefreshExpiration).toString())
                     .user(AuthResponse.UserInfo.builder()
                             .id((String) userMap.get("id"))
                             .email((String) userMap.get("email"))
@@ -95,9 +106,17 @@ public class AuthController {
             return ResponseEntity.ok(authResponse);
 
         } catch (RuntimeException e) {
-            log.warn("Login failed: {}", e.getMessage());
+            String msg = e.getMessage();
+            // Never expose internal JPA/transaction errors to the client
+            if (msg == null || msg.contains("EntityManager") || msg.contains("transaction")
+                    || msg.contains("Hibernate") || msg.contains("JDBC") || msg.contains("SQL")) {
+                log.error("Login internal error", e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of(KEY_ERROR, "Something went wrong. Please try again later."));
+            }
+            log.warn("Login failed: {}", msg);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(KEY_ERROR, e.getMessage()));
+                    .body(Map.of(KEY_ERROR, msg));
         }
     }
 
@@ -148,20 +167,37 @@ public class AuthController {
     @PostMapping("/refresh-token")
     @AuditLog(action = "TOKEN_REFRESH")
     public ResponseEntity<?> refreshToken(@CookieValue(value = "refreshToken", required = false) String refreshToken,
-                                          HttpServletResponse response) {
+                                          HttpServletRequest request, HttpServletResponse response) {
         try {
             if (refreshToken == null || refreshToken.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of(KEY_ERROR, "Refresh token not found"));
             }
 
-            Map<String, Object> result = authService.refreshToken(refreshToken);
+            String fingerprint = AuthService.deviceFingerprint(
+                    request.getHeader("User-Agent"), request.getRemoteAddr());
+
+            Map<String, Object> result = authService.refreshToken(refreshToken, fingerprint);
             String newAccessToken = (String) result.get("token");
+            String newRefreshToken = (String) result.get("refreshToken");
+
+            // Rotation: set the new refresh token cookie
+            ResponseCookie refreshTokenCookie = ResponseCookie
+                    .from("refreshToken", newRefreshToken)
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .path("/api/auth")
+                    .maxAge(2592000) // 30 days
+                    .sameSite("Strict")
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
             AuthResponse authResponse = AuthResponse.builder()
                     .token(newAccessToken)
                     .expiresIn(jwtExpiration / 1000)
                     .tokenType("Bearer")
+                    .refreshExpiresIn(jwtRefreshExpiration / 1000)
+                    .refreshExpiresAt(Instant.now().plusMillis(jwtRefreshExpiration).toString())
                     .build();
 
             log.info("Token refreshed successfully");
@@ -179,7 +215,7 @@ public class AuthController {
     @PostMapping("/verify-otp-login")
     @AuditLog(action = "OTP_LOGIN")
     public ResponseEntity<?> verifyOtpLogin(@RequestBody OtpLoginRequest otpLoginRequest,
-                                            HttpServletResponse response) {
+                                            HttpServletRequest request, HttpServletResponse response) {
         String email = otpLoginRequest.getEmail();
         String otp = otpLoginRequest.getOtp();
         String sessionId = otpLoginRequest.getSessionId();
@@ -209,7 +245,7 @@ public class AuthController {
                     .httpOnly(true)
                     .secure(cookieSecure)
                     .path("/api/auth")
-                    .maxAge(7200)
+                    .maxAge(2592000) // 30 days
                     .sameSite("Strict")
                     .build();
 
@@ -219,11 +255,14 @@ public class AuthController {
                     .token(accessToken)
                     .expiresIn(jwtExpiration / 1000)
                     .tokenType("Bearer")
+                    .refreshExpiresIn(jwtRefreshExpiration / 1000)
+                    .refreshExpiresAt(Instant.now().plusMillis(jwtRefreshExpiration).toString())
                     .user(AuthResponse.UserInfo.builder()
                             .id((String) userMap.get("id"))
                             .email((String) userMap.get("email"))
                             .role((String) userMap.get("role"))
                             .isFirstLogin((Boolean) userMap.getOrDefault("isFirstLogin", false))
+                            .lastLoginAt((String) userMap.get("lastLoginAt"))
                             .build())
                     .build();
 
@@ -297,6 +336,23 @@ public class AuthController {
             authService.createPasswordResetToken(email);
             String sessionId = otpService.generateAndSendOtp(email);
             return ResponseEntity.ok(Map.of("success", true, "message", "OTP sent to email", "sessionId", sessionId));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
+        }
+    }
+
+    // Resend OTP for password reset (no rate limiting)
+    @PostMapping("/resend-otp")
+    public ResponseEntity<?> resendOtp(@RequestBody OtpRequest otpRequest) {
+        String email = otpRequest.getEmail();
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Email is required"));
+        }
+        email = email.trim().toLowerCase();
+        try {
+            authService.createPasswordResetToken(email);
+            String sessionId = otpService.generateAndSendOtp(email);
+            return ResponseEntity.ok(Map.of("success", true, "message", "OTP resent to email", "sessionId", sessionId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(KEY_ERROR, e.getMessage()));
         }
@@ -435,6 +491,37 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("success", true, "message", "Password changed successfully"));
         } catch (Exception e) {
             log.warn("Password change failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(KEY_ERROR, e.getMessage()));
+        }
+    }
+
+    /**
+     * First-login password setup.
+     * Called after login when isFirstLogin=true.
+     * Does NOT require old password — user was assigned a temp password by admin.
+     * Clears isFirstLogin flag on success.
+     */
+    @PostMapping("/first-login-password")
+    public ResponseEntity<?> firstLoginPassword(@RequestBody PasswordResetRequest request) {
+        if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "New password is required"));
+        }
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Passwords do not match"));
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getPrincipal() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = auth.getPrincipal().toString();
+        try {
+            authService.setFirstLoginPassword(userId, request.getNewPassword());
+            log.info("First-login password set for userId: {}", userId);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Password set successfully. Welcome to Cyberlearnix!"));
+        } catch (RuntimeException e) {
+            log.warn("First-login password setup failed for userId {}: {}", userId, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }

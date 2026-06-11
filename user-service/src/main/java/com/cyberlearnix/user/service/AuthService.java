@@ -22,6 +22,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -47,13 +49,16 @@ public class AuthService {
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    @Value("${jwt.secret:cyberlearnix-secure-and-ultra-long-secret-key-for-jwt-signing-2026-highly-confidential-512-bit-compliant}")
+    @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:3600000}") // 1 hour for access token
+    @Value("${jwt.refreshSecret:${jwt.secret}}")
+    private String jwtRefreshSecret;
+
+    @Value("${jwt.expiration:900000}")
     private long jwtExpiration;
 
-    @Value("${jwt.refreshExpiration:7200000}") // 2 hours for refresh token
+    @Value("${jwt.refreshExpiration:2592000000}")
     private long refreshExpiration;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
@@ -89,6 +94,11 @@ public class AuthService {
 
     @Transactional
     public Map<String, Object> login(String email, String password) {
+        return login(email, password, null);
+    }
+
+    @Transactional
+    public Map<String, Object> login(String email, String password, String deviceFingerprint) {
         String sanitizedEmail = email.trim().toLowerCase();
         User user = userRepository.findByEmail(sanitizedEmail)
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
@@ -118,7 +128,7 @@ public class AuthService {
         userRepository.save(user);
 
         String accessToken = generateToken(user);
-        String refreshToken = createRefreshToken(user.getId());
+        String refreshToken = createRefreshToken(user.getId(), deviceFingerprint, null);
 
         // Format lastLoginAt with IST offset so frontend interprets timezone correctly
         ZoneId ist = ZoneId.of("Asia/Kolkata");
@@ -141,32 +151,58 @@ public class AuthService {
 
     @Transactional
     public String createRefreshToken(String userId) {
+        return createRefreshToken(userId, null, null);
+    }
+
+    @Transactional
+    public String createRefreshToken(String userId, String deviceFingerprint, String familyId) {
         refreshTokenRepository.deleteByUserId(userId);
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUserId(userId);
         refreshToken.setToken(generateRefreshToken(userId));
         refreshToken.setExpiry(LocalDateTime.now().plusNanos(refreshExpiration * 1000000));
+        refreshToken.setDeviceFingerprint(deviceFingerprint);
+        refreshToken.setFamilyId(familyId != null ? familyId : UUID.randomUUID().toString());
         refreshTokenRepository.save(refreshToken);
 
         return refreshToken.getToken();
     }
 
     @Transactional
-    public Map<String, Object> refreshToken(String token) {
+    public Map<String, Object> refreshToken(String token, String deviceFingerprint) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+                .orElseThrow(() -> new RuntimeException("Invalid or revoked refresh token. Please login again."));
 
+        // Detect token reuse — if token is found but already past expiry, it may be a stolen reused token
         if (refreshToken.getExpiry().isBefore(LocalDateTime.now())) {
             refreshTokenRepository.delete(refreshToken);
             throw new RuntimeException("Refresh token expired. Please login again.");
         }
 
+        // Device binding check — reject if fingerprint doesn't match
+        if (deviceFingerprint != null && refreshToken.getDeviceFingerprint() != null
+                && !deviceFingerprint.equals(refreshToken.getDeviceFingerprint())) {
+            // Suspected theft — invalidate entire token family
+            refreshTokenRepository.deleteByUserId(refreshToken.getUserId());
+            throw new RuntimeException("Security alert: device mismatch detected. Please login again.");
+        }
+
         User user = userRepository.findById(refreshToken.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // Rotate: delete old, issue new refresh token in same family
+        String familyId = refreshToken.getFamilyId();
+        refreshTokenRepository.delete(refreshToken);
+        String newRefreshToken = createRefreshToken(user.getId(), deviceFingerprint, familyId);
+
         String newAccessToken = generateToken(user);
-        return Map.of("token", newAccessToken, "refreshToken", token);
+        return Map.of("token", newAccessToken, "refreshToken", newRefreshToken);
+    }
+
+    @Transactional
+    public Map<String, Object> refreshToken(String token) {
+        return refreshToken(token, null);
     }
 
     @Transactional
@@ -218,16 +254,35 @@ public class AuthService {
         passwordResetTokenRepository.delete(resetToken);
     }
 
+    @Transactional
     public Map<String, Object> loginByEmail(String email) {
         String sanitizedEmail = email.trim().toLowerCase();
         User user = userRepository.findByEmail(sanitizedEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        LocalDateTime previousLastLogin = user.getLastLogin();
+        user.setLastLogin(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+        userRepository.save(user);
+
         String token = generateToken(user);
+        String refreshToken = createRefreshToken(user.getId(), null, null);
+
+        ZoneId ist = ZoneId.of("Asia/Kolkata");
+        String lastLoginAtStr = previousLastLogin != null
+                ? previousLastLogin.atZone(ist).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                : null;
+
+        Map<String, Object> userMap = new java.util.HashMap<>();
+        userMap.put("id", user.getId());
+        userMap.put("email", user.getEmail());
+        userMap.put("role", user.getRole());
+        userMap.put("isFirstLogin", Boolean.TRUE.equals(user.getIsFirstLogin()));
+        userMap.put("lastLoginAt", lastLoginAtStr);
+
         return Map.of(
                 "token", token,
-                "user", Map.of("id", user.getId(), "email", user.getEmail(), "role", user.getRole(), "isFirstLogin",
-                        Boolean.TRUE.equals(user.getIsFirstLogin())));
+                "refreshToken", refreshToken,
+                "user", userMap);
     }
 
     public void updatePasswordByEmail(String email, String newPassword) {
@@ -242,6 +297,28 @@ public class AuthService {
     public void updatePassword(String userId, String newPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setIsFirstLogin(false);
+        userRepository.save(user);
+    }
+
+    /**
+     * First-login password setup — called by authenticated user whose isFirstLogin=true.
+     * Sets the new password, clears isFirstLogin flag.
+     * Does NOT require old password (admin-assigned temp password flow).
+     */
+    public void setFirstLoginPassword(String userId, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!Boolean.TRUE.equals(user.getIsFirstLogin())) {
+            throw new RuntimeException("First-login password setup already completed. Use change-password instead.");
+        }
+        if (newPassword.length() < 8) {
+            throw new RuntimeException("Password must be at least 8 characters");
+        }
+        if (!newPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$")) {
+            throw new RuntimeException("Password must contain uppercase, lowercase, number, and special character");
+        }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setIsFirstLogin(false);
         userRepository.save(user);
@@ -290,7 +367,23 @@ public class AuthService {
                 .subject(userId)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + refreshExpiration))
-                .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+                .signWith(Keys.hmacShaKeyFor(jwtRefreshSecret.getBytes()))
                 .compact();
+    }
+
+    /**
+     * Generates a SHA-256 fingerprint from userAgent + IP for device binding.
+     */
+    public static String deviceFingerprint(String userAgent, String remoteIp) {
+        try {
+            String raw = (userAgent != null ? userAgent : "") + "|" + (remoteIp != null ? remoteIp : "");
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
