@@ -85,7 +85,7 @@ public class FormPaymentService {
         txn.setCurrency("INR");
         txn.setProductInfo(productInfo);
         txn.setStatus("PENDING");
-        txn.setInitiatedAt(LocalDateTime.now());
+        txn.setInitiatedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
         transactionRepository.save(txn);
 
         // Callback URLs point to the public form page with status params
@@ -157,7 +157,7 @@ public class FormPaymentService {
         txn.setBankRefNum(bankRefNum);
         txn.setErrorMessage(errorMessage);
         txn.setHashVerified(hashVerified);
-        txn.setCompletedAt(LocalDateTime.now());
+        txn.setCompletedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
 
         String normalizedStatus = "success".equals(status) && hashVerified ? "SUCCESS" : "FAILURE";
         txn.setStatus(normalizedStatus);

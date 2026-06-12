@@ -11,6 +11,17 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 
 ## Learnings (prepended)
 
+### [2026-06-12] Form Service — Lombok/Jackson Boolean Serialization Fix
+
+**Files:**
+1. [form-service/src/main/java/com/cyberlearnix/form/dto/FormRequestDTO.java](form-service/src/main/java/com/cyberlearnix/form/dto/FormRequestDTO.java)
+2. [form-service/src/main/java/com/cyberlearnix/form/dto/FormResponseDTO.java](form-service/src/main/java/com/cyberlearnix/form/dto/FormResponseDTO.java)
+
+**Changes/Fixes:**
+1. Resolved a critical Lombok/Jackson serialization issue where boolean fields starting with `is` (specifically `isActive` and `isQuiz`) were serialized by default as `active` and `quiz`. This broke the front-end expectations of `"isActive"` and `"isQuiz"`, leading to active forms being treated as inactive or non-quiz because `form.isActive` was `undefined` on the UI.
+2. Added Jackson's `@JsonProperty("isActive")` and `@JsonProperty("isQuiz")` annotations to compile-time force the exact JSON property naming regardless of Lombok's getter/setter generation habits.
+3. Verified clean compilation and build using `./gradlew.bat :form-service:compileJava`.
+
 ### [2026-06-12] Form Service — Timezone alignment to Asia/Kolkata
 
 **Files:**

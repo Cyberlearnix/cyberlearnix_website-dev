@@ -1,5 +1,6 @@
 package com.cyberlearnix.form.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,10 +18,12 @@ public class FormResponseDTO {
     private String title;
     private String description;
     private Object fields;
+    @JsonProperty("isActive")
     private boolean isActive;
     private String token;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
+    @JsonProperty("isQuiz")
     private boolean isQuiz;
     private Object quizSettings;
     private boolean limitOneResponse;
@@ -33,4 +36,24 @@ public class FormResponseDTO {
     private Integer gstPercent;
     private Double gstAmount;
     private Double totalAmount;
+
+    @JsonProperty("isActive")
+    public boolean isActive() {
+        return isActive;
+    }
+
+    @JsonProperty("isActive")
+    public void setActive(boolean isActive) {
+        this.isActive = isActive;
+    }
+
+    @JsonProperty("isQuiz")
+    public boolean isQuiz() {
+        return isQuiz;
+    }
+
+    @JsonProperty("isQuiz")
+    public void setQuiz(boolean isQuiz) {
+        this.isQuiz = isQuiz;
+    }
 }
