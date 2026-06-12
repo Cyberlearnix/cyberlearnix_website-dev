@@ -15,6 +15,11 @@ Agent Scribe initialized and ready for work.
 
 Initial setup complete.
 
+### [2026-06-12] Session Sync — Lombok Builder Deserialization Fix
+- **Orchestration Log:** Logged Agent Shiva's sync task for resolving the form active default bug under `.squad/orchestration-log/2026-06-12T120000Z-shiva.md`.
+- **Session Log:** Documented the full context of the Lombok default constructor Jackson deserialization fix under `.squad/log/2026-06-12T120000Z-form-active-lombok-fix.md`.
+- **Decision Inbox:** Merged three proposed decisions (`rohit-adr007-two-env-pipeline.md`, `rohit-adr008-gitops-argocd.md`, and `shiva-form-active-lombok-fix.md`) from `.squad/decisions/inbox/` into `.squad/decisions.md` as accepted decisions and successfully lowered the inbox workload. All merged files have been deleted.
+
 ### 2026-05-13 — Full Data & DB Verification Across 10 Services
 
 **Critical issues discovered:**

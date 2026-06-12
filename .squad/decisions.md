@@ -244,3 +244,52 @@
 **Why:** Previous guard only allowed `admin` and `dual` switches, blocking legitimate preview workflows for `teacher` and `institute` role holders.
 **Consequences:** Institute and teacher users can now preview lower-role portals via the navbar.
 **Status:** Accepted
+
+---
+
+### [2026-06-06] ADR-007: Two-Environment Deployment Pipeline
+**By:** Rohit (DevOps)
+**What:** 
+- main branch → cyberlearnix namespace → https://dev.cyberlearnix.com (basic auth protected)
+- production branch → cyberlearnix-production namespace → https://www.cyberlearnix.com (live)
+- Basic auth secret: K8s secret `basic-auth` in `cyberlearnix` namespace, set via `DEV_BASIC_AUTH_PASSWORD` GitHub Secret
+- New workflow: `.github/workflows/deploy-production.yml` handles production deploys
+- ci-cd.yml deploy job renamed to deploy-dev, hardcoded to cyberlearnix namespace
+**Why:** Prevent buggy dev code from being visible to the public; clear separation of environments
+**Status:** Accepted
+
+---
+
+### [2026-06-06] ADR-008: GitOps Deployment Architecture
+**By:** Rohit (DevOps)
+**What:** Separated CI (GitHub Actions) from CD (ArgoCD).
+- GitHub Actions: build image, push to ghcr.io, update image tag in Helm values file, commit
+- ArgoCD: watches git for values file changes, auto-deploys to cluster
+- Dev: ci-cd.yml updates helm/values-k3s.yaml → ArgoCD app cyberlearnix → cyberlearnix namespace
+- Production: deploy-production.yml updates helm/values-production.yaml → ArgoCD app cyberlearnix-production → cyberlearnix-production namespace
+- No SSH or kubectl in GitHub Actions — ArgoCD owns all cluster state
+- Production ArgoCD app: apply once with: kubectl apply -f k8s/argocd-app-production.yaml -n argocd
+**Why:** GitOps is the industry standard — git is the source of truth, ArgoCD ensures cluster matches git
+**Status:** Accepted
+
+---
+
+### [2026-06-12] Form Request DTO - Lombok Builder Default Deserialization Fix
+**By:** Shiva (Backend Engineer)
+**What:** Ensure default values on fields with `@Builder.Default` are respected by Jackson/deserialization by replacing `@NoArgsConstructor` with a manual no-args constructor that configures defaults.
+**Why:** Standard Lombok `@NoArgsConstructor` generates a no-args constructor that bypasses field-level default values of `@Builder.Default` fields. During Jackson JSON deserialization (like POST/PUT requests), these fields fell back to primitive defaults (e.g. `isActive = false`), making public forms inactive on create and triggering 400 Bad Request / "Form not accepting responses" failures when trying to load them.
+**Status:** Accepted
+
+---
+
+### [2026-06-12] Form Timezone Alignment to Asia/Kolkata
+**By:** Shiva (Backend Engineer)
+**What:** Core Form and Form Payment date/time creation has been explicitly aligned to `Asia/Kolkata` (IST) timezone.
+**Why:**
+The application server runs in UTC timezone, whereas form start and end times are entered in Indian Standard Time (IST, Asia/Kolkata timezone). Naive usage of `LocalDateTime.now()` in `FormService.java` used UTC, causing comparison failures (e.g. thinking a form has not started yet because 09:30 UTC is before 13:32 IST).
+
+To correct this behavior, all occurrences of `LocalDateTime.now()` inside both `FormService.java` and `FormPaymentService.java` have been updated to explicitly specify the timezone:
+`LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))`
+
+This ensures that active/inactive checks, created/updated timestamps, deletion timestamps, duplication times, and payment initiation/completion times are all handled in the default platform timezone (IST).
+**Status:** Accepted

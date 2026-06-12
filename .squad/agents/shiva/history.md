@@ -11,6 +11,17 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 
 ## Learnings (prepended)
 
+### [2026-06-12] Form Service — Timezone alignment to Asia/Kolkata
+
+**Files:**
+1. `form-service/src/main/java/com/cyberlearnix/form/service/FormService.java`
+2. `form-service/src/main/java/com/cyberlearnix/form/service/FormPaymentService.java`
+
+**Changes/Fixes:**
+1. Aligned the application with the platform's default timezone. Resolved the issue where the server running in UTC caused naive usage of `LocalDateTime.now()` to fail form start and end duration validations (entered in IST/Asia/Kolkata timezone).
+2. Refactored all 9 occurrences of `LocalDateTime.now()` in `FormService.java` and all 2 occurrences in `FormPaymentService.java` to use `LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))` explicitly.
+3. Verified compilation and ensured zero test failures in `form-service` by running `./gradlew.bat :form-service:compileJava` and `./gradlew.bat :form-service:test`.
+
 ### [2026-06-04] CMS MediaController — Drive Connection + Security Fix
 
 **File:** `cms-service/src/main/java/com/cyberlearnix/cms/controller/MediaController.java`
@@ -269,3 +280,8 @@ The service had been crash-looping (74 restarts, always `0/1 Running`) since ini
 - **Key pattern:** `EnrollmentFormConfig.fields` is stored as `String` JSONB (via `RawJsonDeserializer`). HTTP response emits it as a raw JSON string literal (e.g. `"fields": "[{...}]"`) — NOT as an inline array. Frontend must parse it; backend does NOT need to change.
 - **`responseRepository` was already injected** in `EnrollmentService` via constructor — `import com.cyberlearnix.shared.repository.enrollment.*` wildcard covers `EnrollmentFormResponseRepository`.
 - BUILD SUCCESSFUL (only deprecation warning from PaymentService, unrelated).
+
+### [2026-06-12] Form Request DTO — Lombok Builder Default Deserialization Fix
+- **Bug Fixed:** When raw JSON was deserialized into `FormRequestDTO` (e.g. during form creation/update), Lombok `@Builder.Default private boolean isActive = true;` was being bypassed. Jackson uses the default constructor compiled with `@NoArgsConstructor`, which doesn't initialize `@Builder.Default` fields to their defined default values. Instead, they default to JVM values (e.g., `false` for `boolean`). This caused newly created public forms to be inactive by default, triggering form loading failure (HTTP 400 RuntimeException: Form is currently not accepting responses).
+- **Fix:** Removed lombok's `@NoArgsConstructor` from `FormRequestDTO.java` and replaced it with a manual no-argument constructor that explicitly sets `this.isActive = true;`.
+- **Validation:** Running `./gradlew :form-service:build` and `:form-service:test` compiles successfully and all tests pass cleanly.
