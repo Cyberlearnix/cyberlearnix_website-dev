@@ -14,6 +14,8 @@ public class GeneralForm {
     private String id;
 
     private String title;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @JdbcTypeCode(SqlTypes.JSON)
