@@ -64,7 +64,7 @@ public class FormService {
             throw new RuntimeException("Form '" + form.getTitle() + "' is currently not accepting responses.");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
         if (form.getStartTime() != null && now.isBefore(form.getStartTime())) {
             throw new RuntimeException("Form '" + form.getTitle() + "' has not started yet (Starts at: " + form.getStartTime() + ")");
         }
@@ -81,8 +81,8 @@ public class FormService {
         form.setId(UUID.randomUUID().toString());
         form.setToken(UUID.randomUUID().toString());
         mapRequestToEntity(dto, form);
-        form.setCreatedAt(LocalDateTime.now());
-        form.setUpdatedAt(LocalDateTime.now());
+        form.setCreatedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
+        form.setUpdatedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
         return mapToResponseDTO(formRepository.save(form));
     }
 
@@ -91,7 +91,7 @@ public class FormService {
         GeneralForm existing = formRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Form not found or in trash"));
         mapRequestToEntity(dto, existing);
-        existing.setUpdatedAt(LocalDateTime.now());
+        existing.setUpdatedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
         return mapToResponseDTO(formRepository.save(existing));
     }
 
@@ -107,7 +107,7 @@ public class FormService {
     public void deleteForm(String id) {
         GeneralForm form = formRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Form not found or in trash"));
-        form.setDeletedAt(LocalDateTime.now());
+        form.setDeletedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
         formRepository.save(form);
     }
 
@@ -154,8 +154,8 @@ public class FormService {
         duplicate.setGstPercent(original.getGstPercent());
         duplicate.setGstAmount(original.getGstAmount());
         duplicate.setTotalAmount(original.getTotalAmount());
-        duplicate.setCreatedAt(LocalDateTime.now());
-        duplicate.setUpdatedAt(LocalDateTime.now());
+        duplicate.setCreatedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
+        duplicate.setUpdatedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
         return mapToResponseDTO(formRepository.save(duplicate));
     }
 
@@ -168,7 +168,7 @@ public class FormService {
 //            throw new RuntimeException("Form '" + form.getTitle() + "' (ID: " + formId + ") is currently closed or inactive.");
 //        }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
         if (form.getStartTime() != null && now.isBefore(form.getStartTime())) {
             throw new RuntimeException("Form '" + form.getTitle() + "' has not started yet (Starts at: " + form.getStartTime() + ")");
         }
@@ -200,7 +200,7 @@ public class FormService {
         response.setFormId(formId);
         response.setUserEmail(dto.getUserEmail());
         response.setSubmissionData(submissionDataJson);
-        response.setCreatedAt(LocalDateTime.now());
+        response.setCreatedAt(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
         response.setPaymentStatus(form.isPaymentEnabled() ? "PENDING" : "NOT_REQUIRED");
         
         if (form.isQuiz()) {

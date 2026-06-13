@@ -4,6 +4,7 @@ import com.cyberlearnix.shared.entity.user.TeacherPermission;
 import com.cyberlearnix.shared.entity.user.UserProfile;
 import com.cyberlearnix.shared.repository.user.TeacherPermissionRepository;
 import com.cyberlearnix.shared.repository.user.UserProfileRepository;
+import com.cyberlearnix.shared.repository.user.UserRepository;
 import com.cyberlearnix.user.dto.UserResponseDTO;
 import com.cyberlearnix.user.service.EnrollmentCardService;
 import com.cyberlearnix.user.service.UserService;
@@ -26,6 +27,9 @@ public class UserController {
 
     @Autowired
     private UserProfileRepository userProfileRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private TeacherPermissionRepository teacherPermissionRepository;
@@ -159,5 +163,25 @@ public class UserController {
         if (permissions.containsKey("canManageStudents"))
             perm.setCanManageStudents(Boolean.TRUE.equals(permissions.get("canManageStudents")));
         return ResponseEntity.ok(teacherPermissionRepository.save(perm));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteUser(@PathVariable String id) {
+        if (!userRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (teacherPermissionRepository.existsById(id)) {
+            teacherPermissionRepository.deleteById(id);
+        }
+        userProfileRepository.deleteById(id);
+        userRepository.deleteById(id);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "User deleted successfully",
+                "userId", id
+        ));
     }
 }

@@ -58,7 +58,7 @@ public class SecurityConfig {
                         // NOTE: /forms/response-counts is admin-only — must be listed BEFORE forms/** wildcard
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/config").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/forms/response-counts").authenticated()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/forms/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/forms", "/api/enrollments/forms/**").permitAll()
                         // Public: student receipt download after PayU redirect (no JWT available)
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/responses/*/receipt").permitAll()
                         // Public: duplicate-response check before submitting
@@ -68,7 +68,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/responses/**").permitAll()
                         // Public: payment initiation (student starts payment after form submit)
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payments/initiate").permitAll()
-                        // Public: PayU callbacks & webhook (PayU posts to these — no JWT)
+                        // Public: PayU callbacks & webhook (browser/server may call via GET/POST — no JWT)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/enrollments/payments/callback/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payments/callback/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/enrollments/payments/webhook").permitAll()
                         // Public: legacy payment endpoint

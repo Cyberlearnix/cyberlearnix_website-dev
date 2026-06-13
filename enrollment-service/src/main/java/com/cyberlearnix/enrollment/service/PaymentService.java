@@ -217,8 +217,13 @@ public class PaymentService {
      */
     @Transactional
     public Map<String, Object> handleCallback(Map<String, String> params) {
+        log.info("[PayU Callback] Received parameters: {}", params);
         String status = params.getOrDefault("status", "failure").toLowerCase();
         String txnid = params.get(KEY_TXNID);
+        if (txnid == null || txnid.trim().isEmpty()) {
+            log.error("[PayU Callback] Transaction ID (txnid) is missing in callback parameters!");
+            throw new IllegalArgumentException("Transaction ID (txnid) is missing in callback parameters");
+        }
         String payuTxnid = params.get(KEY_TXNID);
         String mihpayid = params.getOrDefault("mihpayid", "");
         String amount = params.getOrDefault("amount", "0");
@@ -284,6 +289,9 @@ public class PaymentService {
         result.put(KEY_TXNID, txnid);
         result.put("mihpayid", mihpayid);
         result.put(KEY_HASH_VERIFIED, hashVerified);
+        result.put("formId", txn.getFormId());
+        result.put("responseId", txn.getFormResponseId());
+        result.put("email", txn.getStudentEmail());
         result.put("message", STATUS_SUCCESS.equals(normalizedStatus)
                 ? "Payment successful" : "Payment failed or hash mismatch");
         return result;

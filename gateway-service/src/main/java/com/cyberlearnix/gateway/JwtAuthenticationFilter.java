@@ -156,6 +156,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
+        // PayU may redirect browser with GET to callback endpoints depending on gateway flow.
+        // Keep callbacks public for both GET and POST.
+        if (path.startsWith("/api/enrollments/payments/callback/")) {
+            return true;
+        }
+
         if (path.startsWith("/api/courses") && 
             !path.contains("/full") && 
             !path.contains("/progress") && 
@@ -169,7 +175,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             // White-list specific public enrollment paths
             // NOTE: GET /api/enrollments/responses is intentionally NOT public — it returns
             // all student PII and payment data and requires ADMIN role.
-            if (path.startsWith("/api/enrollments/forms/") ||
+            if (path.equals("/api/enrollments/forms") ||
+                (path.startsWith("/api/enrollments/forms/") && !path.equals("/api/enrollments/forms/response-counts")) ||
                 path.equals("/api/enrollments/responses/check") ||
                 // Public: inter-service enrollment check (course-service Feign call, no JWT)
                 path.equals("/api/enrollments/check")) {

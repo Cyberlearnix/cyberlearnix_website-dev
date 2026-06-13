@@ -10,18 +10,18 @@ imagePullSecrets:
 
 # * Image tags * updated automatically by CI on every production branch push *
 images:
-  gateway-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  user-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  course-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  enrollment-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  notification-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  shop-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  form-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  admin-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  cms-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  instructor-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  attendance-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
-  lab-service: "c888c029ec50152552fdf0a7d58e12f2b5141563"
+  gateway-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  user-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  course-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  enrollment-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  notification-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  shop-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  form-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  admin-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  cms-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  instructor-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  attendance-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
+  lab-service: "c43699e1f9d50d28ac990c48417b29c508b88f12"
 
 topology:
   whenUnsatisfiable: ScheduleAnyway
@@ -33,7 +33,8 @@ appConfig:
   DB_USER: "postgres"
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
-  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com"
+  CORS_ALLOWED_ORIGINS: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,http://localhost:5173,http://localhost:5174,http://localhost:3000"
+  BACKEND_URL: "https://prod-apis.cyberlearnix.com"
   USER_SERVICE_URL: "http://user-service:8081"
   COURSE_SERVICE_URL: "http://course-service:8082"
   ENROLLMENT_SERVICE_URL: "http://enrollment-service:8083"
@@ -51,13 +52,13 @@ hosts:
 
 ingress:
   className: nginx
-  corsAllowOrigin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com"
+  corsAllowOrigin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,http://localhost:5173,http://localhost:5174,http://localhost:3000"
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
     nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://cyberlearnix.com,https://www.cyberlearnix.com,https://app.cyberlearnix.com,https://prod-apis.cyberlearnix.com,https://lmsclass.cyberlearnix.com,https://lms.cyberlearnix.com,http://localhost:5173,http://localhost:5174,http://localhost:3000"
     nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,x-user-id,x-user-role,Content-Disposition"
     nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
