@@ -72,7 +72,20 @@ public class GatewaySecurityConfig {
         // Max age for preflight requests
         corsConfig.setMaxAge(3600L);
 
+        // Permissive CORS config for third-party payment gateways (PayU)
+        CorsConfiguration publicCorsConfig = new CorsConfiguration();
+        publicCorsConfig.setAllowedOriginPatterns(Arrays.asList("*"));
+        publicCorsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "OPTIONS"));
+        publicCorsConfig.setAllowedHeaders(Arrays.asList("*"));
+        publicCorsConfig.setAllowCredentials(false);
+        publicCorsConfig.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/enrollments/payments/callback/**", publicCorsConfig);
+        source.registerCorsConfiguration("/api/enrollments/payments/webhook", publicCorsConfig);
+        source.registerCorsConfiguration("/api/forms/payments/callback/**", publicCorsConfig);
+        source.registerCorsConfiguration("/api/forms/payments/webhook", publicCorsConfig);
+        
         source.registerCorsConfiguration("/**", corsConfig);
         return source;
     }

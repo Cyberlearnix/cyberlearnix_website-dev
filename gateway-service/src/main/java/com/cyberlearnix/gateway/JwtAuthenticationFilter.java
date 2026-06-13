@@ -130,6 +130,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (path.equals("/api/enrollments/payments/initiate")) return true;
             if (path.equals("/api/enrollments/payments/webhook")) return true;
             if (path.equals("/api/enrollments/payu-payment")) return true;
+            if (path.startsWith("/api/forms/payments/callback/")) return true;
+            if (path.equals("/api/forms/payments/webhook")) return true;
             if (path.equals("/api/contact-submissions")) return true;  // Public contact form
             return path.endsWith("/responses") || path.endsWith("/responses/check");
         }
@@ -158,7 +160,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // PayU may redirect browser with GET to callback endpoints depending on gateway flow.
         // Keep callbacks public for both GET and POST.
-        if (path.startsWith("/api/enrollments/payments/callback/")) {
+        if (path.startsWith("/api/enrollments/payments/callback/") ||
+            path.startsWith("/api/forms/payments/callback/")) {
             return true;
         }
 
