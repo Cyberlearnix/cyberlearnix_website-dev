@@ -51,7 +51,8 @@ public class FormValidationService {
             if (value == null && name != null) value = data.get(name);
             if (value == null && label != null) value = data.get(label);
 
-            if ("section_header".equals(type) || "paragraph".equals(type) || "html".equals(type)) continue;
+            if ("section_header".equals(type) || "paragraph".equals(type) || "html".equals(type)
+                    || "declaration".equals(type) || "declaration_terms".equals(type)) continue;
 
             // Required check
             boolean isMissing = (value == null || String.valueOf(value).trim().isEmpty());
