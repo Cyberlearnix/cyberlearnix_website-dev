@@ -77,7 +77,7 @@ public class PdfService {
             p1.setAlignment(Element.ALIGN_RIGHT);
             companyCell.addElement(p1);
 
-            Paragraph p2 = new Paragraph("Digital Skills Training & Education Services\nGSTIN: 36AAMCC8479N1ZN\nVanasthalipuram, Hyderabad, 500070\nEmail: support@cyberlearnix.com", textFont);
+            Paragraph p2 = new Paragraph("GSTIN: 36AAMCC8479N1ZN\nVanasthalipuram, Hyderabad, 500070\nEmail: support@cyberlearnix.com", textFont);
             p2.setAlignment(Element.ALIGN_RIGHT);
             companyCell.addElement(p2);
             
@@ -249,24 +249,23 @@ public class PdfService {
             termsCell.addElement(termsList);
             footerTable.addCell(termsCell);
 
-            // Signature stamp
+            // Signature stamp (Seal only, no signature text/line)
             PdfPCell signCell = new PdfPCell();
             signCell.setBorder(Rectangle.NO_BORDER);
             signCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            signCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
             
-            // Render stamp block
-            Paragraph stampText = new Paragraph("CYBERLEARNIX\nAUTHORIZED SIGNATORY", termsHeaderFont);
-            stampText.setAlignment(Element.ALIGN_CENTER);
-            stampText.setSpacingAfter(10);
-            signCell.addElement(stampText);
-            
-            Paragraph linePara = new Paragraph("------------------------------", termsFont);
-            linePara.setAlignment(Element.ALIGN_CENTER);
-            signCell.addElement(linePara);
-            
-            Paragraph authLabel = new Paragraph("Authorized Signatory", labelFont);
-            authLabel.setAlignment(Element.ALIGN_CENTER);
-            signCell.addElement(authLabel);
+            try {
+                ClassPathResource resource = new ClassPathResource("seal.png");
+                if (resource.exists()) {
+                    Image sealImg = Image.getInstance(resource.getURL());
+                    sealImg.scaleToFit(85, 85);
+                    sealImg.setAlignment(Element.ALIGN_CENTER);
+                    signCell.addElement(sealImg);
+                }
+            } catch (Exception e) {
+                // If seal fails to load, ignore
+            }
             
             footerTable.addCell(signCell);
             document.add(footerTable);
