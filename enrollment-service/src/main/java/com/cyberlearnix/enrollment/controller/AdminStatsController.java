@@ -60,7 +60,12 @@ public class AdminStatsController {
     public ResponseEntity<Map<String, Object>> getRevenueReport() {
         Double totalRevenue = responseRepository.calculateTotalRevenue();
         long paidOrders = responseRepository.countPaidOrders();
-        long totalEnrollments = responseRepository.count();
+        long totalEnrollments = enrollmentRepository.count();
+        long totalStudents = enrollmentRepository.findAll().stream()
+                .map(e -> e.getStudentId())
+                .filter(sid -> sid != null)
+                .distinct()
+                .count();
 
         // Monthly stats
         List<Object[]> monthlyRows = responseRepository.monthlyRevenue();
@@ -69,6 +74,7 @@ public class AdminStatsController {
             m.put("month", row[0]);
             m.put("enrollments", ((Number) row[1]).longValue());
             m.put("revenue", toDouble(row[2]));
+            m.put("discounts", toDouble(row[3]));
             return m;
         }).toList();
 
@@ -77,9 +83,13 @@ public class AdminStatsController {
         List<Map<String, Object>> topCoupons = couponRows.stream().map(row -> {
             Map<String, Object> c = new LinkedHashMap<>();
             c.put("couponCode", row[0]);
+            c.put("coupon_code", row[0]);
             c.put("usageCount", ((Number) row[1]).longValue());
+            c.put("usage_count", ((Number) row[1]).longValue());
             c.put("totalSavings", toDouble(row[2]));
+            c.put("total_savings", toDouble(row[2]));
             c.put("avgSaving", toDouble(row[3]));
+            c.put("avg_saving", toDouble(row[3]));
             return c;
         }).toList();
 
@@ -98,6 +108,7 @@ public class AdminStatsController {
         result.put("totalListPrice", totalListPrice);
         result.put(KEY_TOTAL_ENROLLMENTS, totalEnrollments);
         result.put("totalEnrollments", totalEnrollments);
+        result.put("totalStudents", totalStudents);
         result.put("paidOrders", paidOrders);
         result.put("freeEnrollments", totalEnrollments - paidOrders);
         result.put("discountedEnrollments", couponRows.stream().mapToLong(r -> ((Number) r[1]).longValue()).sum());
@@ -154,12 +165,17 @@ public class AdminStatsController {
         long totalEnrolled = 0;
         double totalRevenue = 0.0;
         long paidCount = 0;
+        long couponUsedCount = 0;
         for (String fid : formIds) {
             if (formRevMap.containsKey(fid)) {
                 paidCount += formRevMap.get(fid)[0];
                 totalRevenue += formSumMap.getOrDefault(fid, 0.0);
             }
             totalEnrolled += responseRepository.findByFormId(fid).size();
+            couponUsedCount += responseRepository.findByFormId(fid).stream()
+                .filter(r -> r.getCouponCode() != null && !r.getCouponCode().isBlank() && 
+                             List.of("success", "approved", "paid").contains(r.getPaymentStatus().toLowerCase()))
+                .count();
         }
 
         double totalListPrice = coursePrice * paidCount;
@@ -171,15 +187,26 @@ public class AdminStatsController {
         row.put("id", courseId);
         row.put("title", courseInfo[0]);
         row.put("coursePrice", coursePrice);
+        row.put("course_price", coursePrice);
         row.put("difficulty", courseInfo[1]);
         row.put("isPublished", Boolean.parseBoolean(courseInfo[2]));
+        row.put("is_published", Boolean.parseBoolean(courseInfo[2]));
         row.put(KEY_TOTAL_ENROLLED, totalEnrolled);
+        row.put("total_enrolled", totalEnrolled);
         row.put("totalRevenue", Math.round(totalRevenue * 100.0) / 100.0);
+        row.put("total_revenue", Math.round(totalRevenue * 100.0) / 100.0);
         row.put("totalDiscounts", Math.round(totalDiscounts * 100.0) / 100.0);
+        row.put("total_discounts", Math.round(totalDiscounts * 100.0) / 100.0);
         row.put("totalListPrice", Math.round(totalListPrice * 100.0) / 100.0);
+        row.put("total_list_price", Math.round(totalListPrice * 100.0) / 100.0);
         row.put("avgPayment", Math.round(avgPayment * 100.0) / 100.0);
+        row.put("avg_payment", Math.round(avgPayment * 100.0) / 100.0);
         row.put("freeEnrollments", totalEnrolled - paidCount);
+        row.put("free_enrollments", totalEnrolled - paidCount);
         row.put("paidEnrollments", paidCount);
+        row.put("paid_enrollments", paidCount);
+        row.put("couponUsedCount", couponUsedCount);
+        row.put("coupon_used_count", couponUsedCount);
         row.put("discountEnabled", primaryConfig != null && primaryConfig.isDiscountEnabled());
         row.put("discountType", primaryConfig != null ? primaryConfig.getDiscountType() : null);
         row.put("discountValue", primaryConfig != null ? primaryConfig.getDiscountValue() : null);

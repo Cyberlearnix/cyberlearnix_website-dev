@@ -46,7 +46,8 @@ public interface EnrollmentFormResponseRepository extends JpaRepository<Enrollme
     /** Monthly revenue for last 12 months */
     @Query(value = "SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month, " +
                    "COUNT(*) AS enrollments, " +
-                   "COALESCE(SUM(amount_paid), 0) AS revenue " +
+                   "COALESCE(SUM(amount_paid), 0) AS revenue, " +
+                   "COALESCE(SUM(discount_amount), 0) AS discounts " +
                    "FROM enrollment_form_responses " +
                    "WHERE LOWER(payment_status) IN ('success', 'approved', 'paid') " +
                    "  AND created_at >= NOW() - INTERVAL '12 months' " +
