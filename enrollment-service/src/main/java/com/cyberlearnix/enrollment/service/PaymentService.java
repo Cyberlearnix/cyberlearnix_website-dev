@@ -216,6 +216,92 @@ public class PaymentService {
      * Verifies the reverse hash and updates transaction + form response status.
      */
     @Transactional
+    public void completePaymentSuccess(PaymentTransaction txn, double amountValue, String mode, String bankRefNum, String mihpayid, Map<String, String> rawParams) {
+        if (STATUS_SUCCESS.equals(txn.getStatus())) {
+            log.info("[Payment Success] Already completed for txnid: {}", txn.getTxnid());
+            return;
+        }
+
+        txn.setStatus(STATUS_SUCCESS);
+        txn.setAmount(amountValue);
+        txn.setMihpayid(mihpayid);
+        txn.setMode(mode);
+        txn.setBankRefNum(bankRefNum);
+        txn.setCompletedAt(LocalDateTime.now());
+        txn.setHashVerified(true);
+        transactionRepository.save(txn);
+
+        if (txn.getFormResponseId() != null) {
+            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                if ("PAID".equals(r.getPaymentStatus())) {
+                    return;
+                }
+                r.setPaymentStatus("PAID");
+                r.setVerifiedAt(LocalDateTime.now());
+                r.setUpdatedAt(LocalDateTime.now());
+                r.setTransactionId(txn.getTxnid());
+                r.setMihpayid(mihpayid);
+                r.setPaymentMode(resolvePaymentMode(mode));
+                r.setAmountPaid(amountValue);
+                r.setBankRefNum(bankRefNum);
+                try {
+                    r.setPayuResponse(objectMapper.writeValueAsString(rawParams));
+                } catch (Exception ignored) {}
+                responseRepository.save(r);
+
+                // 1. Create student enrollment (which registers the student and assigns course)
+                enrollStudentFromWebhook(txn, txn.getTxnid());
+
+                // 2. Send receipt/invoice email
+                try {
+                    EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
+                    String courseTitle = (config != null ? config.getTitle() : txn.getProductInfo());
+                    String receiptId = "CLXR-" + txn.getTxnid().replace("TXN-", "");
+
+                    Map<String, Object> emailData = new HashMap<>();
+                    emailData.put("receiptId", receiptId);
+                    emailData.put("studentName", txn.getStudentName());
+                    emailData.put("studentEmail", txn.getStudentEmail());
+                    emailData.put("courseTitle", courseTitle);
+                    emailData.put("amountPaid", "\u20b9" + String.format("%.2f", amountValue));
+                    emailData.put("transactionId", txn.getTxnid());
+                    emailData.put("payuRefId", mihpayid);
+                    emailData.put("paymentMode", resolvePaymentMode(mode));
+                    emailData.put("bankRefNo", bankRefNum);
+                    emailData.put("paymentStatus", "PAID");
+                    emailData.put("submittedAt", LocalDateTime.now()
+                            .format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a")));
+
+                    emailService.sendReceiptEmail(
+                            txn.getStudentEmail(),
+                            "Payment Successful - CyberLearnix Receipt",
+                            "payment-receipt",
+                            emailData);
+                    log.info("[Payment Success] Receipt email sent successfully to: {}", txn.getStudentEmail());
+                } catch (Exception e) {
+                    log.error("[Payment Success] Failed to send receipt email: {}", e.getMessage());
+                }
+
+                // 3. Send submission confirmation email
+                try {
+                    EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
+                    if (config != null) {
+                        enrollmentService.sendFormConfirmationEmail(r.getStudentEmail(), config.getTitle(), r.getStudentData());
+                    }
+                } catch (Exception e) {
+                    log.error("[Payment Success] Failed to send form confirmation email: {}", e.getMessage());
+                }
+            });
+        }
+    }
+
+    // ── PayU Callback (browser redirect) ─────────────────────────────────────
+
+    /**
+     * Handles the success/failure redirect from PayU.
+     * Verifies the reverse hash and updates transaction + form response status.
+     */
+    @Transactional
     public Map<String, Object> handleCallback(Map<String, String> params) {
         log.info("[PayU Callback] Received parameters: {}", params);
         String status = params.getOrDefault("status", "failure").toLowerCase();
@@ -236,8 +322,6 @@ public class PaymentService {
         String errorMessage = params.getOrDefault("error_Message", "");
 
         // 1. Verify reverse hash
-        // Formula: sha512(salt|status|udf10|udf9|udf8|udf7|udf6|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key)
-        // With all UDFs empty: salt|status|||||||||||email|firstname|productinfo|amount|txnid|key
         String reverseHashString = merchantSalt + "|" + status + "|||||||||||" + email + "|"
                 + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
         String computedHash = sha512(reverseHashString);
@@ -249,37 +333,34 @@ public class PaymentService {
         if (txnOpt.isPresent()) {
             txn = txnOpt.get();
         } else {
-            // Fallback: create record if webhook arrived before callback
             txn = new PaymentTransaction();
             txn.setTxnid(txnid);
+            txn.setFormId(params.getOrDefault("formId", ""));
+            txn.setStudentEmail(email);
+            txn.setStudentName(firstname);
         }
 
         txn.setPayuTxnid(payuTxnid);
-        txn.setMihpayid(mihpayid);
-        txn.setMode(mode);
-        txn.setBankRefNum(bankRefNum);
         txn.setErrorMessage(errorMessage);
         txn.setHashVerified(hashVerified);
-        txn.setCompletedAt(LocalDateTime.now());
 
         String normalizedStatus = "success".equals(status) && hashVerified ? STATUS_SUCCESS : STATUS_FAILURE;
-        txn.setStatus(normalizedStatus);
-        transactionRepository.save(txn);
 
-        // 3. Update form response payment status
-        if (txn.getFormResponseId() != null) {
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                r.setPaymentStatus(STATUS_SUCCESS.equals(normalizedStatus) ? "PAID" : "FAILED");
-                // SEC: Only persist payment details when hash is verified and payment succeeded.
-                // Setting transactionId on a tampered/failed callback would be a security risk.
-                if (STATUS_SUCCESS.equals(normalizedStatus)) {
-                    r.setTransactionId(txnid);
-                    r.setMihpayid(mihpayid);
-                    r.setPaymentMode(resolvePaymentMode(mode));
-                    r.setAmountPaid(Double.parseDouble(amount));
-                }
-                responseRepository.save(r);
-            });
+        if (STATUS_SUCCESS.equals(normalizedStatus)) {
+            double amountValue = 0.0;
+            try { amountValue = Double.parseDouble(amount); } catch (Exception ignored) {}
+            completePaymentSuccess(txn, amountValue, mode, bankRefNum, mihpayid, params);
+        } else {
+            txn.setStatus(STATUS_FAILURE);
+            txn.setErrorMessage(errorMessage);
+            txn.setCompletedAt(LocalDateTime.now());
+            transactionRepository.save(txn);
+            if (txn.getFormResponseId() != null) {
+                responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                    r.setPaymentStatus("FAILED");
+                    responseRepository.save(r);
+                });
+            }
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -299,8 +380,6 @@ public class PaymentService {
 
     /**
      * Handles PayU's server-to-server webhook.
-     * Verifies hash, updates PaymentTransaction, creates enrollment, and sends email.
-     * Always returns without throwing so that PaymentController can return 200 OK.
      */
     @Transactional
     public void handleWebhook(Map<String, String> params) {
@@ -315,17 +394,14 @@ public class PaymentService {
         String bankRefNum = params.getOrDefault("bank_ref_num", "");
         String errorMsg  = params.getOrDefault("error_Message", "");
         String receivedHash = params.getOrDefault("hash", "");
-        String udf1      = params.getOrDefault("udf1", "");
 
         log.info("[PayU Webhook] Received for txnid: {}", txnid);
 
-        // 1. Validate required fields
         if (txnid.isEmpty() || status.isEmpty() || receivedHash.isEmpty()) {
             log.error("[PayU Webhook] Missing required fields: txnid={}, status={}", txnid, status);
             return;
         }
 
-        // 2. Verify hash
         String hashString = merchantSalt + "|" + status + "|||||||||||" + email + "|"
                 + firstname + "|" + productinfo + "|" + amount + "|" + txnid + "|" + merchantKey;
         String calculatedHash = sha512(hashString);
@@ -337,7 +413,6 @@ public class PaymentService {
             return;
         }
 
-        // 3. Find transaction
         Optional<PaymentTransaction> txnOpt = transactionRepository.findByTxnid(txnid);
         if (txnOpt.isEmpty()) {
             log.error("[PayU Webhook] Transaction not found: {}", txnid);
@@ -345,85 +420,28 @@ public class PaymentService {
         }
         PaymentTransaction txn = txnOpt.get();
 
-        // 4. Idempotency check
-        if ("PAID".equals(txn.getStatus()) || "FAILED".equals(txn.getStatus())) {
+        if (STATUS_SUCCESS.equals(txn.getStatus()) || STATUS_FAILURE.equals(txn.getStatus())) {
             log.info("[PayU Webhook] Already processed txnid: {}, status: {}", txnid, txn.getStatus());
             return;
         }
 
-        // 5. Update transaction record
-        String prevStatus = txn.getStatus();
-        txn.setMihpayid(mihpayid);
-        txn.setMode(mode);
-        txn.setBankRefNum(bankRefNum);
-        txn.setHashVerified(true);
-        txn.setCompletedAt(LocalDateTime.now());
-
         boolean isSuccess = "success".equals(status);
         if (isSuccess) {
-            txn.setStatus(STATUS_SUCCESS);
-            try { txn.setAmount(Double.parseDouble(amount)); } catch (NumberFormatException ignored) {}
+            double amountValue = 0.0;
+            try { amountValue = Double.parseDouble(amount); } catch (Exception ignored) {}
+            completePaymentSuccess(txn, amountValue, mode, bankRefNum, mihpayid, params);
         } else {
             txn.setStatus(STATUS_FAILURE);
             txn.setErrorMessage(errorMsg);
-        }
-        transactionRepository.save(txn);
-        log.info("[PayU Webhook] Updated status: {} → {} for txnid: {}", prevStatus, txn.getStatus(), txnid);
-
-        // 6. Update EnrollmentFormResponse
-        if (txn.getFormResponseId() != null) {
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                r.setPaymentStatus(isSuccess ? "PAID" : "FAILED");
-                r.setVerifiedAt(LocalDateTime.now());
-                r.setUpdatedAt(LocalDateTime.now());
-                if (isSuccess) {
-                    r.setTransactionId(txnid);
-                    r.setMihpayid(mihpayid);
-                    r.setPaymentMode(resolvePaymentMode(mode));
-                    r.setAmountPaid(Double.parseDouble(amount));
-                    r.setBankRefNum(bankRefNum);
-                }
-                try { r.setPayuResponse(objectMapper.writeValueAsString(params)); } catch (Exception ignored) {}
-                responseRepository.save(r);
-            });
-        }
-
-        if (isSuccess) {
-            // 7. Create student enrollment
-            enrollStudentFromWebhook(txn, txnid);
-
-            // 8. Send success email with PDF receipt
-            try {
-                EnrollmentFormConfig config = txn.getFormId() != null
-                        ? configRepository.findById(txn.getFormId()).orElse(null) : null;
-                String courseTitle = (config != null ? config.getTitle() : productinfo);
-                String receiptId = "CLXR-" + txnid.replace("TXN-", "");
-
-                Map<String, Object> emailData = new HashMap<>();
-                emailData.put("receiptId", receiptId);
-                emailData.put("studentName", firstname);
-                emailData.put("studentEmail", email);
-                emailData.put("courseTitle", courseTitle);
-                emailData.put("amountPaid", "\u20b9" + amount);
-                emailData.put("transactionId", txnid);
-                emailData.put("payuRefId", mihpayid);
-                emailData.put("paymentMode", resolvePaymentMode(mode));
-                emailData.put("bankRefNo", bankRefNum);
-                emailData.put("paymentStatus", "PAID");
-                emailData.put("submittedAt", LocalDateTime.now()
-                        .format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a")));
-
-                emailService.sendReceiptEmail(
-                        email,
-                        "Payment Successful - CyberLearnix Receipt",
-                        "payment-receipt",
-                        emailData);
-                log.info("[PayU Webhook] Email sent successfully to: {}", email);
-            } catch (Exception e) {
-                log.error("[PayU Webhook] Failed to send success email: {}", e.getMessage());
+            txn.setCompletedAt(LocalDateTime.now());
+            transactionRepository.save(txn);
+            if (txn.getFormResponseId() != null) {
+                responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                    r.setPaymentStatus("FAILED");
+                    r.setUpdatedAt(LocalDateTime.now());
+                    responseRepository.save(r);
+                });
             }
-        } else {
-            // 9. Send failure email
             try {
                 emailService.sendFailureEmail(email, firstname, txnid, errorMsg);
                 log.info("[PayU Webhook] Failure email sent to: {}", email);
@@ -448,7 +466,6 @@ public class PaymentService {
                     "email", txn.getStudentEmail(),
                     "password", tempPassword,
                     "role", "student");
-            // Use an internal service token — empty string uses default internal auth
             Map<String, Object> createdUser = userClient.registerUser("", regReq);
             String studentUuid = (createdUser != null && createdUser.get("id") != null)
                     ? (String) createdUser.get("id") : null;
@@ -457,6 +474,13 @@ public class PaymentService {
                 enrollmentService.bulkAssign(studentUuid, List.of(config.getCourseId()));
                 log.info("[PayU Webhook] Created enrollment for student: {}, course: {}",
                         txn.getStudentEmail(), config.getCourseId());
+                
+                if (txn.getFormResponseId() != null) {
+                    responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
+                        r.setCreatedUserId(studentUuid);
+                        responseRepository.save(r);
+                    });
+                }
             } else {
                 log.warn("[PayU Webhook] registerUser did not return id for: {}", txn.getStudentEmail());
             }

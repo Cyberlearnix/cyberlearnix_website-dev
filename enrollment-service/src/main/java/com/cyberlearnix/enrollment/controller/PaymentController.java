@@ -199,11 +199,11 @@ public class PaymentController {
     }
 
     private ResponseEntity<Void> redirectToFrontend(Map<String, Object> result) {
-        String status = String.valueOf(result.getOrDefault("status", "FAILURE")).toLowerCase();
-        String formId = encode(String.valueOf(result.getOrDefault("formId", "")));
-        String txnid = encode(String.valueOf(result.getOrDefault("txnid", "")));
-        String responseId = encode(String.valueOf(result.getOrDefault("responseId", "")));
-        String email = encode(String.valueOf(result.getOrDefault("email", "")));
+        String status = result.get("status") != null ? String.valueOf(result.get("status")).toLowerCase() : "failure";
+        String formId = encode(result.get("formId") != null ? String.valueOf(result.get("formId")) : "");
+        String txnid = encode(result.get("txnid") != null ? String.valueOf(result.get("txnid")) : "");
+        String responseId = encode(result.get("responseId") != null ? String.valueOf(result.get("responseId")) : "");
+        String email = encode(result.get("email") != null ? String.valueOf(result.get("email")) : "");
         String redirectUrl = frontendUrl + "/enroll-form.html?status=" + status
                 + "&formId=" + formId
                 + "&txnid=" + txnid
