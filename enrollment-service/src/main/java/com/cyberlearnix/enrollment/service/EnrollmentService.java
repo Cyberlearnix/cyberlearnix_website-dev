@@ -148,19 +148,27 @@ public class EnrollmentService {
             throw new RuntimeException("DB Save Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
         }
 
-        // 5. Trigger Confirmation Email
-        try {
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("recipientEmail", response.getStudentEmail());
-            data.put("formTitle", config.getTitle());
-            data.put("responses", response.getStudentData()); // FormValidationService ensures this is JSON
-            
-            notificationClient.sendNotification("send-form-confirmation", Map.of("data", data));
-        } catch (Exception e) {
-            log.error("Failed to send confirmation email: {}", e.getMessage());
+        // 5. Trigger Confirmation Email (only if payment is not required)
+        if (!config.isPaymentEnabled()) {
+            sendFormConfirmationEmail(response.getStudentEmail(), config.getTitle(), response.getStudentData());
         }
 
         return saved;
+    }
+
+    public void sendFormConfirmationEmail(String studentEmail, String formTitle, String studentData) {
+        if (studentEmail == null || studentEmail.isBlank()) return;
+        try {
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("recipientEmail", studentEmail);
+            data.put("formTitle", formTitle);
+            data.put("responses", studentData); // JSON string of student responses
+            
+            notificationClient.sendNotification("send-form-confirmation", Map.of("data", data));
+            log.info("Form submission confirmation email sent to: {}", studentEmail);
+        } catch (Exception e) {
+            log.error("Failed to send confirmation email to {}: {}", studentEmail, e.getMessage());
+        }
     }
 
     public Map<String, Object> getAllResponses() {
