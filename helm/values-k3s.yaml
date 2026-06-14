@@ -35,7 +35,7 @@ images:
   gateway-service: "f73132e3688cef4ad51edeebf4e90d1148259182"
   user-service: "f5a1e6e1146d175b0b3b1fd89c0e2e96df0276ec"
   course-service: "f5a1e6e1146d175b0b3b1fd89c0e2e96df0276ec"
-  enrollment-service: "f73132e3688cef4ad51edeebf4e90d1148259182"
+  enrollment-service: "f90a0d58d90bca505cd92a3e85b9fe57a707a6fa"
   notification-service: "f5a1e6e1146d175b0b3b1fd89c0e2e96df0276ec"
   shop-service: "f5a1e6e1146d175b0b3b1fd89c0e2e96df0276ec"
   form-service: "f5a1e6e1146d175b0b3b1fd89c0e2e96df0276ec"
