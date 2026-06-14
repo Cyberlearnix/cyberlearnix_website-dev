@@ -182,6 +182,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (path.equals("/api/enrollments/forms") ||
                 (path.startsWith("/api/enrollments/forms/") && !path.equals("/api/enrollments/forms/response-counts")) ||
                 path.equals("/api/enrollments/responses/check") ||
+                // Public: student receipt after PayU redirect (no JWT available in browser)
+                (path.startsWith("/api/enrollments/responses/") && path.endsWith("/receipt")) ||
+                // Public: resolve formResponseId from txnid after PayU redirect
+                path.startsWith("/api/enrollments/payments/status/") ||
                 // Public: inter-service enrollment check (course-service Feign call, no JWT)
                 path.equals("/api/enrollments/check")) {
                 return true;
