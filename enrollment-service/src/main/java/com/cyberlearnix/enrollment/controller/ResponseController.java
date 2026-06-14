@@ -179,10 +179,17 @@ public class ResponseController {
         String effectiveCoupon = (r.getCouponCode() != null && !r.getCouponCode().isBlank())
                 ? r.getCouponCode() : td.couponCode;
 
-        Double amountPaid = r.getAmountPaid() != null ? r.getAmountPaid() : cd.coursePrice;
+        Double amountPaid = r.getAmountPaid();
+        if (amountPaid == null) {
+            amountPaid = cd.coursePrice;
+        }
         // originalCoursePrice = what the student would pay without discount
-        Double originalCoursePrice = (amountPaid != null && effectiveDiscount > 0)
-                ? amountPaid + effectiveDiscount : cd.coursePrice;
+        Double originalCoursePrice;
+        if (amountPaid != null && effectiveDiscount > 0) {
+            originalCoursePrice = amountPaid + effectiveDiscount;
+        } else {
+            originalCoursePrice = cd.coursePrice;
+        }
 
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", r.getId());
@@ -275,10 +282,16 @@ public class ResponseController {
         String effectiveCoupon = (r.getCouponCode() != null && !r.getCouponCode().isBlank())
                 ? r.getCouponCode() : txnCouponCode;
 
-        // originalCoursePrice = amount before discount (amountPaid + discountAmount)
-        Double amountPaid = r.getAmountPaid() != null ? r.getAmountPaid() : paymentAmount;
-        Double originalCoursePrice = (amountPaid != null && effectiveDiscount > 0)
-                ? amountPaid + effectiveDiscount : paymentAmount;
+        Double amountPaid = r.getAmountPaid();
+        if (amountPaid == null) {
+            amountPaid = paymentAmount;
+        }
+        Double originalCoursePrice;
+        if (amountPaid != null && effectiveDiscount > 0) {
+            originalCoursePrice = amountPaid + effectiveDiscount;
+        } else {
+            originalCoursePrice = paymentAmount;
+        }
 
         Map<String, Object> receipt = new LinkedHashMap<>();
         receipt.put("responseId", r.getId());
