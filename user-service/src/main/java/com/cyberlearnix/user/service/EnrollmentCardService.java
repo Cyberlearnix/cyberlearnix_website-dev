@@ -43,6 +43,9 @@ public class EnrollmentCardService {
      * a stale enrollment number that was never written to the database.
      */
     public boolean issueCard(UserProfile profile) {
+        if (profile.getEnrollmentNumber() != null && !profile.getEnrollmentNumber().isBlank()) {
+            return true;
+        }
         String enrollmentNumber = null;
         String qrBase64 = null;
         try {

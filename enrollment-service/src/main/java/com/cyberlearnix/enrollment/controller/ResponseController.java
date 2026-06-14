@@ -76,6 +76,13 @@ public class ResponseController {
                     && !paymentStatus.equalsIgnoreCase(r.getPaymentStatus())) {
                 continue;
             }
+            EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
+            if (config != null && config.isPaymentEnabled()) {
+                String status = r.getPaymentStatus() != null ? r.getPaymentStatus().toUpperCase() : "PENDING";
+                if ("PENDING".equals(status) || "UNPAID".equals(status) || "FAILED".equals(status)) {
+                    continue;
+                }
+            }
             result.add(buildAdminViewItem(r, mapper));
         }
 
