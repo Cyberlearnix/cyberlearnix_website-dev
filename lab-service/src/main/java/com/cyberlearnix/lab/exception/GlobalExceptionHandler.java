@@ -55,6 +55,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
         log.error("Unhandled exception in lab-service", ex);
+        String msg = ex.getMessage();
+        if (msg != null && (msg.contains("Google Drive") || msg.contains("quota") || msg.contains("Quota") || msg.contains("Shared Drive") || msg.contains("Service Account"))) {
+            Map<String, Object> body = errorBody(HttpStatus.BAD_REQUEST, msg);
+            body.put("error", "Google Drive Storage Error");
+            body.put("success", false);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(errorBody(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later."));
     }
