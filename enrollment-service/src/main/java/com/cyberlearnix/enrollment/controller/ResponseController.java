@@ -144,6 +144,8 @@ public class ResponseController {
         String bankRefNum;
         String txnStatus;
         String initiatedTxnId;
+        Double discountAmount;
+        String couponCode;
     }
 
     private TxnData resolveTransactionData(EnrollmentFormResponse r) {
@@ -159,6 +161,8 @@ public class ResponseController {
                 data.bankRefNum = txn.getBankRefNum();
                 data.txnStatus = txn.getStatus();
                 data.initiatedTxnId = txn.getTxnid();
+                data.discountAmount = txn.getDiscountAmount();
+                data.couponCode = txn.getCouponCode();
             }
         } catch (Exception ignored) { }
         return data;
@@ -168,6 +172,17 @@ public class ResponseController {
         String studentName = resolveStudentName(r, mapper);
         CourseData cd = resolveCourseData(r);
         TxnData td = resolveTransactionData(r);
+
+        // Effective discount: prefer response-level value, fall back to txn-level
+        Double effectiveDiscount = (r.getDiscountAmount() != null && r.getDiscountAmount() > 0)
+                ? r.getDiscountAmount() : (td.discountAmount != null ? td.discountAmount : 0.0);
+        String effectiveCoupon = (r.getCouponCode() != null && !r.getCouponCode().isBlank())
+                ? r.getCouponCode() : td.couponCode;
+
+        Double amountPaid = r.getAmountPaid() != null ? r.getAmountPaid() : cd.coursePrice;
+        // originalCoursePrice = what the student would pay without discount
+        Double originalCoursePrice = (amountPaid != null && effectiveDiscount > 0)
+                ? amountPaid + effectiveDiscount : cd.coursePrice;
 
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", r.getId());
@@ -180,7 +195,10 @@ public class ResponseController {
         item.put("courseId", cd.courseId);
         item.put("courseIds", cd.courseIds);
         item.put("coursePrice", cd.coursePrice);
-        item.put("amountPaid", r.getAmountPaid() != null ? r.getAmountPaid() : cd.coursePrice);
+        item.put("originalCoursePrice", originalCoursePrice); // price before any discount
+        item.put("amountPaid", amountPaid);
+        item.put("discountAmount", effectiveDiscount);
+        item.put("couponCode", effectiveCoupon);
         item.put("paymentStatus", r.getPaymentStatus());
         item.put("transactionId", r.getTransactionId());
         item.put("initiatedTxnId", td.initiatedTxnId);
@@ -188,8 +206,6 @@ public class ResponseController {
         item.put("mihpayid", td.txnMihpayid);
         item.put("bankRefNum", td.bankRefNum);
         item.put("txnTableStatus", td.txnStatus);
-        item.put("couponCode", r.getCouponCode());
-        item.put("discountAmount", r.getDiscountAmount() != null ? r.getDiscountAmount() : 0.0);
         item.put("createdAt", r.getCreatedAt());
         item.put("reviewedAt", r.getReviewedAt());
         item.put("reviewedBy", r.getReviewedBy());
@@ -232,11 +248,13 @@ public class ResponseController {
             }
         } catch (Exception ignored) { }
 
-        // Resolve latest transaction details for mode / mihpayid / bankRefNum
+        // Resolve latest transaction details for mode / mihpayid / bankRefNum / discount fallback
         String txnMode = r.getPaymentMode();
         String txnMihpayid = r.getMihpayid();
         String bankRefNum = null;
         String initiatedTxnId = null;
+        Double txnDiscountAmount = null;
+        String txnCouponCode = null;
         try {
             PaymentTransaction txn = paymentTransactionRepository
                     .findTopByFormResponseIdOrderByInitiatedAtDesc(r.getId()).orElse(null);
@@ -245,20 +263,36 @@ public class ResponseController {
                 if (txnMihpayid == null) txnMihpayid = txn.getMihpayid();
                 bankRefNum = txn.getBankRefNum();
                 initiatedTxnId = txn.getTxnid(); // always available even before PayU callback
+                // Fallback: use transaction-level discount if response doesn't have it yet
+                txnDiscountAmount = txn.getDiscountAmount();
+                txnCouponCode = txn.getCouponCode();
             }
         } catch (Exception ignored) { }
+
+        // Resolve effective discount (prefer response-level, fall back to txn-level)
+        Double effectiveDiscount = (r.getDiscountAmount() != null && r.getDiscountAmount() > 0)
+                ? r.getDiscountAmount() : (txnDiscountAmount != null ? txnDiscountAmount : 0.0);
+        String effectiveCoupon = (r.getCouponCode() != null && !r.getCouponCode().isBlank())
+                ? r.getCouponCode() : txnCouponCode;
+
+        // originalCoursePrice = amount before discount (amountPaid + discountAmount)
+        Double amountPaid = r.getAmountPaid() != null ? r.getAmountPaid() : paymentAmount;
+        Double originalCoursePrice = (amountPaid != null && effectiveDiscount > 0)
+                ? amountPaid + effectiveDiscount : paymentAmount;
 
         Map<String, Object> receipt = new LinkedHashMap<>();
         receipt.put("responseId", r.getId());
         receipt.put("courseTitle", courseTitle);
         receipt.put("courseId", courseId);
         receipt.put("currency", currency);
-        receipt.put("coursePrice", paymentAmount);    // original course price from form config
-        // amountPaid: use actual paid amount when available, fall back to course price
-        receipt.put("amountPaid", r.getAmountPaid() != null ? r.getAmountPaid() : paymentAmount);
+        receipt.put("coursePrice", paymentAmount);          // form config price (admin-set price)
+        receipt.put("originalCoursePrice", originalCoursePrice); // price before discount
+        receipt.put("amountPaid", amountPaid);              // actual amount charged to student
+        receipt.put("discountAmount", effectiveDiscount);   // discount applied (INR, inclusive of GST)
+        receipt.put("couponCode", effectiveCoupon);
         receipt.put("paymentStatus", r.getPaymentStatus());
         receipt.put("transactionId", r.getTransactionId());
-        receipt.put("initiatedTxnId", initiatedTxnId); // TXN-... from payment_transactions
+        receipt.put("initiatedTxnId", initiatedTxnId);      // TXN-... from payment_transactions
         receipt.put("paymentMode", txnMode);
         receipt.put("mihpayid", txnMihpayid);
         receipt.put("bankRefNum", bankRefNum);
@@ -266,8 +300,6 @@ public class ResponseController {
         receipt.put("submittedAt", r.getCreatedAt());
         receipt.put("reviewedAt", r.getReviewedAt());
         receipt.put(KEY_STUDENT_DATA, studentData);
-        receipt.put("couponCode", r.getCouponCode());
-        receipt.put("discountAmount", r.getDiscountAmount() != null ? r.getDiscountAmount() : 0.0);
 
         return ResponseEntity.ok(receipt);
     }

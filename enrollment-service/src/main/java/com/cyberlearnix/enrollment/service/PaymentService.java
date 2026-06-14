@@ -246,11 +246,19 @@ public class PaymentService {
                 formResponse.setPaymentMode(resolvePaymentMode(mode));
                 formResponse.setAmountPaid(amountValue);
                 formResponse.setBankRefNum(bankRefNum);
+                // Copy discount info from PaymentTransaction so the receipt/invoice shows correct breakdown
+                if (txn.getDiscountAmount() != null && txn.getDiscountAmount() > 0) {
+                    formResponse.setDiscountAmount(txn.getDiscountAmount());
+                }
+                if (txn.getCouponCode() != null && !txn.getCouponCode().isBlank()) {
+                    formResponse.setCouponCode(txn.getCouponCode());
+                }
                 try {
                     formResponse.setPayuResponse(objectMapper.writeValueAsString(rawParams));
                 } catch (Exception ignored) {}
                 responseRepository.save(formResponse);
-                log.info("[Payment Success] Saved PAID status for responseId: {}, txnid: {}", formResponse.getId(), txn.getTxnid());
+                log.info("[Payment Success] Saved PAID status for responseId: {}, txnid: {}, discount: {}", 
+                        formResponse.getId(), txn.getTxnid(), txn.getDiscountAmount());
             }
         }
 
