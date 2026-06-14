@@ -232,66 +232,79 @@ public class PaymentService {
         transactionRepository.save(txn);
 
         if (txn.getFormResponseId() != null) {
-            responseRepository.findById(txn.getFormResponseId()).ifPresent(r -> {
-                if ("PAID".equals(r.getPaymentStatus())) {
+            EnrollmentFormResponse formResponse = responseRepository.findById(txn.getFormResponseId()).orElse(null);
+            if (formResponse != null) {
+                if ("PAID".equals(formResponse.getPaymentStatus())) {
+                    log.info("[Payment Success] Response already PAID for txnid: {}", txn.getTxnid());
                     return;
                 }
-                r.setPaymentStatus("PAID");
-                r.setVerifiedAt(LocalDateTime.now());
-                r.setUpdatedAt(LocalDateTime.now());
-                r.setTransactionId(txn.getTxnid());
-                r.setMihpayid(mihpayid);
-                r.setPaymentMode(resolvePaymentMode(mode));
-                r.setAmountPaid(amountValue);
-                r.setBankRefNum(bankRefNum);
+                formResponse.setPaymentStatus("PAID");
+                formResponse.setVerifiedAt(LocalDateTime.now());
+                formResponse.setUpdatedAt(LocalDateTime.now());
+                formResponse.setTransactionId(txn.getTxnid());
+                formResponse.setMihpayid(mihpayid);
+                formResponse.setPaymentMode(resolvePaymentMode(mode));
+                formResponse.setAmountPaid(amountValue);
+                formResponse.setBankRefNum(bankRefNum);
                 try {
-                    r.setPayuResponse(objectMapper.writeValueAsString(rawParams));
+                    formResponse.setPayuResponse(objectMapper.writeValueAsString(rawParams));
                 } catch (Exception ignored) {}
-                responseRepository.save(r);
+                responseRepository.save(formResponse);
+                log.info("[Payment Success] Saved PAID status for responseId: {}, txnid: {}", formResponse.getId(), txn.getTxnid());
+            }
+        }
 
-                // 1. Create student enrollment (which registers the student and assigns course)
-                enrollStudentFromWebhook(txn, txn.getTxnid());
+        // NOTE: enrollment and emails run AFTER the payment status is saved.
+        // They are wrapped in try-catch so any failure does NOT roll back the PAID status.
+        try {
+            enrollStudentFromWebhook(txn, txn.getTxnid());
+        } catch (Exception e) {
+            log.error("[Payment Success] Enrollment failed for txnid: {} — {}", txn.getTxnid(), e.getMessage());
+        }
 
-                // 2. Send receipt/invoice email
-                try {
-                    EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
-                    String courseTitle = (config != null ? config.getTitle() : txn.getProductInfo());
-                    String receiptId = "CLXR-" + txn.getTxnid().replace("TXN-", "");
+        // Send receipt/invoice email
+        try {
+            EnrollmentFormConfig config = txn.getFormId() != null
+                    ? configRepository.findById(txn.getFormId()).orElse(null) : null;
+            String courseTitle = (config != null ? config.getTitle() : txn.getProductInfo());
+            String receiptId = "CLXR-" + txn.getTxnid().replace("TXN-", "");
 
-                    Map<String, Object> emailData = new HashMap<>();
-                    emailData.put("receiptId", receiptId);
-                    emailData.put("studentName", txn.getStudentName());
-                    emailData.put("studentEmail", txn.getStudentEmail());
-                    emailData.put("courseTitle", courseTitle);
-                    emailData.put("amountPaid", "\u20b9" + String.format("%.2f", amountValue));
-                    emailData.put("transactionId", txn.getTxnid());
-                    emailData.put("payuRefId", mihpayid);
-                    emailData.put("paymentMode", resolvePaymentMode(mode));
-                    emailData.put("bankRefNo", bankRefNum);
-                    emailData.put("paymentStatus", "PAID");
-                    emailData.put("submittedAt", LocalDateTime.now()
-                            .format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a")));
+            Map<String, Object> emailData = new HashMap<>();
+            emailData.put("receiptId", receiptId);
+            emailData.put("studentName", txn.getStudentName());
+            emailData.put("studentEmail", txn.getStudentEmail());
+            emailData.put("courseTitle", courseTitle);
+            emailData.put("amountPaid", "\u20b9" + String.format("%.2f", amountValue));
+            emailData.put("transactionId", txn.getTxnid());
+            emailData.put("payuRefId", mihpayid);
+            emailData.put("paymentMode", resolvePaymentMode(mode));
+            emailData.put("bankRefNo", bankRefNum);
+            emailData.put("paymentStatus", "PAID");
+            emailData.put("submittedAt", LocalDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a")));
 
-                    emailService.sendReceiptEmail(
-                            txn.getStudentEmail(),
-                            "Payment Successful - CyberLearnix Receipt",
-                            "payment-receipt",
-                            emailData);
-                    log.info("[Payment Success] Receipt email sent successfully to: {}", txn.getStudentEmail());
-                } catch (Exception e) {
-                    log.error("[Payment Success] Failed to send receipt email: {}", e.getMessage());
+            emailService.sendReceiptEmail(
+                    txn.getStudentEmail(),
+                    "Payment Successful - CyberLearnix Receipt",
+                    "payment-receipt",
+                    emailData);
+            log.info("[Payment Success] Receipt email sent to: {}", txn.getStudentEmail());
+        } catch (Exception e) {
+            log.error("[Payment Success] Failed to send receipt email: {}", e.getMessage());
+        }
+
+        // Send submission confirmation email
+        try {
+            if (txn.getFormResponseId() != null) {
+                EnrollmentFormResponse r = responseRepository.findById(txn.getFormResponseId()).orElse(null);
+                EnrollmentFormConfig config = txn.getFormId() != null
+                        ? configRepository.findById(txn.getFormId()).orElse(null) : null;
+                if (r != null && config != null) {
+                    enrollmentService.sendFormConfirmationEmail(r.getStudentEmail(), config.getTitle(), r.getStudentData());
                 }
-
-                // 3. Send submission confirmation email
-                try {
-                    EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
-                    if (config != null) {
-                        enrollmentService.sendFormConfirmationEmail(r.getStudentEmail(), config.getTitle(), r.getStudentData());
-                    }
-                } catch (Exception e) {
-                    log.error("[Payment Success] Failed to send form confirmation email: {}", e.getMessage());
-                }
-            });
+            }
+        } catch (Exception e) {
+            log.error("[Payment Success] Failed to send form confirmation email: {}", e.getMessage());
         }
     }
 
