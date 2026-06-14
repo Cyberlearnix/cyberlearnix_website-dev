@@ -188,6 +188,8 @@ public class ResponseController {
         item.put("mihpayid", td.txnMihpayid);
         item.put("bankRefNum", td.bankRefNum);
         item.put("txnTableStatus", td.txnStatus);
+        item.put("couponCode", r.getCouponCode());
+        item.put("discountAmount", r.getDiscountAmount() != null ? r.getDiscountAmount() : 0.0);
         item.put("createdAt", r.getCreatedAt());
         item.put("reviewedAt", r.getReviewedAt());
         item.put("reviewedBy", r.getReviewedBy());
@@ -264,6 +266,8 @@ public class ResponseController {
         receipt.put("submittedAt", r.getCreatedAt());
         receipt.put("reviewedAt", r.getReviewedAt());
         receipt.put(KEY_STUDENT_DATA, studentData);
+        receipt.put("couponCode", r.getCouponCode());
+        receipt.put("discountAmount", r.getDiscountAmount() != null ? r.getDiscountAmount() : 0.0);
 
         return ResponseEntity.ok(receipt);
     }
