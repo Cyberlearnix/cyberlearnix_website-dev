@@ -22,6 +22,7 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class PaymentService {
@@ -262,65 +263,66 @@ public class PaymentService {
             }
         }
 
-        // NOTE: enrollment and emails run AFTER the payment status is saved.
-        // They are wrapped in try-catch so any failure does NOT roll back the PAID status.
-        try {
-            enrollStudentFromWebhook(txn, txn.getTxnid());
-        } catch (Exception e) {
-            log.error("[Payment Success] Enrollment failed for txnid: {} — {}", txn.getTxnid(), e.getMessage());
-        }
+        // NOTE: enrollment and emails run asynchronously in the background so they do not block the payment redirect/response thread.
+        CompletableFuture.runAsync(() -> {
+            try {
+                enrollStudentFromWebhook(txn, txn.getTxnid());
+            } catch (Exception e) {
+                log.error("[Payment Success] Async enrollment failed for txnid: {} — {}", txn.getTxnid(), e.getMessage());
+            }
 
-        // Send receipt/invoice email
-        try {
-            EnrollmentFormConfig config = txn.getFormId() != null
-                    ? configRepository.findById(txn.getFormId()).orElse(null) : null;
-            String courseTitle = (config != null ? config.getTitle() : txn.getProductInfo());
-            String receiptId = "CLXR-" + txn.getTxnid().replace("TXN-", "");
-
-            double discountAmountVal = txn.getDiscountAmount() != null ? txn.getDiscountAmount() : 0.0;
-            double originalCoursePriceVal = amountValue + discountAmountVal;
-
-            Map<String, Object> emailData = new HashMap<>();
-            emailData.put("receiptId", receiptId);
-            emailData.put("studentName", txn.getStudentName());
-            emailData.put("studentEmail", txn.getStudentEmail());
-            emailData.put("courseTitle", courseTitle);
-            emailData.put("amountPaid", "₹" + String.format("%.2f", amountValue));
-            emailData.put("transactionId", txn.getTxnid());
-            emailData.put("payuRefId", mihpayid);
-            emailData.put("paymentMode", resolvePaymentMode(mode));
-            emailData.put("bankRefNo", bankRefNum);
-            emailData.put("paymentStatus", "PAID");
-            emailData.put("submittedAt", LocalDateTime.now()
-                    .format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a")));
-            emailData.put("discountAmount", discountAmountVal);
-            emailData.put("couponCode", txn.getCouponCode() != null ? txn.getCouponCode() : "");
-            emailData.put("originalCoursePrice", originalCoursePriceVal);
-            emailData.put("amountPaidVal", amountValue);
-
-            emailService.sendReceiptEmail(
-                    txn.getStudentEmail(),
-                    "Payment Successful - CyberLearnix Receipt",
-                    "payment-receipt",
-                    emailData);
-            log.info("[Payment Success] Receipt email sent to: {}", txn.getStudentEmail());
-        } catch (Exception e) {
-            log.error("[Payment Success] Failed to send receipt email: {}", e.getMessage());
-        }
-
-        // Send submission confirmation email
-        try {
-            if (txn.getFormResponseId() != null) {
-                EnrollmentFormResponse r = responseRepository.findById(txn.getFormResponseId()).orElse(null);
+            // Send receipt/invoice email
+            try {
                 EnrollmentFormConfig config = txn.getFormId() != null
                         ? configRepository.findById(txn.getFormId()).orElse(null) : null;
-                if (r != null && config != null) {
-                    enrollmentService.sendFormConfirmationEmail(r.getStudentEmail(), config.getTitle(), r.getStudentData());
-                }
+                String courseTitle = (config != null ? config.getTitle() : txn.getProductInfo());
+                String receiptId = "CLXR-" + txn.getTxnid().replace("TXN-", "");
+
+                double discountAmountVal = txn.getDiscountAmount() != null ? txn.getDiscountAmount() : 0.0;
+                double originalCoursePriceVal = amountValue + discountAmountVal;
+
+                Map<String, Object> emailData = new HashMap<>();
+                emailData.put("receiptId", receiptId);
+                emailData.put("studentName", txn.getStudentName());
+                emailData.put("studentEmail", txn.getStudentEmail());
+                emailData.put("courseTitle", courseTitle);
+                emailData.put("amountPaid", "₹" + String.format("%.2f", amountValue));
+                emailData.put("transactionId", txn.getTxnid());
+                emailData.put("payuRefId", mihpayid);
+                emailData.put("paymentMode", resolvePaymentMode(mode));
+                emailData.put("bankRefNo", bankRefNum);
+                emailData.put("paymentStatus", "PAID");
+                emailData.put("submittedAt", LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a")));
+                emailData.put("discountAmount", discountAmountVal);
+                emailData.put("couponCode", txn.getCouponCode() != null ? txn.getCouponCode() : "");
+                emailData.put("originalCoursePrice", originalCoursePriceVal);
+                emailData.put("amountPaidVal", amountValue);
+
+                emailService.sendReceiptEmail(
+                        txn.getStudentEmail(),
+                        "Payment Successful - CyberLearnix Receipt",
+                        "payment-receipt",
+                        emailData);
+                log.info("[Payment Success] Async receipt email sent to: {}", txn.getStudentEmail());
+            } catch (Exception e) {
+                log.error("[Payment Success] Async failed to send receipt email: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("[Payment Success] Failed to send form confirmation email: {}", e.getMessage());
-        }
+
+            // Send submission confirmation email
+            try {
+                if (txn.getFormResponseId() != null) {
+                    EnrollmentFormResponse r = responseRepository.findById(txn.getFormResponseId()).orElse(null);
+                    EnrollmentFormConfig config = txn.getFormId() != null
+                            ? configRepository.findById(txn.getFormId()).orElse(null) : null;
+                    if (r != null && config != null) {
+                        enrollmentService.sendFormConfirmationEmail(r.getStudentEmail(), config.getTitle(), r.getStudentData());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("[Payment Success] Async failed to send form confirmation email: {}", e.getMessage());
+            }
+        });
     }
 
     // ── PayU Callback (browser redirect) ─────────────────────────────────────
