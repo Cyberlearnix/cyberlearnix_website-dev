@@ -45,7 +45,7 @@ public class CouponController {
             Integer maxUsages = body.get("maxUsages") != null
                     ? ((Number) body.get("maxUsages")).intValue() : null;
             LocalDateTime expiresAt = null;
-            if (body.get("expiresAt") != null) {
+            if (body.get("expiresAt") != null && !((String) body.get("expiresAt")).isBlank()) {
                 expiresAt = LocalDateTime.parse((String) body.get("expiresAt"));
             }
 

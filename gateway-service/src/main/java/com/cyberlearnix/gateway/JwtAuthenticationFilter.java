@@ -126,6 +126,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (path.startsWith("/api/auth/")) return true;
             if (path.equals("/api/enrollments/responses")) return true;
             if (path.equals("/api/enrollments/submissions")) return true;
+            if (path.equals("/api/enrollments/coupons/validate")) return true;
             if (path.startsWith("/api/enrollments/payments/callback/")) return true;
             if (path.equals("/api/enrollments/payments/initiate")) return true;
             if (path.equals("/api/enrollments/payments/webhook")) return true;
