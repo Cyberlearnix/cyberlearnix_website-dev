@@ -246,11 +246,19 @@ public class PaymentService {
                 formResponse.setPaymentMode(resolvePaymentMode(mode));
                 formResponse.setAmountPaid(amountValue);
                 formResponse.setBankRefNum(bankRefNum);
+                // Copy discount info from PaymentTransaction so the receipt/invoice shows correct breakdown
+                if (txn.getDiscountAmount() != null && txn.getDiscountAmount() > 0) {
+                    formResponse.setDiscountAmount(txn.getDiscountAmount());
+                }
+                if (txn.getCouponCode() != null && !txn.getCouponCode().isBlank()) {
+                    formResponse.setCouponCode(txn.getCouponCode());
+                }
                 try {
                     formResponse.setPayuResponse(objectMapper.writeValueAsString(rawParams));
                 } catch (Exception ignored) {}
                 responseRepository.save(formResponse);
-                log.info("[Payment Success] Saved PAID status for responseId: {}, txnid: {}", formResponse.getId(), txn.getTxnid());
+                log.info("[Payment Success] Saved PAID status for responseId: {}, txnid: {}, discount: {}", 
+                        formResponse.getId(), txn.getTxnid(), txn.getDiscountAmount());
             }
         }
 
@@ -269,12 +277,15 @@ public class PaymentService {
             String courseTitle = (config != null ? config.getTitle() : txn.getProductInfo());
             String receiptId = "CLXR-" + txn.getTxnid().replace("TXN-", "");
 
+            double discountAmountVal = txn.getDiscountAmount() != null ? txn.getDiscountAmount() : 0.0;
+            double originalCoursePriceVal = amountValue + discountAmountVal;
+
             Map<String, Object> emailData = new HashMap<>();
             emailData.put("receiptId", receiptId);
             emailData.put("studentName", txn.getStudentName());
             emailData.put("studentEmail", txn.getStudentEmail());
             emailData.put("courseTitle", courseTitle);
-            emailData.put("amountPaid", "\u20b9" + String.format("%.2f", amountValue));
+            emailData.put("amountPaid", "₹" + String.format("%.2f", amountValue));
             emailData.put("transactionId", txn.getTxnid());
             emailData.put("payuRefId", mihpayid);
             emailData.put("paymentMode", resolvePaymentMode(mode));
@@ -282,6 +293,10 @@ public class PaymentService {
             emailData.put("paymentStatus", "PAID");
             emailData.put("submittedAt", LocalDateTime.now()
                     .format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a")));
+            emailData.put("discountAmount", discountAmountVal);
+            emailData.put("couponCode", txn.getCouponCode() != null ? txn.getCouponCode() : "");
+            emailData.put("originalCoursePrice", originalCoursePriceVal);
+            emailData.put("amountPaidVal", amountValue);
 
             emailService.sendReceiptEmail(
                     txn.getStudentEmail(),

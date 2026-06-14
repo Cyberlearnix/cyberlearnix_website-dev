@@ -10,6 +10,8 @@ set REDIS_PASSWORD=cyberlearnix_redis_dev
 set REDIS_HOST=127.0.0.1
 set REDIS_PORT=6379
 set CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+set GMAIL_USER=cyberlearnixprivatelimited@gmail.com
+set GMAIL_APP_PASSWORD=wxhqcbzyjfwhnoic
 
 echo Starting %1 service...
 "C:\Program Files\Java\jdk-21\bin\java.exe" ^
@@ -22,6 +24,8 @@ echo Starting %1 service...
   -DREDIS_PASSWORD=%REDIS_PASSWORD% ^
   -DREDIS_HOST=%REDIS_HOST% ^
   -DREDIS_PORT=%REDIS_PORT% ^
+  -DGMAIL_USER=%GMAIL_USER% ^
+  -DGMAIL_APP_PASSWORD=%GMAIL_APP_PASSWORD% ^
   "-Dspring.datasource.url=jdbc:postgresql://%DB_HOST%:%DB_PORT%/%DB_NAME%?sslmode=disable" ^
   -jar %1-service\build\libs\%1-service-1.0.0-SNAPSHOT.jar
 endlocal
