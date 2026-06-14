@@ -130,6 +130,16 @@ public class GlobalExceptionHandler {
         body.put("timestamp", Instant.now().toString());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         body.put("error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
+        
+        String msg = ex.getMessage();
+        if (msg != null && (msg.contains("Google Drive") || msg.contains("quota") || msg.contains("Quota") || msg.contains("Shared Drive") || msg.contains("Service Account"))) {
+            body.put("status", HttpStatus.BAD_REQUEST.value());
+            body.put("error", "Google Drive Storage Error");
+            body.put("message", msg);
+            body.put("success", false);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+        
         body.put("message", "An unexpected error occurred. Please try again later.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }

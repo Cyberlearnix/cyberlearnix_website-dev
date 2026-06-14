@@ -57,6 +57,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.METHOD_NOT_ALLOWED.value());
+        body.put("error", HttpStatus.METHOD_NOT_ALLOWED.getReasonPhrase());
+        body.put("message", "HTTP method " + ex.getMethod() + " is not supported for this endpoint. Please use POST instead.");
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", HttpStatus.BAD_REQUEST.getReasonPhrase());
+        body.put("message", "File upload failed: Exceeded maximum allowed size limit.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
         log.error("Unhandled exception in course-service", ex);
@@ -64,6 +84,16 @@ public class GlobalExceptionHandler {
         body.put("timestamp", Instant.now().toString());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         body.put("error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
+        
+        String msg = ex.getMessage();
+        if (msg != null && (msg.contains("Google Drive") || msg.contains("quota") || msg.contains("Quota") || msg.contains("Shared Drive") || msg.contains("Service Account"))) {
+            body.put("status", HttpStatus.BAD_REQUEST.value());
+            body.put("error", "Google Drive Storage Error");
+            body.put("message", msg);
+            body.put("success", false);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+        
         body.put("message", "An unexpected error occurred. Please try again later.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }

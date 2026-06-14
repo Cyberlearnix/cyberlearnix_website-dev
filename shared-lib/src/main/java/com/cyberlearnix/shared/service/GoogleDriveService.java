@@ -42,6 +42,15 @@ public class GoogleDriveService {
     @Value("${google.drive.credentials-json-b64:}")
     private String credentialsJsonB64;
 
+    @Value("${google.drive.client-id:}")
+    private String clientId;
+
+    @Value("${google.drive.client-secret:}")
+    private String clientSecret;
+
+    @Value("${google.drive.refresh-token:}")
+    private String refreshToken;
+
     @Value("${google.drive.folder-id:}")
     private String folderId;
 
@@ -50,15 +59,31 @@ public class GoogleDriveService {
 
     @PostConstruct
     public void init() {
-        if (credentialsJsonB64 == null || credentialsJsonB64.isBlank()) {
+        boolean hasServiceAccount = credentialsJsonB64 != null && !credentialsJsonB64.isBlank();
+        boolean hasOAuth2 = clientId != null && !clientId.isBlank() && 
+                            clientSecret != null && !clientSecret.isBlank() && 
+                            refreshToken != null && !refreshToken.isBlank();
+
+        if (!hasServiceAccount && !hasOAuth2) {
             log.info("Google Drive not configured — upload via Drive is disabled");
             return;
         }
         try {
-            byte[] json = Base64.getDecoder().decode(credentialsJsonB64.trim());
-            var credentials = ServiceAccountCredentials
-                    .fromStream(new ByteArrayInputStream(json))
-                    .createScoped(Collections.singleton(DriveScopes.DRIVE));
+            com.google.auth.Credentials credentials;
+            if (hasOAuth2) {
+                credentials = com.google.auth.oauth2.UserCredentials.newBuilder()
+                        .setClientId(clientId)
+                        .setClientSecret(clientSecret)
+                        .setRefreshToken(refreshToken)
+                        .build();
+                log.info("Configuring Google Drive with Personal OAuth2 credentials (precedence)");
+            } else {
+                byte[] json = Base64.getDecoder().decode(credentialsJsonB64.trim());
+                credentials = ServiceAccountCredentials
+                        .fromStream(new ByteArrayInputStream(json))
+                        .createScoped(Collections.singleton(DriveScopes.DRIVE));
+                log.info("Configuring Google Drive with Service Account credentials");
+            }
             drive = new Drive.Builder(
                     GoogleNetHttpTransport.newTrustedTransport(),
                     GsonFactory.getDefaultInstance(),
@@ -97,25 +122,64 @@ public class GoogleDriveService {
                 file.getContentType(), file.getInputStream());
         content.setLength(file.getSize());
 
-        File uploaded = drive.files().create(meta, content)
-                .setFields("id, name, mimeType")
-                .execute();
+        try {
+            File uploaded = drive.files().create(meta, content)
+                    .setSupportsAllDrives(true)
+                    .setFields("id, name, mimeType")
+                    .execute();
 
-        String id = uploaded.getId();
+            String id = uploaded.getId();
 
-        // Grant public read access (anyone with the link)
-        drive.permissions()
-                .create(id, new Permission().setType("anyone").setRole("reader"))
-                .execute();
+            // Grant public read access (anyone with the link)
+            drive.permissions()
+                    .create(id, new Permission().setType("anyone").setRole("reader"))
+                    .setSupportsAllDrives(true)
+                    .execute();
 
-        log.info("Uploaded file to Drive: id={} name={}", id, uploaded.getName());
+            log.info("Uploaded file to Drive: id={} name={}", id, uploaded.getName());
 
-        return Map.of(
-                "fileId",    id,
-                "viewUrl",   "https://drive.google.com/file/d/" + id + "/view",
-                "streamUrl", "/api/materials/drive/stream/" + id,
-                "name",      uploaded.getName() != null ? uploaded.getName() : ""
-        );
+            return Map.of(
+                    "fileId",    id,
+                    "viewUrl",   "https://drive.google.com/file/d/" + id + "/view",
+                    "streamUrl", "/api/materials/drive/stream/" + id,
+                    "name",      uploaded.getName() != null ? uploaded.getName() : ""
+            );
+        } catch (Exception e) {
+            log.error("Google Drive upload error: ", e);
+            String errorMsg = e.getMessage();
+            
+            // Check for storage quota exceeded error in any form of the message
+            boolean isQuotaExceeded = false;
+            if (errorMsg != null) {
+                String errorMsgLower = errorMsg.toLowerCase();
+                if (errorMsgLower.contains("storagequotaexceeded") || 
+                    errorMsgLower.contains("storage quota") || 
+                    errorMsgLower.contains("service accounts do not have storage quota")) {
+                    isQuotaExceeded = true;
+                }
+            }
+            
+            if (!isQuotaExceeded && e instanceof com.google.api.client.googleapis.json.GoogleJsonResponseException) {
+                com.google.api.client.googleapis.json.GoogleJsonResponseException jsonEx = 
+                        (com.google.api.client.googleapis.json.GoogleJsonResponseException) e;
+                if (jsonEx.getDetails() != null && jsonEx.getDetails().getErrors() != null && !jsonEx.getDetails().getErrors().isEmpty()) {
+                    for (int i = 0; i < jsonEx.getDetails().getErrors().size(); i++) {
+                        if ("storageQuotaExceeded".equals(jsonEx.getDetails().getErrors().get(i).getReason())) {
+                            isQuotaExceeded = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (isQuotaExceeded) {
+                throw new IOException("Google Drive Quota Error: Google Service Accounts have 0 bytes of default personal storage limit. " +
+                        "To fix this, please ensure the destination folder ID is located inside a Google Workspace 'Shared Drive' (Team Drive) " +
+                        "where the Service Account has been added with 'Contributor' or 'Content manager' access.");
+            }
+            
+            throw new IOException("Google Drive Error: " + (errorMsg != null ? errorMsg : e.getClass().getSimpleName()), e);
+        }
     }
 
     /**
@@ -131,11 +195,13 @@ public class GoogleDriveService {
 
         // Get metadata
         File meta = drive.files().get(fileId)
+                .setSupportsAllDrives(true)
                 .setFields("id, mimeType, size")
                 .execute();
 
         // Get the media stream, forwarding Range header if present
-        Drive.Files.Get mediaReq = drive.files().get(fileId);
+        Drive.Files.Get mediaReq = drive.files().get(fileId)
+                .setSupportsAllDrives(true);
         if (rangeHeader != null && !rangeHeader.isBlank()) {
             mediaReq.getRequestHeaders().set("Range", rangeHeader);
         }
@@ -155,7 +221,9 @@ public class GoogleDriveService {
     public boolean deleteFile(String fileId) {
         if (!enabled) return false;
         try {
-            drive.files().delete(fileId).execute();
+            drive.files().delete(fileId)
+                    .setSupportsAllDrives(true)
+                    .execute();
             log.info("Deleted Drive file: {}", fileId);
             return true;
         } catch (Exception ex) {
