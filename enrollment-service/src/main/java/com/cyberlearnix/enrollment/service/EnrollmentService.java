@@ -212,6 +212,11 @@ public class EnrollmentService {
             s.setReviewedAt(LocalDateTime.now());
             s.setRejectionReason(rejectionReason);
             submissionRepository.save(s);
+
+            if ("VERIFIED".equals(status)) {
+                processVerifiedSubmission(s, token);
+            }
+
             return Map.of("success", true, "status", status);
         }
 
@@ -234,6 +239,54 @@ public class EnrollmentService {
         throw new RuntimeException("Enrollment not found");
     }
 
+    public void processVerifiedSubmission(EnrollmentSubmission s, String token) {
+        if (s == null) return;
+        String email = s.getStudentEmail() != null && !s.getStudentEmail().isBlank() ? s.getStudentEmail() : s.getEmail();
+        if (email == null || email.isBlank()) {
+            log.warn("Submission {} has no email — skipping student setup", s.getId());
+            return;
+        }
+
+        List<Long> courseIdsToEnroll = s.getCourseId() != null ? List.of(s.getCourseId()) : List.of();
+        String tempPassword = "Welcome@" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        try {
+            Map<String, Object> regReq = Map.of(
+                    "email", email,
+                    "password", tempPassword,
+                    "role", "student"
+            );
+            Map<String, Object> createdUser = userClient.registerUser(token, regReq);
+            String studentUuid = (createdUser != null && createdUser.get("id") != null)
+                    ? (String) createdUser.get("id")
+                    : null;
+
+            if (studentUuid != null) {
+                s.setCreatedUserId(studentUuid);
+                submissionRepository.save(s);
+                self.bulkAssign(studentUuid, courseIdsToEnroll);
+                log.info("Enrolled legacy student {} in {} course(s): {}", email, courseIdsToEnroll.size(), courseIdsToEnroll);
+
+                // Trigger card generation explicitly
+                try {
+                    userClient.generateCard(token, studentUuid);
+                    log.info("Successfully triggered legacy card generation for user {}", studentUuid);
+                } catch (Exception cardEx) {
+                    log.error("Failed to trigger card generation for legacy student: {}", cardEx.getMessage());
+                }
+            } else {
+                log.warn("registerUser did not return an id — skipping enrollment for legacy student {}", email);
+            }
+
+            notificationClient.sendNotification("send-account-credentials", Map.of(
+                    "email", email,
+                    "password", tempPassword,
+                    "courseTitle", "Course"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to automate legacy student setup: {}", e.getMessage());
+        }
+    }
+
     private void processVerifiedEnrollment(EnrollmentFormResponse r, String token) {
         EnrollmentFormConfig config = configRepository.findById(r.getFormId()).orElse(null);
         List<Long> courseIdsToEnroll = (config != null) ? config.getEffectiveCourseIds() : List.of();
@@ -249,6 +302,14 @@ public class EnrollmentService {
                     ? (String) createdUser.get("id")
                     : null;
             enrollStudentInCourses(r, studentUuid, courseIdsToEnroll);
+            if (studentUuid != null) {
+                try {
+                    userClient.generateCard(token, studentUuid);
+                    log.info("Successfully triggered card generation for user {}", studentUuid);
+                } catch (Exception cardEx) {
+                    log.error("Failed to trigger card generation for student: {}", cardEx.getMessage());
+                }
+            }
             notificationClient.sendNotification("send-account-credentials", Map.of(
                     "email", r.getStudentEmail(),
                     "password", tempPassword,

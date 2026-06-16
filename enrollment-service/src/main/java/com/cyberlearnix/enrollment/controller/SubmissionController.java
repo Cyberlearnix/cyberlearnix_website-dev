@@ -46,6 +46,9 @@ public class SubmissionController {
         return ResponseEntity.ok(submissionRepository.save(submission));
     }
 
+    @Autowired
+    private com.cyberlearnix.enrollment.service.EnrollmentService enrollmentService;
+
     /**
      * PATCH /api/enrollments/submissions/{id}/status
      * Update the status of a submission (e.g., approve or reject).
@@ -55,7 +58,8 @@ public class SubmissionController {
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> payload,
-            @RequestHeader(value = "X-User-Id", required = false) String adminId) {
+            @RequestHeader(value = "X-User-Id", required = false) String adminId,
+            @RequestHeader(value = "Authorization", required = false) String token) {
         return submissionRepository.findById(id).map(submission -> {
             String newStatus = payload.get("status");
             submission.setStatus(newStatus);
@@ -64,7 +68,17 @@ public class SubmissionController {
             if (payload.containsKey("rejectionReason")) {
                 submission.setRejectionReason(payload.get("rejectionReason"));
             }
+            if ("approved".equalsIgnoreCase(newStatus) || "verified".equalsIgnoreCase(newStatus)) {
+                submission.setPaymentStatus("VERIFIED");
+            } else if ("rejected".equalsIgnoreCase(newStatus)) {
+                submission.setPaymentStatus("REJECTED");
+            }
             submissionRepository.save(submission);
+
+            if ("approved".equalsIgnoreCase(newStatus) || "verified".equalsIgnoreCase(newStatus)) {
+                enrollmentService.processVerifiedSubmission(submission, token);
+            }
+
             return ResponseEntity.ok(Map.of("success", true, "status", newStatus));
         }).orElse(ResponseEntity.notFound().build());
     }

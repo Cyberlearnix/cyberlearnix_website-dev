@@ -180,7 +180,10 @@
   </div>
 
   <script>
-    const API_BASE = 'https://apis.cyberlearnix.com';
+    let API_BASE = 'https://apis.cyberlearnix.com';
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      API_BASE = window.location.origin;
+    }
 
     function show(id) {
       ['loading', 'valid', 'invalid'].forEach(s => {
