@@ -1273,7 +1273,7 @@ app.post('/api/upload-image', express.raw({ type: '*/*', limit: '25mb' }), async
             body: JSON.stringify({ role: 'reader', type: 'anyone' })
         });
 
-        res.json({ url: `https://drive.google.com/uc?export=view&id=${uploaded.id}`, fileId: uploaded.id });
+        res.json({ url: `https://drive.google.com/thumbnail?id=${uploaded.id}&sz=w1000`, fileId: uploaded.id });
     } catch (err) {
         console.error('Drive upload error:', err);
         res.status(500).json({ error: err.message });
