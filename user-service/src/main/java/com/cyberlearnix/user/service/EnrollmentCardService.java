@@ -50,7 +50,11 @@ public class EnrollmentCardService {
         String qrBase64 = null;
         try {
             enrollmentNumber = generateEnrollmentNumber();
-            String verifyUrl = publicUrl + "/verify.html?enrollment=" + enrollmentNumber;
+            String base = publicUrl;
+            if (base != null && base.endsWith("/")) {
+                base = base.substring(0, base.length() - 1);
+            }
+            String verifyUrl = base + "/verify.html?enrollment=" + enrollmentNumber;
             qrBase64 = generateQrCode(verifyUrl);
 
             // Set on the profile only just before saving so that a save failure
@@ -123,8 +127,7 @@ public class EnrollmentCardService {
                     logoSize + padding * 2, logoSize + padding * 2,
                     16, 16
                 ));
-                g2.drawImage(logo.getScaledInstance(logoSize, logoSize, Image.SCALE_SMOOTH),
-                    logoX, logoY, null);
+                g2.drawImage(logo, logoX, logoY, logoSize, logoSize, null);
                 g2.dispose();
 
                 Graphics2D qrG = qrImage.createGraphics();

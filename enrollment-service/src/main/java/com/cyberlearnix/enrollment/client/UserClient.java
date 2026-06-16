@@ -19,5 +19,10 @@ public interface UserClient {
 
     @GetMapping("/api/users/{userId}/profile")
     Map<String, Object> getUserProfile(@PathVariable("userId") String userId);
+
+    @PostMapping("/api/users/{userId}/generate-card")
+    Map<String, Object> generateCard(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("userId") String userId);
 }
 
