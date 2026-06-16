@@ -75,7 +75,7 @@ public class MaterialUploadController {
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
                     "fileId",    fileId,
-                    "url",       "https://drive.google.com/uc?export=view&id=" + fileId,
+                    "url",       "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000",
                     "viewUrl",   result.get("viewUrl"),
                     "streamUrl", result.get("streamUrl"),
                     "name",      result.get("name"),
@@ -124,7 +124,7 @@ public class MaterialUploadController {
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
                     "fileId",    fileId,
-                    "url",       "https://drive.google.com/uc?export=view&id=" + fileId,
+                    "url",       "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000",
                     "viewUrl",   result.get("viewUrl"),
                     "streamUrl", result.get("streamUrl"),
                     "name",      result.get("name"),
@@ -419,7 +419,7 @@ public class MaterialUploadController {
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
                     "fileId",    fileId,
-                    "url",       "https://drive.google.com/uc?export=view&id=" + fileId,
+                    "url",       "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000",
                     "viewUrl",   result.get("viewUrl"),
                     "streamUrl", result.get("streamUrl"),
                     "name",      result.get("name")

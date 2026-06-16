@@ -41,7 +41,7 @@ public class MediaService {
                 if (contentType.startsWith("video/")) {
                     fileUrl = "/api/cms/media/drive/stream/" + fileId;
                 } else {
-                    fileUrl = "https://drive.google.com/uc?export=view&id=" + fileId;
+                    fileUrl = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000";
                 }
 
                 log.info("CMS media uploaded to Google Drive: fileId={} type={}", fileId, type);
