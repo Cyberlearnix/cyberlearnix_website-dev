@@ -4,10 +4,16 @@ import com.cyberlearnix.shared.entity.identity.Member;
 import com.cyberlearnix.shared.entity.user.UserProfile;
 import com.cyberlearnix.shared.repository.identity.MemberRepository;
 import com.cyberlearnix.shared.repository.user.UserProfileRepository;
+import com.cyberlearnix.shared.service.GoogleDriveService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.InputStream;
+import java.io.IOException;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.Optional;
@@ -22,6 +28,7 @@ public class PublicVerifyController {
 
     @Autowired private UserProfileRepository userProfileRepository;
     @Autowired private MemberRepository memberRepository;
+    @Autowired private GoogleDriveService googleDriveService;
 
     @GetMapping("/verify/{enrollmentNumber}")
     public ResponseEntity<?> verifyMember(@PathVariable String enrollmentNumber) {
@@ -49,7 +56,13 @@ public class PublicVerifyController {
             response.put("fullName", m.getFullName());
             response.put("email", m.getEmail());
             response.put("role", m.getMemberType().toLowerCase());
-            response.put("photoUrl", m.getProfilePhoto());
+            
+            String photoUrl = m.getProfilePhoto();
+            String fileId = extractDriveFileId(photoUrl);
+            if (fileId != null) {
+                photoUrl = "/api/public/verify/photo/" + fileId;
+            }
+            response.put("photoUrl", photoUrl);
             
             String locationStr = "CyberLearnix";
             if (m.getDepartment() != null && !m.getDepartment().isBlank()) {
@@ -84,7 +97,14 @@ public class PublicVerifyController {
             response.put("fullName", p.getFullName() != null ? p.getFullName() : "Student");
             response.put("email", p.getEmail());
             response.put("role", p.getRole() != null ? p.getRole() : "student");
-            response.put("photoUrl", p.getPhotoUrl());
+            
+            String photoUrl = p.getPhotoUrl();
+            String fileId = extractDriveFileId(photoUrl);
+            if (fileId != null) {
+                photoUrl = "/api/public/verify/photo/" + fileId;
+            }
+            response.put("photoUrl", photoUrl);
+            
             response.put("location", p.getLocation() != null ? p.getLocation() : "Remote / Online");
             response.put("enrolledAt", p.getCreatedAt() != null ? p.getCreatedAt().toString() : "");
             response.put("institute", "Cyberlearnix Private Limited");
@@ -95,5 +115,66 @@ public class PublicVerifyController {
             "error", "Identity not found",
             "message", "No active profile matches this identity or enrollment number"
         ));
+    }
+
+    /**
+     * Public endpoint to stream profile photo from Google Drive.
+     * Does not require authentication.
+     */
+    @GetMapping(value = "/verify/photo/{fileId}")
+    public void streamPhotoPublicly(
+            @PathVariable String fileId,
+            @RequestHeader(value = "Range", required = false) String range,
+            HttpServletResponse response) throws IOException {
+
+        if (!googleDriveService.isEnabled()) {
+            response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Google Drive storage not configured");
+            return;
+        }
+
+        if (fileId == null || !fileId.matches("[a-zA-Z0-9_\\-]{10,100}")) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid file ID");
+            return;
+        }
+
+        try {
+            GoogleDriveService.DriveStream ds = googleDriveService.openStream(fileId, range);
+            response.setContentType(ds.mimeType());
+            response.setHeader("Accept-Ranges", "bytes");
+            response.setHeader("Cache-Control", "public, max-age=86400");
+            if (ds.size() > 0) {
+                response.setHeader("Content-Length", String.valueOf(ds.size()));
+            }
+            if (range != null && !range.isBlank()) {
+                response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
+            }
+            try (InputStream in = ds.inputStream()) {
+                byte[] buf = new byte[65536];
+                int read;
+                var out = response.getOutputStream();
+                while ((read = in.read(buf)) != -1) {
+                    out.write(buf, 0, read);
+                }
+            }
+        } catch (Exception e) {
+            if (!response.isCommitted()) {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Stream error: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Extracts Google Drive file ID from a URL.
+     */
+    private String extractDriveFileId(String url) {
+        if (url == null || url.isBlank()) return null;
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "drive\\.google\\.com/(?:file/d/|uc\\?export=view&id=|uc\\?id=|open\\?id=|thumbnail\\?id=|googleusercontent\\.com/[^/]+/d/)([a-zA-Z0-9_\\-]{10,100})"
+        );
+        java.util.regex.Matcher matcher = pattern.matcher(url);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 }
