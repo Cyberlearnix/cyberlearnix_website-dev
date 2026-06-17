@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Identity & Credential Verification | CyberLearnix</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1026,22 +1027,30 @@
                 </svg>
                 <span>Secure Verification System</span>
             </div>
-            <img src="https://cyberlearnix.com/assets/logo.png" onerror="this.style.display='none'" alt="CyberLearnix Logo" class="logo">
+            <img src="/logo.png" alt="CyberLearnix Logo" class="logo">
             <h1 class="portal-title">CyberLearnix Verification Portal</h1>
             <p class="portal-subtitle">Official Identity and Credential Verification System</p>
         </header>
 
-        <!-- Manual Enrollment Input Form -->
+        <!-- Manual Certificate Input Form -->
         <div id="verify-form-container" class="card-glass">
-            <h2>Verify Enrollment / Member ID</h2>
-            <p>Enter the enrollment number below to verify identity details.</p>
+            <h2>Verify Certificate</h2>
+            <p>Enter the credentials details below to audit and confirm validity.</p>
 
             <form id="verify-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
                 <div class="form-group">
-                    <label class="form-label" for="verify-id">Enrollment ID</label>
+                    <label class="form-label" for="verify-id">Certificate ID</label>
                     <input type="text" id="verify-id" class="form-input" placeholder="e.g. CLX-XXXX-XXXX" required>
                 </div>
-                <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Verify Identity</button>
+                <div class="form-group">
+                    <label class="form-label" for="verify-name">Student Full Name</label>
+                    <input type="text" id="verify-name" class="form-input" placeholder="Name as printed on certificate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="verify-dob">Date of Birth</label>
+                    <input type="date" id="verify-dob" class="form-input" required>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Verify Credential</button>
             </form>
         </div>
 
@@ -1094,7 +1103,7 @@
                 <div class="card-glass profile-card relative">
                     <div class="profile-card-glow"></div>
                     <div class="profile-card-header">
-                        <img src="https://cyberlearnix.com/assets/logo.png" onerror="this.style.display='none'" alt="CyberLearnix" class="profile-card-logo">
+                        <img src="/logo.png" alt="CyberLearnix" class="profile-card-logo">
                         <div class="profile-card-badge-container">
                             <span id="role-badge" class="badge-role">Student</span>
                         </div>
@@ -1334,7 +1343,7 @@
         <div id="result-error" class="card-glass hidden">
             <div class="status-error-icon">✕</div>
             <h2>Invalid Credentials</h2>
-            <p id="error-message">The enrollment number provided was not found or is no longer active.</p>
+            <p id="error-message">The information provided does not match our records. Please check the ID, Name, and Date of Birth, and try again.</p>
             <button onclick="resetVerification()" class="btn-primary" style="max-width: 250px; width: 100%;">Try Again</button>
         </div>
 
@@ -1350,22 +1359,44 @@
         </footer>
     </div>
 
-    <script>
+    <script type="module">
+        import { supabase } from './src/lib/supabase.js';
+
+        // Set global API base URL matching environment
+        let API_BASE = 'https://prod-apis.cyberlearnix.com';
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            API_BASE = 'http://localhost:8080';
+        } else if (hostname.includes('dev') || hostname.includes('apis.cyberlearnix')) {
+            API_BASE = 'https://apis.cyberlearnix.com';
+        }
+
+        // Clean image URL helper
+        function getCleanImageUrl(url) {
+            if (!url) return '';
+            const urlStr = String(url).trim();
+            if (urlStr.startsWith('data:image')) return urlStr;
+            const driveMatch = urlStr.match(/drive\.google\.com\/file\/d\/([^/?\s]+)/) ||
+                               urlStr.match(/drive\.google\.com\/uc\?export=view&id=([^/?\s]+)/) ||
+                               urlStr.match(/drive\.google\.com\/uc\?id=([^/?\s]+)/) ||
+                               urlStr.match(/drive\.google\.com\/open\?id=([^/?\s]+)/) ||
+                               urlStr.match(/drive\.google\.com\/thumbnail\?id=([^/?\s]+)/) ||
+                               urlStr.match(/googleusercontent\.com\/[^/]+\/d\/([^/?\s]+)/);
+            if (driveMatch) {
+                return `${API_BASE}/api/public/verify/photo/${driveMatch[1]}`;
+            }
+            if (urlStr.startsWith('/') && !urlStr.startsWith('//')) {
+                return `${API_BASE}${urlStr}`;
+            }
+            return urlStr;
+        }
+
         // UI Elements
         const formContainer = document.getElementById('verify-form-container');
         const form = document.getElementById('verify-form');
         const loading = document.getElementById('loading');
         const resultSuccess = document.getElementById('verification-result');
         const resultError = document.getElementById('result-error');
-
-        // API base calculation
-        let API_BASE = 'https://prod-apis.cyberlearnix.com';
-        const hostname = window.location.hostname;
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            API_BASE = window.location.origin;
-        } else if (hostname.includes('dev') || hostname.includes('apis.cyberlearnix')) {
-            API_BASE = 'https://apis.cyberlearnix.com';
-        }
 
         // Role Badge Styling Map
         const roleStyleMap = {
@@ -1401,7 +1432,7 @@
         }
 
         // Unify rendering of results
-        function renderVerificationResult(data) {
+        function renderVerificationResult(data, type) {
             const statusTitle = document.getElementById('status-title');
             const roleBadge = document.getElementById('role-badge');
             
@@ -1411,48 +1442,77 @@
             document.getElementById('timeline-recent-val').textContent = currentDate;
             document.getElementById('security-timestamp-val').textContent = currentDate;
             
-            let name = data.fullName || 'Student';
-            let role = data.role || 'student';
-            let uniqueId = data.id || 'N/A';
-            let enrollmentId = data.enrollmentNumber || 'N/A';
-            let location = data.location || 'Remote / Online';
-            let joinedDate = data.enrolledAt ? formatDate(data.enrolledAt) : 'N/A';
-            let photoUrl = data.photoUrl || '';
-            
-            // Map role to designation & department
+            let name = '';
+            let role = '';
+            let uniqueId = '';
+            let enrollmentId = '';
+            let location = '';
+            let joinedDate = '';
+            let photoUrl = '';
             let designation = '';
             let department = '';
             let credentialType = '';
             
-            const roleLower = role.toLowerCase();
-            if (roleLower === 'student') {
-                designation = 'Student / Learner';
-                department = 'Academic Education';
-                credentialType = 'Student Identification Card';
-            } else if (roleLower === 'teacher') {
-                designation = 'Instructor / Mentor';
-                department = 'Learning & Development';
-                credentialType = 'Instructor Badge';
-            } else if (roleLower === 'admin') {
-                designation = 'System Administrator';
-                department = 'Information Technology';
-                credentialType = 'Executive Identification Card';
-            } else if (roleLower === 'dual') {
-                designation = 'Student & Educator';
-                department = 'Academic Operations';
-                credentialType = 'Unified Member ID';
-            } else {
-                designation = role.charAt(0).toUpperCase() + role.slice(1);
-                department = 'Operations';
-                credentialType = 'Official ID Card';
-            }
+            if (type === 'enrollment') {
+                name = data.fullName || 'Student';
+                role = data.role || 'student';
+                uniqueId = data.id || 'N/A';
+                enrollmentId = data.enrollmentNumber || 'N/A';
+                location = data.location || 'Remote / Online';
+                joinedDate = data.enrolledAt ? formatDate(data.enrolledAt) : 'N/A';
+                photoUrl = data.photoUrl || '';
+                
+                // Map role to designation & department
+                const roleLower = role.toLowerCase();
+                if (roleLower === 'student') {
+                    designation = 'Student / Learner';
+                    department = 'Academic Education';
+                    credentialType = 'Student Identification Card';
+                } else if (roleLower === 'teacher') {
+                    designation = 'Instructor / Mentor';
+                    department = 'Learning & Development';
+                    credentialType = 'Instructor Badge';
+                } else if (roleLower === 'admin') {
+                    designation = 'System Administrator';
+                    department = 'Information Technology';
+                    credentialType = 'Executive Identification Card';
+                } else if (roleLower === 'dual') {
+                    designation = 'Student & Educator';
+                    department = 'Academic Operations';
+                    credentialType = 'Unified Member ID';
+                } else {
+                    designation = role.charAt(0).toUpperCase() + role.slice(1);
+                    department = 'Operations';
+                    credentialType = 'Official ID Card';
+                }
 
-            // Check specifically for user Sridhar custom role/designation
-            if (name.toLowerCase().includes('sridhar') || enrollmentId === 'CLX-20260616-0004') {
-                designation = 'Software Development Intern';
-                department = 'Software Engineering';
-                role = 'intern';
-                credentialType = 'Internship Identification Card';
+                // Check specifically for user Sridhar custom role/designation
+                if (name.toLowerCase().includes('sridhar') || enrollmentId === 'CLX-20260616-0004') {
+                    designation = 'Software Development Intern';
+                    department = 'Software Engineering';
+                    role = 'intern';
+                    credentialType = 'Internship Identification Card';
+                }
+            } else if (type === 'certificate') {
+                name = data.student_name;
+                role = 'student';
+                uniqueId = data.id || 'N/A';
+                enrollmentId = data.certificate_id;
+                location = 'Verified Online';
+                joinedDate = data.issue_date ? formatDate(data.issue_date) : 'N/A';
+                photoUrl = ''; 
+                
+                const certType = data.type || 'course_certificate';
+                if (certType.toLowerCase().includes('internship')) {
+                    designation = 'Internship Graduate';
+                    department = 'Engineering / Product';
+                    credentialType = 'Internship Certificate';
+                    role = 'intern';
+                } else {
+                    designation = data.course_name || 'Course Graduate';
+                    department = 'Academic Education';
+                    credentialType = 'Course Certification';
+                }
             }
             
             // Populate profile card elements
@@ -1478,16 +1538,17 @@
             document.getElementById('timeline-activated-date').textContent = `Profile activated on ${joinedDate}`;
             
             // Apply dynamic role badge
-            const roleBadgeStyle = roleStyleMap[role.toLowerCase()] || { text: role.toUpperCase(), bg: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)', textCol: '#FFFFFF' };
-            roleBadge.textContent = roleBadgeStyle.text;
-            roleBadge.style.background = roleBadgeStyle.bg;
-            roleBadge.style.color = roleBadgeStyle.textCol;
+            const roleLower = role.toLowerCase();
+            const styleInfo = roleStyleMap[roleLower] || { text: role.toUpperCase(), bg: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)', textCol: '#FFFFFF' };
+            roleBadge.textContent = styleInfo.text;
+            roleBadge.style.background = styleInfo.bg;
+            roleBadge.style.color = styleInfo.textCol;
             
             // Show Photo or Initials Avatar
             const photoImg = document.getElementById('profile-photo');
             const fallbackAvatar = document.getElementById('profile-avatar-fallback');
-            if (photoUrl) {
-                photoImg.src = photoUrl;
+             if (photoUrl) {
+                photoImg.src = getCleanImageUrl(photoUrl);
                 photoImg.classList.remove('hidden');
                 fallbackAvatar.style.display = 'none';
             } else {
@@ -1512,10 +1573,17 @@
             const credentialsList = document.getElementById('credentials-list');
             credentialsList.innerHTML = '';
             
-            const credentials = [
-                { name: credentialType, id: enrollmentId, date: joinedDate },
-                { name: 'CyberLearnix LMS Access Portal', id: `LMS-${enrollmentId.slice(-4)}`, date: joinedDate }
-            ];
+            let credentials = [];
+            if (type === 'enrollment') {
+                credentials = [
+                    { name: credentialType, id: enrollmentId, date: joinedDate },
+                    { name: 'CyberLearnix LMS Access Portal', id: `LMS-${enrollmentId.slice(-4)}`, date: joinedDate }
+                ];
+            } else {
+                credentials = [
+                    { name: credentialType, id: enrollmentId, date: joinedDate }
+                ];
+            }
             
             credentials.forEach(c => {
                 const item = document.createElement('div');
@@ -1559,8 +1627,21 @@
             if (enrollmentId) {
                 // Perform automatic enrollment verification
                 verifyEnrollment(enrollmentId);
-            } else {
-                showViewState('form');
+                return;
+            }
+
+            // Fill form fields if provided in URL queries (fallback workflow)
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            const name = params.get('name');
+            const dob = params.get('dob');
+
+            if (id) document.getElementById('verify-id').value = id;
+            if (name) document.getElementById('verify-name').value = name;
+            if (dob) document.getElementById('verify-dob').value = dob;
+
+            if (id && name && dob) {
+                performVerification(id, name, dob);
             }
         });
 
@@ -1568,7 +1649,7 @@
         async function verifyEnrollment(enrollmentNumber) {
             showViewState('loading');
             try {
-                const res = await fetch(`${API_BASE}/api/public/verify/${encodeURIComponent(enrollmentNumber)}`);
+                 const res = await fetch(`${API_BASE}/api/public/verify/${encodeURIComponent(enrollmentNumber)}`);
 
                 if (!res.ok) {
                     const msg = res.status >= 500
@@ -1580,13 +1661,13 @@
 
                 const data = await res.json();
 
-                if (data.error || !data.valid) {
-                    showError(data.message || data.error || 'No profile details match this enrollment ID.');
+                if (data.error) {
+                    showError(data.message || 'No profile details match this enrollment ID.');
                     return;
                 }
 
                 // Render dynamic results page
-                renderVerificationResult(data);
+                renderVerificationResult(data, 'enrollment');
             } catch (err) {
                 console.error('Enrollment verification error:', err);
                 showError('Could not establish connection to authentication servers. Please try again.');
@@ -1598,18 +1679,51 @@
             showViewState('error');
         }
 
-        // Form Submission
+        // Form Submission (certificate verification)
         form.onsubmit = async (e) => {
             e.preventDefault();
             const id = document.getElementById('verify-id').value.trim();
-            if (id) {
-                verifyEnrollment(id);
-            }
+            const name = document.getElementById('verify-name').value.trim();
+            const dob = document.getElementById('verify-dob').value;
+
+            performVerification(id, name, dob);
         };
+
+        async function performVerification(id, name, dob) {
+            showViewState('loading');
+
+            try {
+                console.log('Querying Supabase database record:', { id, name, dob });
+
+                // Multi-field verification query for security checks
+                const { data, error } = await supabase
+                    .from('certificates')
+                    .select('*')
+                    .eq('certificate_id', id)
+                    .ilike('student_name', name)
+                    .eq('date_of_birth', dob)
+                    .maybeSingle();
+
+                console.log('Query output:', { data, error });
+
+                if (error) {
+                    console.error('Database connection error:', error);
+                    showError('System audit check encountered an error. Please try again.');
+                } else if (!data) {
+                    console.log('No matching certificate record found');
+                    showError('No official certificate matches the provided ID, name, and date of birth.');
+                } else {
+                    renderVerificationResult(data, 'certificate');
+                }
+            } catch (err) {
+                console.error('Verification workflow exception:', err);
+                showError('An unexpected validation error occurred. Please try again.');
+            }
+        }
 
         window.resetVerification = () => {
             form.reset();
-            // Clear URL paths dynamically
+            // Clear URL paths dynamically to allow manual form state resetting
             if (window.location.pathname.includes('/verify/')) {
                 window.history.pushState({}, '', '/verify');
             }
