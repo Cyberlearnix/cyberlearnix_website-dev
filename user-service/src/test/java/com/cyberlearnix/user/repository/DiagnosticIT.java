@@ -7,6 +7,7 @@ import com.cyberlearnix.user.service.IdentityService;
 import com.cyberlearnix.user.service.OtpService;
 import com.cyberlearnix.user.service.EmailNotificationService;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +19,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import javax.sql.DataSource;
 
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
     "spring.datasource.url=jdbc:postgresql://127.0.0.1:5999/cyberlearnix_users?options=-c%20timezone=UTC&timezone=UTC&prepareThreshold=0",
     "spring.datasource.username=postgres",
