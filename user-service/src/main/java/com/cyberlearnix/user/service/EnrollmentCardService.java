@@ -54,7 +54,7 @@ public class EnrollmentCardService {
             if (base != null && base.endsWith("/")) {
                 base = base.substring(0, base.length() - 1);
             }
-            String verifyUrl = base + "/verify.html?enrollment=" + enrollmentNumber;
+            String verifyUrl = base + "/verify/" + enrollmentNumber;
             qrBase64 = generateQrCode(verifyUrl);
 
             // Set on the profile only just before saving so that a save failure
