@@ -343,7 +343,6 @@ public class IdentityService {
                 type == null || type.isBlank() ? null : type,
                 department == null || department.isBlank() ? null : department,
                 status == null || status.isBlank() ? null : status,
-                isActive,
                 pageable);
     }
 

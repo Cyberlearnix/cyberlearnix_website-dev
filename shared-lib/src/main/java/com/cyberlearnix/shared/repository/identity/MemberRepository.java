@@ -28,14 +28,12 @@ public interface MemberRepository extends JpaRepository<Member, String> {
            " LOWER(m.memberId) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
            "(:memberType IS NULL OR LOWER(m.memberType) = LOWER(:memberType)) AND " +
            "(:department IS NULL OR LOWER(m.department) = LOWER(:department)) AND " +
-           "(:status IS NULL OR LOWER(m.status) = LOWER(:status)) AND " +
-           "(:isActive IS NULL OR m.isActive = :isActive)")
+           "(:status IS NULL OR LOWER(m.status) = LOWER(:status))")
     Page<Member> searchMembers(
             @Param("query") String query,
             @Param("memberType") String memberType,
             @Param("department") String department,
             @Param("status") String status,
-            @Param("isActive") Boolean isActive,
             Pageable pageable
     );
 
