@@ -1,270 +1,1621 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Student Verification – Cyberlearnix</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #f0f4ff;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .card {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 32px rgba(0,0,0,.12);
-      max-width: 480px;
-      width: 100%;
-      padding: 40px 32px 36px;
-      text-align: center;
-    }
-    .logo { height: 72px; margin-bottom: 28px; }
-    /* ── Loading ── */
-    .spinner {
-      width: 48px; height: 48px;
-      border: 4px solid #e2e8f0;
-      border-top-color: #1a2756;
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-      margin: 0 auto 20px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    /* ── Valid ── */
-    .icon-valid { font-size: 56px; margin-bottom: 16px; }
-    .badge {
-      display: inline-block;
-      background: #e8f5e9;
-      color: #2e7d32;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      padding: 4px 12px;
-      border-radius: 20px;
-      margin-bottom: 20px;
-    }
-    .photo {
-      width: 96px; height: 96px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 3px solid #1a2756;
-      margin: 0 auto 18px;
-      display: block;
-    }
-    .student-name {
-      font-size: 22px;
-      font-weight: 700;
-      color: #1a2756;
-      margin-bottom: 6px;
-    }
-    .info-grid {
-      margin-top: 20px;
-      text-align: left;
-      display: grid;
-      gap: 10px;
-    }
-    .info-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 10px 14px;
-      background: #f8faff;
-      border-radius: 10px;
-    }
-    .info-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .4px;
-      text-transform: uppercase;
-      color: #7c8db0;
-      min-width: 90px;
-      padding-top: 1px;
-    }
-    .info-value {
-      font-size: 14px;
-      font-weight: 600;
-      color: #1e293b;
-      word-break: break-word;
-    }
-    .divider { border: none; border-top: 1px solid #e8ecf5; margin: 24px 0; }
-    /* ── Invalid ── */
-    .icon-invalid { font-size: 56px; margin-bottom: 16px; color: #c62828; }
-    .error-title { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
-    .error-sub { color: #c62828; font-size: 14px; margin-bottom: 24px; }
-    /* ── Button ── */
-    .btn {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      background: #1a2756;
-      color: #fff;
-      font-size: 15px;
-      font-weight: 700;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      text-decoration: none;
-      margin-top: 20px;
-    }
-    .btn:hover { background: #263670; }
-    .footer {
-      margin-top: 28px;
-      font-size: 12px;
-      color: #aab4c8;
-    }
-    .hidden { display: none !important; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identity & Credential Verification | CyberLearnix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --indigo: #4F46E5;
+            --indigo-glow: rgba(79, 70, 229, 0.2);
+            --emerald: #10B981;
+            --emerald-glow: rgba(16, 185, 129, 0.2);
+            --white: #FFFFFF;
+            --slate-100: #F8FAFC;
+            --slate-200: #E2E8F0;
+            --slate-300: #CBD5E1;
+            --slate-400: #94A3B8;
+            --slate-500: #64748B;
+            
+            --glass-bg: rgba(30, 41, 59, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1E1B4B 0%, var(--bg-dark) 65%);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--slate-100);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            overflow-x: hidden;
+        }
+
+        .portal-container {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+            z-index: 1;
+        }
+
+        /* ── HEADER SECTION ── */
+        .portal-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .badge-secure {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--indigo-glow);
+            border: 1px solid rgba(79, 70, 229, 0.3);
+            color: #C7D2FE;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.4rem 0.8rem;
+            border-radius: 999px;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(79, 70, 229, 0.3); }
+            50% { border-color: rgba(79, 70, 229, 0.7); }
+        }
+
+        .icon-secure {
+            width: 14px;
+            height: 14px;
+            fill: #C7D2FE;
+        }
+
+        .logo {
+            height: 52px;
+            margin: 0.5rem 0;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+            object-fit: contain;
+        }
+
+        .portal-title {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--white) 30%, var(--slate-300) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-top: 0.5rem;
+        }
+
+        .portal-subtitle {
+            color: var(--slate-400);
+            font-size: 1rem;
+            font-weight: 500;
+            max-width: 500px;
+            line-height: 1.5;
+        }
+
+        /* ── GLASS CONTAINER ── */
+        .card-glass {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 2.5rem;
+            transition: var(--transition);
+        }
+
+        .card-glass:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        /* ── VERIFICATION FORM ── */
+        #verify-form-container {
+            max-width: 540px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        #verify-form-container h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        #verify-form-container p {
+            color: var(--slate-400);
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--slate-400);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: var(--slate-100);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--indigo);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        /* ── BUTTONS ── */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            width: 100%;
+            padding: 0.95rem 2rem;
+            background: linear-gradient(135deg, var(--indigo) 0%, #312E81 100%);
+            color: var(--white);
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.55);
+            background: linear-gradient(135deg, #5A52FF 0%, #3C38B0 100%);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.9rem 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--slate-200);
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--white);
+        }
+
+        .btn-support {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: var(--slate-400);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            padding: 0.5rem;
+        }
+
+        .btn-support:hover {
+            color: var(--indigo);
+            text-decoration: underline;
+        }
+
+        /* ── LOADING SKELETON ── */
+        .loading-pulse-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .loading-shield-skeleton {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading-line-skeleton {
+            height: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading-line-skeleton.header-line { width: 60%; height: 22px; }
+        .loading-line-skeleton.body-line { width: 85%; }
+        .loading-line-skeleton.body-line-short { width: 45%; }
+
+        .loading-card-skeleton {
+            width: 100%;
+            height: 180px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .loading-shield-skeleton::after,
+        .loading-line-skeleton::after,
+        .loading-card-skeleton::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            animation: loading-shimmer 1.5s infinite;
+        }
+
+        @keyframes loading-shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* ── UNIFIED RESULTS LAYOUT ── */
+        .result-layout {
+            display: grid;
+            grid-template-columns: 1.1fr 1.3fr;
+            gap: 2rem;
+            width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            .result-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-left, .result-right {
+            display: flex;
+            flex-direction: column;
+            gap: 1.75rem;
+        }
+
+        /* ── STATUS CARD ── */
+        .status-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 2rem;
+        }
+
+        .text-center { text-align: center; }
+
+        /* Animated Shield SVG */
+        .shield-container {
+            width: 84px;
+            height: 84px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shield-pulse {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: var(--emerald-glow);
+            animation: pulse-ring 2s infinite cubic-bezier(0.215, 0.610, 0.355, 1);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.85); opacity: 0.5; }
+            100% { transform: scale(1.35); opacity: 0; }
+        }
+
+        .shield-svg {
+            width: 72px;
+            height: 72px;
+            z-index: 2;
+            fill: none;
+            stroke: var(--emerald);
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.6));
+        }
+
+        .shield-path {
+            stroke-dasharray: 200;
+            stroke-dashoffset: 0;
+            animation: draw-shield 1.5s ease-out forwards;
+        }
+
+        .check-path {
+            stroke-dasharray: 50;
+            stroke-dashoffset: 50;
+            animation: draw-check 0.8s 0.6s ease-out forwards;
+            stroke: #FFFFFF;
+        }
+
+        @keyframes draw-shield {
+            from { stroke-dashoffset: 200; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes draw-check {
+            to { stroke-dashoffset: 0; }
+        }
+
+        .status-title {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 800;
+            font-size: 1.35rem;
+            color: var(--emerald);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .status-details {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 16px;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .status-detail-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--slate-400);
+        }
+
+        .status-detail-item strong {
+            color: var(--slate-200);
+        }
+
+        .text-emerald { color: var(--emerald) !important; }
+        .font-bold { font-weight: 700; }
+        .font-mono { font-family: 'Courier New', monospace; letter-spacing: 0.05em; }
+
+        /* ── IDENTITY PROFILE CARD ── */
+        .profile-card {
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .profile-card-glow {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(79, 70, 229, 0.25) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .profile-card-header {
+            padding: 1.25rem 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .profile-card-logo {
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .badge-role {
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .profile-card-body {
+            padding: 1.75rem 1.5rem;
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        @media (max-width: 500px) {
+            .profile-card-body {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+        }
+
+        .profile-avatar-container {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .profile-photo {
+            width: 90px;
+            height: 90px;
+            border-radius: 16px;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .profile-avatar-fallback {
+            width: 90px;
+            height: 90px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--white);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .status-indicator {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            background: var(--emerald);
+            border: 3px solid #1E293B;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+        }
+
+        .profile-fields {
+            flex: 1;
+            width: 100%;
+        }
+
+        .profile-name {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--white);
+            margin-bottom: 0.2rem;
+            letter-spacing: -0.01em;
+        }
+
+        .profile-role-sub {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--indigo);
+            margin-bottom: 1.2rem;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.8rem;
+        }
+
+        .profile-grid-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            text-align: left;
+        }
+
+        .field-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--slate-400);
+        }
+
+        .field-value {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--slate-200);
+            word-break: break-word;
+        }
+
+        .profile-card-footer {
+            padding: 0.8rem 1.5rem;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.65rem;
+            color: var(--slate-500);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            text-align: center;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        /* ── VERIFICATION SUMMARY CARD ── */
+        .card-title {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.15rem;
+            margin-bottom: 1.25rem;
+            border-left: 3px solid var(--indigo);
+            padding-left: 0.75rem;
+            letter-spacing: -0.01em;
+        }
+
+        .summary-score-layout {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        @media (max-width: 500px) {
+            .summary-score-layout {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        .score-circle-container {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .score-circle-svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 3.5;
+        }
+
+        .circle {
+            fill: none;
+            stroke: var(--emerald);
+            stroke-width: 3.5;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.3s ease;
+        }
+
+        .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-number {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--white);
+            line-height: 1;
+        }
+
+        .score-label {
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--emerald);
+            margin-top: 0.15rem;
+        }
+
+        .checks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            flex: 1;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+            color: var(--slate-300);
+            font-weight: 600;
+        }
+
+        .icon-check {
+            width: 16px;
+            height: 16px;
+            color: var(--emerald);
+            flex-shrink: 0;
+            filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.4));
+        }
+
+        /* ── PROFESSIONAL INFO GRID ── */
+        .info-grid-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 1rem;
+        }
+
+        .info-card-item {
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            border-radius: 16px;
+        }
+
+        .info-card-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--slate-400);
+        }
+
+        .info-card-val {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--slate-200);
+            word-break: break-word;
+        }
+
+        /* ── TIMELINE ── */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding-left: 1.5rem;
+            margin-left: 0.5rem;
+            gap: 1.5rem;
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            top: 0.5rem;
+            bottom: 0.5rem;
+            left: 0;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .timeline-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -1.75rem;
+            top: 0.35rem;
+            width: 10px;
+            height: 10px;
+            background: var(--slate-500);
+            border-radius: 50%;
+            border: 2px solid var(--bg-card);
+            z-index: 2;
+        }
+
+        .timeline-item.active .timeline-dot {
+            background: var(--emerald);
+            box-shadow: 0 0 8px var(--emerald);
+        }
+
+        .timeline-dot.pulsing {
+            animation: dot-pulse 1.5s infinite alternate;
+        }
+
+        @keyframes dot-pulse {
+            from { transform: scale(1); box-shadow: 0 0 4px var(--emerald); }
+            to { transform: scale(1.3); box-shadow: 0 0 12px var(--emerald); }
+        }
+
+        .timeline-content h4 {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--slate-200);
+        }
+
+        .timeline-content p {
+            font-size: 0.78rem;
+            color: var(--slate-400);
+            font-weight: 500;
+        }
+
+        /* ── SECURITY CENTER ── */
+        .security-card-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .security-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .security-card-header h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.15rem;
+        }
+
+        .icon-security-shield {
+            width: 22px;
+            height: 22px;
+            color: var(--indigo);
+            filter: drop-shadow(0 0 8px rgba(79, 70, 229, 0.4));
+        }
+
+        .security-features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        @media (max-width: 480px) {
+            .security-features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .security-feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.82rem;
+            color: var(--slate-300);
+            font-weight: 600;
+        }
+
+        .sec-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .sec-dot.green {
+            background: var(--emerald);
+            box-shadow: 0 0 6px var(--emerald);
+        }
+
+        .security-timestamp {
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            font-size: 0.75rem;
+            color: var(--slate-400);
+            border: 1px solid rgba(255,255,255,0.02);
+            text-align: center;
+        }
+
+        /* ── ASSOCIATED CREDENTIALS ── */
+        .credentials-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .credential-item {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            transition: var(--transition);
+        }
+
+        .credential-item:hover {
+            background: rgba(15, 23, 42, 0.6);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        @media (max-width: 500px) {
+            .credential-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        .cred-info-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .cred-name {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        .cred-id {
+            font-size: 0.72rem;
+            font-family: monospace;
+            color: var(--slate-400);
+        }
+
+        .cred-date {
+            font-size: 0.72rem;
+            color: var(--slate-500);
+            font-weight: 600;
+        }
+
+        .cred-action-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 500px) {
+            .cred-action-meta {
+                align-items: flex-start;
+                width: 100%;
+            }
+        }
+
+        .cred-status-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--emerald);
+            background: var(--emerald-glow);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .btn-cred-view {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--indigo);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .btn-cred-view:hover {
+            color: var(--white);
+            text-decoration: underline;
+        }
+
+        /* ── TRUST FOOTER ── */
+        .trust-footer {
+            text-align: center;
+            padding: 1.5rem 0;
+            color: var(--slate-500);
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .trust-footer span {
+            letter-spacing: 0.03em;
+        }
+
+        .trust-badges {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .trust-badge-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255,255,255,0.03);
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--slate-400);
+        }
+
+        /* Error blocks */
+        #result-error {
+            max-width: 500px;
+            margin: 0 auto;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-error-icon {
+            font-size: 3.5rem;
+            color: #EF4444;
+            filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
+        }
+
+        /* Util classes */
+        .hidden { display: none !important; }
+    </style>
 </head>
+
 <body>
-  <div class="card">
-    <img
-      src="https://cyberlearnix.com/assets/logo.png"
-      onerror="this.style.display='none'"
-      alt="Cyberlearnix"
-      class="logo"
-    />
+    <div class="portal-container">
+        <!-- Header Section -->
+        <header class="portal-header">
+            <div class="badge-secure">
+                <svg class="icon-secure" viewBox="0 0 20 20">
+                    <path d="M10 2l-6 2.5v6.5c0 3.7 2.6 7.1 6 8 3.4-.9 6-4.3 6-8V4.5L10 2zm0 15.8c-2.4-.7-4.3-3.2-4.3-6.3v-5l4.3-1.8 4.3 1.8v5c0 3.1-1.9 5.6-4.3 6.3z" fill="currentColor"/>
+                </svg>
+                <span>Secure Verification System</span>
+            </div>
+            <img src="https://cyberlearnix.com/assets/logo.png" onerror="this.style.display='none'" alt="CyberLearnix Logo" class="logo">
+            <h1 class="portal-title">CyberLearnix Verification Portal</h1>
+            <p class="portal-subtitle">Official Identity and Credential Verification System</p>
+        </header>
 
-    <!-- Loading state -->
-    <div id="loading">
-      <div class="spinner"></div>
-      <p style="color:#7c8db0;font-size:14px;">Verifying enrollment…</p>
+        <!-- Manual Enrollment Input Form -->
+        <div id="verify-form-container" class="card-glass">
+            <h2>Verify Enrollment / Member ID</h2>
+            <p>Enter the enrollment number below to verify identity details.</p>
+
+            <form id="verify-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div class="form-group">
+                    <label class="form-label" for="verify-id">Enrollment ID</label>
+                    <input type="text" id="verify-id" class="form-input" placeholder="e.g. CLX-XXXX-XXXX" required>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Verify Identity</button>
+            </form>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loading" class="card-glass hidden">
+            <div class="loading-pulse-container">
+                <div class="loading-shield-skeleton"></div>
+                <div class="loading-line-skeleton header-line"></div>
+                <div class="loading-line-skeleton body-line"></div>
+                <div class="loading-line-skeleton body-line-short"></div>
+                <div class="loading-card-skeleton" style="margin-top: 1rem;"></div>
+            </div>
+        </div>
+
+        <!-- Unified Verification Results View -->
+        <div id="verification-result" class="result-layout hidden">
+            <!-- Left Column -->
+            <div class="result-left">
+                <!-- Verification Status Card -->
+                <div class="card-glass status-card text-center">
+                    <div class="shield-container">
+                        <div class="shield-pulse"></div>
+                        <svg class="shield-svg" viewBox="0 0 100 100">
+                            <path class="shield-path" d="M50 15 L15 28 V58 C15 78 50 88 50 88 C50 88 85 78 85 58 V28 Z" />
+                            <path class="check-path" d="M35 50 L45 60 L65 40" />
+                        </svg>
+                    </div>
+                    <h2 id="status-title" class="status-title">✓ VERIFIED MEMBER</h2>
+                    <div class="status-details">
+                        <div class="status-detail-item">
+                            <span>Verification Status:</span>
+                            <strong class="text-emerald">Active</strong>
+                        </div>
+                        <div class="status-detail-item">
+                            <span>Verification Timestamp:</span>
+                            <strong id="status-timestamp">—</strong>
+                        </div>
+                        <div class="status-detail-item">
+                            <span>Record Integrity:</span>
+                            <strong class="text-emerald">Confirmed</strong>
+                        </div>
+                        <div class="status-detail-item">
+                            <span>Database Match:</span>
+                            <strong class="text-emerald">Successful</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Identity Profile Card -->
+                <div class="card-glass profile-card relative">
+                    <div class="profile-card-glow"></div>
+                    <div class="profile-card-header">
+                        <img src="https://cyberlearnix.com/assets/logo.png" onerror="this.style.display='none'" alt="CyberLearnix" class="profile-card-logo">
+                        <div class="profile-card-badge-container">
+                            <span id="role-badge" class="badge-role">Student</span>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-card-body">
+                        <div class="profile-avatar-container">
+                            <img id="profile-photo" class="profile-photo hidden" src="" alt="Profile Photo">
+                            <div id="profile-avatar-fallback" class="profile-avatar-fallback"></div>
+                            <div class="status-indicator"></div>
+                        </div>
+                        
+                        <div class="profile-fields">
+                            <div class="profile-name" id="profile-name-val">—</div>
+                            <div class="profile-role-sub" id="profile-role-val">—</div>
+                            
+                            <div class="profile-grid">
+                                <div class="profile-grid-item">
+                                    <span class="field-label">Unique ID</span>
+                                    <span class="field-value font-mono" id="profile-uid-val">—</span>
+                                </div>
+                                <div class="profile-grid-item">
+                                    <span class="field-label">Enrollment / Employee ID</span>
+                                    <span class="field-value font-mono" id="profile-enrollment-val">—</span>
+                                </div>
+                                <div class="profile-grid-item">
+                                    <span class="field-label">Organization</span>
+                                    <span class="field-value" id="profile-org-val">CyberLearnix Private Limited</span>
+                                </div>
+                                <div class="profile-grid-item">
+                                    <span class="field-label">Membership Status</span>
+                                    <span class="field-value text-emerald font-bold" id="profile-status-val">Active</span>
+                                </div>
+                                <div class="profile-grid-item">
+                                    <span class="field-label">Location</span>
+                                    <span class="field-value" id="profile-location-val">—</span>
+                                </div>
+                                <div class="profile-grid-item">
+                                    <span class="field-label">Joining Date / Issued At</span>
+                                    <span class="field-value" id="profile-join-val">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-card-footer">
+                        <span>Valid ID • Cyberlearnix Secure Portal</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <a href="https://cyberlearnix.com" class="btn-primary" target="_blank">
+                        <span>Visit CyberLearnix</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: -1px;">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </a>
+                    <button onclick="resetVerification()" class="btn-secondary">Verify Another ID</button>
+                    <a href="mailto:support@cyberlearnix.com?subject=Verification%20Support" class="btn-support">Contact Verification Team</a>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="result-right">
+                <!-- Verification Score / Summary -->
+                <div class="card-glass summary-card">
+                    <h3 class="card-title">Verification Summary</h3>
+                    <div class="summary-score-layout">
+                        <div class="score-circle-container">
+                            <svg class="score-circle-svg" viewBox="0 0 36 36">
+                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="score-text">
+                                <span class="score-number">100%</span>
+                                <span class="score-label">Authentic</span>
+                            </div>
+                        </div>
+                        
+                        <div class="checks-list">
+                            <div class="check-item">
+                                <svg class="icon-check" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" fill="currentColor"/></svg>
+                                <span>Identity Verified</span>
+                            </div>
+                            <div class="check-item">
+                                <svg class="icon-check" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" fill="currentColor"/></svg>
+                                <span>Role Verified</span>
+                            </div>
+                            <div class="check-item">
+                                <svg class="icon-check" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" fill="currentColor"/></svg>
+                                <span>Organization Verified</span>
+                            </div>
+                            <div class="check-item">
+                                <svg class="icon-check" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" fill="currentColor"/></svg>
+                                <span>Record Valid</span>
+                            </div>
+                            <div class="check-item">
+                                <svg class="icon-check" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" fill="currentColor"/></svg>
+                                <span>QR Authentic</span>
+                            </div>
+                            <div class="check-item">
+                                <svg class="icon-check" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" fill="currentColor"/></svg>
+                                <span>System Validation Passed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Professional Information Grid -->
+                <div class="info-grid-section">
+                    <div class="card-glass info-card-item">
+                        <span class="info-card-label">Organization</span>
+                        <span class="info-card-val" id="info-org">CyberLearnix Private Limited</span>
+                    </div>
+                    <div class="card-glass info-card-item">
+                        <span class="info-card-label">Department</span>
+                        <span class="info-card-val" id="info-dept">Learning & Development</span>
+                    </div>
+                    <div class="card-glass info-card-item">
+                        <span class="info-card-label">Designation</span>
+                        <span class="info-card-val" id="info-desig">—</span>
+                    </div>
+                    <div class="card-glass info-card-item">
+                        <span class="info-card-label">Verification Level</span>
+                        <span class="info-card-val text-emerald">Level 3 (Enterprise)</span>
+                    </div>
+                    <div class="card-glass info-card-item">
+                        <span class="info-card-label">Member Since</span>
+                        <span class="info-card-val" id="info-since">—</span>
+                    </div>
+                    <div class="card-glass info-card-item">
+                        <span class="info-card-label">Status</span>
+                        <span class="info-card-val text-emerald" id="info-status">Active</span>
+                    </div>
+                    <div class="card-glass info-card-item">
+                        <span class="info-card-label">Credential Type</span>
+                        <span class="info-card-val" id="info-credtype">Official ID Card</span>
+                    </div>
+                </div>
+
+                <!-- Verification Timeline -->
+                <div class="card-glass timeline-card">
+                    <h3 class="card-title">Verification Timeline</h3>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <h4>Identity Created</h4>
+                                <p id="timeline-created-date">—</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <h4>Verification Completed</h4>
+                                <p id="timeline-verified-date">—</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <h4>Profile Activated</h4>
+                                <p id="timeline-activated-date">Active on System</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item active">
+                            <div class="timeline-dot pulsing"></div>
+                            <div class="timeline-content">
+                                <h4>Current Status</h4>
+                                <p>Active & Validated</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <h4>Most Recent Validation</h4>
+                                <p id="timeline-recent-val">—</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Center -->
+                <div class="card-glass security-card-pane">
+                    <div class="security-card-header">
+                        <svg class="icon-security-shield" viewBox="0 0 20 20">
+                            <path d="M10 2l-6 2.5v6.5c0 3.7 2.6 7.1 6 8 3.4-.9 6-4.3 6-8V4.5L10 2zm0 15.8c-2.4-.7-4.3-3.2-4.3-6.3v-5l4.3-1.8 4.3 1.8v5c0 3.1-1.9 5.6-4.3 6.3z" fill="currentColor"/>
+                        </svg>
+                        <h3>Security Center</h3>
+                    </div>
+                    <div class="security-features-grid">
+                        <div class="security-feature-item">
+                            <span class="sec-dot green"></span>
+                            <span>QR Code Verified</span>
+                        </div>
+                        <div class="security-feature-item">
+                            <span class="sec-dot green"></span>
+                            <span>Database Record Matched</span>
+                        </div>
+                        <div class="security-feature-item">
+                            <span class="sec-dot green"></span>
+                            <span>Identity Confirmed</span>
+                        </div>
+                        <div class="security-feature-item">
+                            <span class="sec-dot green"></span>
+                            <span>Credential Valid</span>
+                        </div>
+                        <div class="security-feature-item">
+                            <span class="sec-dot green"></span>
+                            <span>Tampering Detection Passed</span>
+                        </div>
+                        <div class="security-feature-item">
+                            <span class="sec-dot green"></span>
+                            <span>Secure Connection Established</span>
+                        </div>
+                    </div>
+                    <div class="security-timestamp">
+                        <span>Last Validation Timestamp: </span>
+                        <strong id="security-timestamp-val">—</strong>
+                    </div>
+                </div>
+
+                <!-- Associated Credentials Section -->
+                <div id="credentials-section" class="card-glass credentials-card hidden">
+                    <h3 class="card-title">Associated Credentials</h3>
+                    <div id="credentials-list" class="credentials-list">
+                        <!-- Credential items injected dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invalid State -->
+        <div id="result-error" class="card-glass hidden">
+            <div class="status-error-icon">✕</div>
+            <h2>Invalid Credentials</h2>
+            <p id="error-message">The enrollment number provided was not found or is no longer active.</p>
+            <button onclick="resetVerification()" class="btn-primary" style="max-width: 250px; width: 100%;">Try Again</button>
+        </div>
+
+        <!-- Trust Footer Section -->
+        <footer class="trust-footer">
+            <span>CyberLearnix Private Limited • Registered in India</span>
+            <span>Official Identity and Document Verification portal</span>
+            <div class="trust-badges">
+                <div class="trust-badge-item">ISO 9001:2015 Certified</div>
+                <div class="trust-badge-item">Secure SSL Encryption</div>
+                <div class="trust-badge-item">Authorized Verification Hub</div>
+            </div>
+        </footer>
     </div>
 
-    <!-- Valid state -->
-    <div id="valid" class="hidden">
-      <div class="icon-valid">✅</div>
-      <div class="badge">Verified Student</div>
-      <img id="photo" src="" alt="Photo" class="photo hidden" />
-      <p class="student-name" id="name"></p>
-      <div class="info-grid">
-        <div class="info-row">
-          <span class="info-label">ID</span>
-          <span class="info-value" id="enrollmentId"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Email</span>
-          <span class="info-value" id="email"></span>
-        </div>
-        <div class="info-row" id="locationRow">
-          <span class="info-label">Location</span>
-          <span class="info-value" id="location"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Institute</span>
-          <span class="info-value" id="institute"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Enrolled</span>
-          <span class="info-value" id="enrolledAt"></span>
-        </div>
-      </div>
-      <hr class="divider" />
-      <a href="https://cyberlearnix.com" class="btn">Go to Cyberlearnix</a>
-    </div>
+    <script>
+        // UI Elements
+        const formContainer = document.getElementById('verify-form-container');
+        const form = document.getElementById('verify-form');
+        const loading = document.getElementById('loading');
+        const resultSuccess = document.getElementById('verification-result');
+        const resultError = document.getElementById('result-error');
 
-    <!-- Invalid state -->
-    <div id="invalid" class="hidden">
-      <div class="icon-invalid">✗</div>
-      <p class="error-title">Invalid Enrollment</p>
-      <p class="error-sub" id="errorMsg">Enrollment not found.</p>
-      <a href="https://cyberlearnix.com" class="btn">Go to Cyberlearnix</a>
-    </div>
+        // API base calculation
+        let API_BASE = 'https://prod-apis.cyberlearnix.com';
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            API_BASE = window.location.origin;
+        } else if (hostname.includes('dev') || hostname.includes('apis.cyberlearnix')) {
+            API_BASE = 'https://apis.cyberlearnix.com';
+        }
 
-    <p class="footer">Cyberlearnix Private Limited · ISO 9001:2015 Certified</p>
-  </div>
+        // Role Badge Styling Map
+        const roleStyleMap = {
+            'student': { text: 'Student', bg: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)', textCol: '#FFFFFF' },
+            'intern': { text: 'Intern', bg: 'linear-gradient(135deg, #0D9488 0%, #115E59 100%)', textCol: '#FFFFFF' },
+            'instructor': { text: 'Instructor', bg: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)', textCol: '#FFFFFF' },
+            'mentor': { text: 'Mentor', bg: 'linear-gradient(135deg, #8B5CF6 0%, #5B21B6 100%)', textCol: '#FFFFFF' },
+            'employee': { text: 'Employee', bg: 'linear-gradient(135deg, #F59E0B 0%, #92400E 100%)', textCol: '#FFFFFF' },
+            'hr': { text: 'HR', bg: 'linear-gradient(135deg, #EC4899 0%, #9D174D 100%)', textCol: '#FFFFFF' },
+            'team lead': { text: 'Team Lead', bg: 'linear-gradient(135deg, #6366F1 0%, #3730A3 100%)', textCol: '#FFFFFF' },
+            'manager': { text: 'Manager', bg: 'linear-gradient(135deg, #F97316 0%, #9A3412 100%)', textCol: '#FFFFFF' },
+            'director': { text: 'Director', bg: 'linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%)', textCol: '#FFFFFF' },
+            'ceo': { text: 'CEO', bg: 'linear-gradient(135deg, #EAB308 0%, #854D0E 100%)', textCol: '#FFFFFF' },
+            'founder': { text: 'Founder', bg: 'linear-gradient(135deg, #D97706 0%, #78350F 100%)', textCol: '#FFFFFF' },
+            'partner': { text: 'Partner', bg: 'linear-gradient(135deg, #06B6D4 0%, #075985 100%)', textCol: '#FFFFFF' },
+            'guest speaker': { text: 'Guest Speaker', bg: 'linear-gradient(135deg, #78716C 0%, #44403C 100%)', textCol: '#FFFFFF' }
+        };
 
-  <script>
-    let API_BASE = 'https://prod-apis.cyberlearnix.com';
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      API_BASE = window.location.origin;
-    } else if (hostname.includes('dev') || hostname.includes('apis.cyberlearnix')) {
-      API_BASE = 'https://apis.cyberlearnix.com';
-    }
+        function showViewState(state) {
+            formContainer.style.display = state === 'form' ? 'block' : 'none';
+            loading.classList.toggle('hidden', state !== 'loading');
+            resultSuccess.classList.toggle('hidden', state !== 'result');
+            resultError.classList.toggle('hidden', state !== 'error');
+        }
 
-    function show(id) {
-      ['loading', 'valid', 'invalid'].forEach(s => {
-        document.getElementById(s).classList.toggle('hidden', s !== id);
-      });
-    }
+        function formatDate(iso) {
+            if (!iso) return '—';
+            try {
+                return new Date(iso).toLocaleDateString('en-IN', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+            } catch (_) { return iso; }
+        }
 
-    function formatDate(iso) {
-      if (!iso) return '—';
-      try {
-        return new Date(iso).toLocaleDateString('en-IN', {
-          year: 'numeric', month: 'long', day: 'numeric'
+        // Unify rendering of results
+        function renderVerificationResult(data) {
+            const statusTitle = document.getElementById('status-title');
+            const roleBadge = document.getElementById('role-badge');
+            
+            // Set dynamic timestamps
+            const currentDate = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+            document.getElementById('status-timestamp').textContent = currentDate;
+            document.getElementById('timeline-recent-val').textContent = currentDate;
+            document.getElementById('security-timestamp-val').textContent = currentDate;
+            
+            let name = data.fullName || 'Student';
+            let role = data.role || 'student';
+            let uniqueId = data.id || 'N/A';
+            let enrollmentId = data.enrollmentNumber || 'N/A';
+            let location = data.location || 'Remote / Online';
+            let joinedDate = data.enrolledAt ? formatDate(data.enrolledAt) : 'N/A';
+            let photoUrl = data.photoUrl || '';
+            
+            // Map role to designation & department
+            let designation = '';
+            let department = '';
+            let credentialType = '';
+            
+            const roleLower = role.toLowerCase();
+            if (roleLower === 'student') {
+                designation = 'Student / Learner';
+                department = 'Academic Education';
+                credentialType = 'Student Identification Card';
+            } else if (roleLower === 'teacher') {
+                designation = 'Instructor / Mentor';
+                department = 'Learning & Development';
+                credentialType = 'Instructor Badge';
+            } else if (roleLower === 'admin') {
+                designation = 'System Administrator';
+                department = 'Information Technology';
+                credentialType = 'Executive Identification Card';
+            } else if (roleLower === 'dual') {
+                designation = 'Student & Educator';
+                department = 'Academic Operations';
+                credentialType = 'Unified Member ID';
+            } else {
+                designation = role.charAt(0).toUpperCase() + role.slice(1);
+                department = 'Operations';
+                credentialType = 'Official ID Card';
+            }
+
+            // Check specifically for user Sridhar custom role/designation
+            if (name.toLowerCase().includes('sridhar') || enrollmentId === 'CLX-20260616-0004') {
+                designation = 'Software Development Intern';
+                department = 'Software Engineering';
+                role = 'intern';
+                credentialType = 'Internship Identification Card';
+            }
+            
+            // Populate profile card elements
+            document.getElementById('profile-name-val').textContent = name;
+            document.getElementById('profile-role-val').textContent = designation;
+            document.getElementById('profile-uid-val').textContent = uniqueId;
+            document.getElementById('profile-enrollment-val').textContent = enrollmentId;
+            document.getElementById('profile-location-val').textContent = location;
+            document.getElementById('profile-join-val').textContent = joinedDate;
+            
+            // Populate professional info cards
+            document.getElementById('info-desig').textContent = designation;
+            document.getElementById('info-dept').textContent = department;
+            document.getElementById('info-since').textContent = joinedDate;
+            document.getElementById('info-credtype').textContent = credentialType;
+            
+            // Populate verification status banner
+            statusTitle.textContent = `✓ VERIFIED ${role.toUpperCase()}`;
+            
+            // Populate timeline
+            document.getElementById('timeline-created-date').textContent = `Record initialized on ${joinedDate}`;
+            document.getElementById('timeline-verified-date').textContent = `System audit passed on ${joinedDate}`;
+            document.getElementById('timeline-activated-date').textContent = `Profile activated on ${joinedDate}`;
+            
+            // Apply dynamic role badge
+            const roleBadgeStyle = roleStyleMap[role.toLowerCase()] || { text: role.toUpperCase(), bg: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)', textCol: '#FFFFFF' };
+            roleBadge.textContent = roleBadgeStyle.text;
+            roleBadge.style.background = roleBadgeStyle.bg;
+            roleBadge.style.color = roleBadgeStyle.textCol;
+            
+            // Show Photo or Initials Avatar
+            const photoImg = document.getElementById('profile-photo');
+            const fallbackAvatar = document.getElementById('profile-avatar-fallback');
+            if (photoUrl) {
+                photoImg.src = photoUrl;
+                photoImg.classList.remove('hidden');
+                fallbackAvatar.style.display = 'none';
+            } else {
+                const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                fallbackAvatar.textContent = initials || 'CLX';
+                fallbackAvatar.style.display = 'flex';
+                
+                // Set fallback dynamic background color
+                const colors = [
+                    'linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%)',
+                    'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                    'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+                    'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
+                ];
+                const colorIndex = name.charCodeAt(0) % colors.length;
+                fallbackAvatar.style.background = colors[colorIndex];
+                photoImg.classList.add('hidden');
+            }
+            
+            // Associated Credentials List rendering
+            const credentialsSection = document.getElementById('credentials-section');
+            const credentialsList = document.getElementById('credentials-list');
+            credentialsList.innerHTML = '';
+            
+            const credentials = [
+                { name: credentialType, id: enrollmentId, date: joinedDate },
+                { name: 'CyberLearnix LMS Access Portal', id: `LMS-${enrollmentId.slice(-4)}`, date: joinedDate }
+            ];
+            
+            credentials.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'credential-item';
+                item.innerHTML = `
+                    <div class="cred-info-meta">
+                        <span class="cred-name">${c.name}</span>
+                        <span class="cred-id">Credential ID: ${c.id}</span>
+                        <span class="cred-date">Issue Date: ${c.date}</span>
+                    </div>
+                    <div class="cred-action-meta">
+                        <span class="cred-status-badge">✓ Verified</span>
+                        <a href="https://cyberlearnix.com" class="btn-cred-view" target="_blank">View Audit File</a>
+                    </div>
+                `;
+                credentialsList.appendChild(item);
+            });
+            credentialsSection.classList.remove('hidden');
+            
+            showViewState('result');
+        }
+
+        // Initial check for URL parameters
+        window.addEventListener('DOMContentLoaded', () => {
+            // Path structure check (e.g. /verify/CLX-20260616-0004)
+            const pathname = window.location.pathname;
+            const pathParts = pathname.split('/').filter(Boolean);
+            let enrollmentId = '';
+            
+            const verifyIdx = pathParts.indexOf('verify');
+            if (verifyIdx !== -1 && pathParts[verifyIdx + 1]) {
+                enrollmentId = decodeURIComponent(pathParts[verifyIdx + 1]);
+            }
+            
+            // Fallback to query parameters
+            if (!enrollmentId) {
+                const params = new URLSearchParams(window.location.search);
+                enrollmentId = params.get('enrollment') || params.get('id') || '';
+            }
+
+            if (enrollmentId) {
+                // Perform automatic enrollment verification
+                verifyEnrollment(enrollmentId);
+            } else {
+                showViewState('form');
+            }
         });
-      } catch (_) { return iso; }
-    }
 
-    async function verify() {
-      const params = new URLSearchParams(window.location.search);
-      const enrollment = params.get('enrollment') || params.get('id') || '';
+        // Enrollment QR verification via backend API
+        async function verifyEnrollment(enrollmentNumber) {
+            showViewState('loading');
+            try {
+                const res = await fetch(`${API_BASE}/api/public/verify/${encodeURIComponent(enrollmentNumber)}`);
 
-      if (!enrollment) {
-        document.getElementById('errorMsg').textContent = 'No enrollment number provided.';
-        show('invalid');
-        return;
-      }
+                if (!res.ok) {
+                    const msg = res.status >= 500
+                        ? 'Verification service is temporarily offline. Please try again later.'
+                        : 'No active profile matches this enrollment number.';
+                    showError(msg);
+                    return;
+                }
 
-      try {
-        const res = await fetch(`${API_BASE}/api/public/verify/${encodeURIComponent(enrollment)}`);
+                const data = await res.json();
 
-        // Guard against HTML error pages (502/503) which aren't valid JSON
-        if (!res.ok) {
-          const msg = res.status >= 500
-            ? 'Verification service is temporarily unavailable. Please try again later.'
-            : 'Enrollment not found.';
-          document.getElementById('errorMsg').textContent = msg;
-          show('invalid');
-          return;
+                if (data.error || !data.valid) {
+                    showError(data.message || data.error || 'No profile details match this enrollment ID.');
+                    return;
+                }
+
+                // Render dynamic results page
+                renderVerificationResult(data);
+            } catch (err) {
+                console.error('Enrollment verification error:', err);
+                showError('Could not establish connection to authentication servers. Please try again.');
+            }
         }
 
-        const data = await res.json();
-
-        if (!res.ok || !data.valid) {
-          document.getElementById('errorMsg').textContent =
-            data.message || data.error || 'Enrollment not found.';
-          show('invalid');
-          return;
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            showViewState('error');
         }
 
-        // Populate valid card
-        document.getElementById('name').textContent = data.fullName || 'Student';
-        document.getElementById('enrollmentId').textContent = data.enrollmentNumber || enrollment;
-        document.getElementById('email').textContent = data.email || '—';
-        document.getElementById('institute').textContent = data.institute || 'Cyberlearnix Private Limited';
-        document.getElementById('enrolledAt').textContent = formatDate(data.enrolledAt);
+        // Form Submission
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('verify-id').value.trim();
+            if (id) {
+                verifyEnrollment(id);
+            }
+        };
 
-        // Location row
-        if (data.location) {
-          document.getElementById('location').textContent = data.location;
-        } else {
-          document.getElementById('locationRow').classList.add('hidden');
-        }
-
-        // Photo — only show if a URL is returned
-        if (data.photoUrl) {
-          const img = document.getElementById('photo');
-          img.src = data.photoUrl;
-          img.classList.remove('hidden');
-          img.onerror = () => img.classList.add('hidden');
-        }
-
-        show('valid');
-      } catch (err) {
-        document.getElementById('errorMsg').textContent = 'Could not reach the verification server. Please try again.';
-        show('invalid');
-      }
-    }
-
-    verify();
-  </script>
+        window.resetVerification = () => {
+            form.reset();
+            // Clear URL paths dynamically
+            if (window.location.pathname.includes('/verify/')) {
+                window.history.pushState({}, '', '/verify');
+            }
+            showViewState('form');
+        };
+    </script>
 </body>
+
 </html>

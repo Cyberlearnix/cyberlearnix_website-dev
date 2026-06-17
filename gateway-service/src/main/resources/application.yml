@@ -67,7 +67,7 @@ spring:
         - id: user-service-public
           uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
           predicates:
-            - Path=/api/public/**, /verify.html
+            - Path=/api/public/**, /verify.html, /verify/**
 
         - id: user-service
           uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}

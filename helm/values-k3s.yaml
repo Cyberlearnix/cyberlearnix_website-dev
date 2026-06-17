@@ -32,8 +32,8 @@ imagePullSecrets:
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
-  gateway-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
-  user-service: "f9ac0a580c53637fe3e5c564596c5678729f9585"
+  gateway-service: "4f3c7e2d8750091dd61c56c6c5c209da0c72faae"
+  user-service: "4f3c7e2d8750091dd61c56c6c5c209da0c72faae"
   course-service: "f9ac0a580c53637fe3e5c564596c5678729f9585"
   enrollment-service: "20b07a294680ce167bc738493dd991353a739599"
   notification-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
