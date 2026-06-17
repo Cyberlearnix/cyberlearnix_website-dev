@@ -1,22 +1,28 @@
 package com.cyberlearnix.user.service;
 
 import com.cyberlearnix.shared.entity.identity.Member;
+import com.cyberlearnix.shared.service.GoogleDriveService;
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
 import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 @Service
 public class IdCardPdfService {
+
+    @Autowired
+    private GoogleDriveService googleDriveService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
@@ -101,10 +107,28 @@ public class IdCardPdfService {
 
         try {
             Image photo = null;
-            if (member.getProfilePhoto() != null && member.getProfilePhoto().startsWith("http")) {
-                photo = Image.getInstance(new URL(member.getProfilePhoto()));
-            } else if (member.getProfilePhoto() != null && member.getProfilePhoto().startsWith("data:image")) {
-                String base64Data = member.getProfilePhoto().substring(member.getProfilePhoto().indexOf(",") + 1);
+            String photoUrl = member.getProfilePhoto();
+            if (photoUrl != null && photoUrl.startsWith("/api/public/verify/photo/")) {
+                // Proxy URL — stream directly from Google Drive
+                String fileId = photoUrl.substring("/api/public/verify/photo/".length());
+                if (googleDriveService.isEnabled()) {
+                    try (InputStream in = googleDriveService.openStream(fileId, null).inputStream()) {
+                        photo = Image.getInstance(in.readAllBytes());
+                    }
+                }
+            } else if (photoUrl != null && photoUrl.contains("drive.google.com/thumbnail")) {
+                // Legacy thumbnail URL — extract fileId and stream via Drive service
+                java.util.regex.Matcher m = java.util.regex.Pattern
+                        .compile("[?&]id=([^&]+)").matcher(photoUrl);
+                if (m.find() && googleDriveService.isEnabled()) {
+                    try (InputStream in = googleDriveService.openStream(m.group(1), null).inputStream()) {
+                        photo = Image.getInstance(in.readAllBytes());
+                    }
+                }
+            } else if (photoUrl != null && photoUrl.startsWith("http")) {
+                photo = Image.getInstance(new URL(photoUrl));
+            } else if (photoUrl != null && photoUrl.startsWith("data:image")) {
+                String base64Data = photoUrl.substring(photoUrl.indexOf(",") + 1);
                 photo = Image.getInstance(Base64.getDecoder().decode(base64Data));
             }
             
