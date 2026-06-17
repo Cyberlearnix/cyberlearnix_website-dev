@@ -33,14 +33,14 @@ imagePullSecrets:
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
   gateway-service: "4f3c7e2d8750091dd61c56c6c5c209da0c72faae"
-  user-service: "b3d3b03aaa0a380aa641c5f1975586f104754021"
-  course-service: "f9ac0a580c53637fe3e5c564596c5678729f9585"
+  user-service: "30a52aafb88be265ec0d4353e5f77e1721eba4f5"
+  course-service: "30a52aafb88be265ec0d4353e5f77e1721eba4f5"
   enrollment-service: "20b07a294680ce167bc738493dd991353a739599"
   notification-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
   shop-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
   form-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
   admin-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
-  cms-service: "d35a9a744d05292322e59a808e06c2f1c706f533"
+  cms-service: "30a52aafb88be265ec0d4353e5f77e1721eba4f5"
   instructor-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
   attendance-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
   lab-service: "98d3486be877df71bb1fff6dc4ba21e4a89c73bb"
