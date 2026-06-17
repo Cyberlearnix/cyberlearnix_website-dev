@@ -29,11 +29,16 @@ import java.util.Map;
 @Service
 public class IdentityService {
 
-    @Autowired private MemberRepository memberRepository;
-    @Autowired private IdentityEnrollmentFormRepository formRepository;
-    @Autowired private IdentityEnrollmentResponseRepository responseRepository;
-    @Autowired private IdentityAuditLogRepository auditLogRepository;
-    @Autowired private EmailNotificationService emailNotificationService;
+    @Autowired
+    private MemberRepository memberRepository;
+    @Autowired
+    private IdentityEnrollmentFormRepository formRepository;
+    @Autowired
+    private IdentityEnrollmentResponseRepository responseRepository;
+    @Autowired
+    private IdentityAuditLogRepository auditLogRepository;
+    @Autowired
+    private EmailNotificationService emailNotificationService;
 
     @Value("${app.public-url:https://cyberlearnix.com}")
     private String publicUrl;
@@ -101,7 +106,7 @@ public class IdentityService {
         IdentityEnrollmentResponse saved = responseRepository.save(response);
 
         // Audit Log
-        logAudit(null, "SUBMITTED", "System", 
+        logAudit(null, "SUBMITTED", "System",
                 "User " + response.getFullName() + " submitted application for " + form.getRoleType());
 
         return saved;
@@ -132,8 +137,9 @@ public class IdentityService {
         response.setReviewedAt(LocalDateTime.now());
         responseRepository.save(response);
 
-        logAudit(null, status.toUpperCase(), adminEmail, 
-                "Application ID " + id + " for " + response.getFullName() + " marked as " + status + ". Remarks: " + remarks);
+        logAudit(null, status.toUpperCase(), adminEmail,
+                "Application ID " + id + " for " + response.getFullName() + " marked as " + status + ". Remarks: "
+                        + remarks);
 
         if ("Approved".equalsIgnoreCase(status)) {
             IdentityEnrollmentForm form = formRepository.findById(response.getFormId())
@@ -164,15 +170,15 @@ public class IdentityService {
         member.setIsActive(true);
         member.setApprovedBy(adminEmail);
         member.setApprovedDate(LocalDateTime.now());
-        
+
         // Auto-generate Member ID
         String memberId = generateMemberId(roleType);
         member.setMemberId(memberId);
 
         // Generate QR pointing to verification URL
-        String verifyUrl = "https://verify.cyberlearnix.com/" + memberId;
+        String verifyUrl = "https://cyberlearnix.com/" + memberId;
         member.setVerificationUrl(verifyUrl);
-        
+
         try {
             String qrBase64 = generateQrCode(verifyUrl);
             member.setQrCodeUrl(qrBase64);
@@ -183,7 +189,7 @@ public class IdentityService {
 
         Member savedMember = memberRepository.save(member);
 
-        logAudit(savedMember.getMemberId(), "APPROVED", adminEmail, 
+        logAudit(savedMember.getMemberId(), "APPROVED", adminEmail,
                 "Approved and created identity " + memberId + " for " + member.getFullName());
 
         // Send Email & WhatsApp Notifications
@@ -200,12 +206,12 @@ public class IdentityService {
         member.setUpdatedAt(LocalDateTime.now());
         member.setStatus("Approved");
         member.setIsActive(true);
-        
+
         if (member.getMemberId() == null || member.getMemberId().isBlank()) {
             member.setMemberId(generateMemberId(member.getMemberType()));
         }
 
-        String verifyUrl = "https://verify.cyberlearnix.com/" + member.getMemberId();
+        String verifyUrl = "https://cyberlearnix.com/" + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -215,9 +221,9 @@ public class IdentityService {
         }
 
         Member saved = memberRepository.save(member);
-        logAudit(saved.getMemberId(), "CREATED_MANUALLY", adminEmail, 
+        logAudit(saved.getMemberId(), "CREATED_MANUALLY", adminEmail,
                 "Manually created member identity " + saved.getMemberId() + " (" + saved.getFullName() + ")");
-        
+
         return saved;
     }
 
@@ -232,9 +238,9 @@ public class IdentityService {
         member.setUpdatedAt(LocalDateTime.now());
 
         Member saved = memberRepository.save(member);
-        logAudit(saved.getMemberId(), "UPDATED", adminEmail, 
+        logAudit(saved.getMemberId(), "UPDATED", adminEmail,
                 "Updated personal details of member " + saved.getMemberId());
-        
+
         return saved;
     }
 
@@ -247,14 +253,14 @@ public class IdentityService {
         String oldMemberId = member.getMemberId();
 
         member.setDesignation(newDesignation);
-        
+
         // If Role Type changes, we generate a NEW Member ID and new QR Code!
         if (newRoleType != null && !newRoleType.equalsIgnoreCase(oldRoleType)) {
             member.setMemberType(newRoleType);
             String newMemberId = generateMemberId(newRoleType);
             member.setMemberId(newMemberId);
 
-            String verifyUrl = "https://verify.cyberlearnix.com/" + newMemberId;
+            String verifyUrl = "https://cyberlearnix.com/" + newMemberId;
             member.setVerificationUrl(verifyUrl);
 
             try {
@@ -263,10 +269,11 @@ public class IdentityService {
                 member.setQrCodeUrl("");
             }
 
-            logAudit(newMemberId, "PROMOTED", adminEmail, 
-                    "Promoted member from " + oldRoleType + " (ID: " + oldMemberId + ") to " + newRoleType + " (ID: " + newMemberId + "). Designation: " + newDesignation);
+            logAudit(newMemberId, "PROMOTED", adminEmail,
+                    "Promoted member from " + oldRoleType + " (ID: " + oldMemberId + ") to " + newRoleType + " (ID: "
+                            + newMemberId + "). Designation: " + newDesignation);
         } else {
-            logAudit(oldMemberId, "PROMOTED", adminEmail, 
+            logAudit(oldMemberId, "PROMOTED", adminEmail,
                     "Updated designation of member " + oldMemberId + " to " + newDesignation);
         }
 
@@ -283,7 +290,7 @@ public class IdentityService {
         member.setUpdatedAt(LocalDateTime.now());
 
         Member saved = memberRepository.save(member);
-        logAudit(saved.getMemberId(), "DEPT_TRANSFER", adminEmail, 
+        logAudit(saved.getMemberId(), "DEPT_TRANSFER", adminEmail,
                 "Transferred member " + saved.getMemberId() + " from " + oldDept + " to " + newDepartment);
 
         return saved;
@@ -298,7 +305,7 @@ public class IdentityService {
         member.setUpdatedAt(LocalDateTime.now());
 
         Member saved = memberRepository.save(member);
-        logAudit(saved.getMemberId(), "DEACTIVATED", adminEmail, 
+        logAudit(saved.getMemberId(), "DEACTIVATED", adminEmail,
                 "Deactivated member identity " + saved.getMemberId());
 
         return saved;
@@ -308,7 +315,7 @@ public class IdentityService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
-        String verifyUrl = "https://verify.cyberlearnix.com/" + member.getMemberId();
+        String verifyUrl = "https://cyberlearnix.com/" + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -320,21 +327,21 @@ public class IdentityService {
         member.setUpdatedAt(LocalDateTime.now());
         Member saved = memberRepository.save(member);
 
-        logAudit(saved.getMemberId(), "QR_REGENERATED", adminEmail, 
+        logAudit(saved.getMemberId(), "QR_REGENERATED", adminEmail,
                 "Regenerated QR code for member " + saved.getMemberId());
 
         return saved;
     }
 
-    public Page<Member> searchMembers(String query, String type, String department, String status, Boolean isActive, Pageable pageable) {
+    public Page<Member> searchMembers(String query, String type, String department, String status, Boolean isActive,
+            Pageable pageable) {
         return memberRepository.searchMembers(
                 query == null || query.isBlank() ? null : query,
                 type == null || type.isBlank() ? null : type,
                 department == null || department.isBlank() ? null : department,
                 status == null || status.isBlank() ? null : status,
                 isActive,
-                pageable
-        );
+                pageable);
     }
 
     public List<String> listDepartments() {
@@ -356,7 +363,7 @@ public class IdentityService {
     private synchronized String generateMemberId(String roleType) {
         long currentCount = memberRepository.countByMemberType(roleType);
         String prefix = getRolePrefix(roleType);
-        
+
         // CEO/Founder do not include year
         if ("CEO".equalsIgnoreCase(roleType) || "Founder".equalsIgnoreCase(roleType)) {
             return String.format("CLX-%s-%04d", prefix, currentCount + 1);
@@ -367,23 +374,39 @@ public class IdentityService {
     }
 
     private String getRolePrefix(String roleType) {
-        if (roleType == null) return "MEM";
+        if (roleType == null)
+            return "MEM";
         switch (roleType.toLowerCase().trim()) {
-            case "student": return "STU";
-            case "intern": return "INT";
-            case "instructor": return "INS";
-            case "mentor": return "MENT";
-            case "employee": return "EMP";
-            case "hr": return "HR";
-            case "team lead": return "TL";
-            case "manager": return "MGR";
-            case "director": return "DIR";
-            case "ceo": return "CEO";
-            case "founder": return "FOUND";
-            case "consultant": return "CONS";
-            case "guest speaker": return "GS";
-            case "partner": return "PART";
-            default: return "MEM";
+            case "student":
+                return "STU";
+            case "intern":
+                return "INT";
+            case "instructor":
+                return "INS";
+            case "mentor":
+                return "MENT";
+            case "employee":
+                return "EMP";
+            case "hr":
+                return "HR";
+            case "team lead":
+                return "TL";
+            case "manager":
+                return "MGR";
+            case "director":
+                return "DIR";
+            case "ceo":
+                return "CEO";
+            case "founder":
+                return "FOUND";
+            case "consultant":
+                return "CONS";
+            case "guest speaker":
+                return "GS";
+            case "partner":
+                return "PART";
+            default:
+                return "MEM";
         }
     }
 
@@ -406,7 +429,8 @@ public class IdentityService {
 
         // Try overlay logo
         try {
-            org.springframework.core.io.ClassPathResource logoResource = new org.springframework.core.io.ClassPathResource("logo.png");
+            org.springframework.core.io.ClassPathResource logoResource = new org.springframework.core.io.ClassPathResource(
+                    "logo.png");
             if (logoResource.exists()) {
                 BufferedImage logo = ImageIO.read(logoResource.getInputStream());
                 int logoSize = QR_SIZE / 5;
@@ -420,10 +444,9 @@ public class IdentityService {
                 int padding = 8;
                 g2.setColor(Color.WHITE);
                 g2.fill(new RoundRectangle2D.Float(
-                    logoX - padding, logoY - padding,
-                    logoSize + padding * 2, logoSize + padding * 2,
-                    16, 16
-                ));
+                        logoX - padding, logoY - padding,
+                        logoSize + padding * 2, logoSize + padding * 2,
+                        16, 16));
                 g2.drawImage(logo, logoX, logoY, logoSize, logoSize, null);
                 g2.dispose();
 
@@ -456,15 +479,21 @@ public class IdentityService {
     private void sendApprovalEmail(Member member) {
         String subject = "Your CyberLearnix Digital Credentials - Approved!";
         String content = "<h3>Dear " + member.getFullName() + ",</h3>" +
-                "<p>We are pleased to inform you that your registration/enrollment with <strong>CyberLearnix Private Limited</strong> has been approved!</p>" +
+                "<p>We are pleased to inform you that your registration/enrollment with <strong>CyberLearnix Private Limited</strong> has been approved!</p>"
+                +
                 "<p>Your official Digital Identity Details are as follows:</p>" +
                 "<table style='width: 100%; border-collapse: collapse; margin-bottom: 20px;'>" +
-                "<tr><td style='padding: 8px 0; font-weight: bold; width: 150px;'>Member ID:</td><td style='padding: 8px 0; color: #1a2756; font-weight: bold;'>" + member.getMemberId() + "</td></tr>" +
-                "<tr><td style='padding: 8px 0; font-weight: bold;'>Type:</td><td style='padding: 8px 0;'>" + member.getMemberType() + "</td></tr>" +
-                "<tr><td style='padding: 8px 0; font-weight: bold;'>Department:</td><td style='padding: 8px 0;'>" + (member.getDepartment() != null ? member.getDepartment() : "General") + "</td></tr>" +
-                "<tr><td style='padding: 8px 0; font-weight: bold;'>Joining Date:</td><td style='padding: 8px 0;'>" + member.getJoiningDate() + "</td></tr>" +
+                "<tr><td style='padding: 8px 0; font-weight: bold; width: 150px;'>Member ID:</td><td style='padding: 8px 0; color: #1a2756; font-weight: bold;'>"
+                + member.getMemberId() + "</td></tr>" +
+                "<tr><td style='padding: 8px 0; font-weight: bold;'>Type:</td><td style='padding: 8px 0;'>"
+                + member.getMemberType() + "</td></tr>" +
+                "<tr><td style='padding: 8px 0; font-weight: bold;'>Department:</td><td style='padding: 8px 0;'>"
+                + (member.getDepartment() != null ? member.getDepartment() : "General") + "</td></tr>" +
+                "<tr><td style='padding: 8px 0; font-weight: bold;'>Joining Date:</td><td style='padding: 8px 0;'>"
+                + member.getJoiningDate() + "</td></tr>" +
                 "</table>" +
-                "<p>You can scan your secure ID card QR Code to access your public verification profile: <a href='" + member.getVerificationUrl() + "' target='_blank'>" + member.getVerificationUrl() + "</a></p>" +
+                "<p>You can scan your secure ID card QR Code to access your public verification profile: <a href='"
+                + member.getVerificationUrl() + "' target='_blank'>" + member.getVerificationUrl() + "</a></p>" +
                 "<p>Welcome to CyberLearnix!</p>" +
                 "<p>Best regards,<br/>CyberLearnix HR Team</p>";
         emailNotificationService.sendEmail(member.getEmail(), subject, content);
@@ -474,9 +503,11 @@ public class IdentityService {
         String subject = "CyberLearnix Application Update";
         String content = "<h3>Dear " + name + ",</h3>" +
                 "<p>Thank you for submitting your application to CyberLearnix.</p>" +
-                "<p>After careful review, we regret to inform you that your application could not be approved at this time.</p>" +
+                "<p>After careful review, we regret to inform you that your application could not be approved at this time.</p>"
+                +
                 "<p><strong>Remarks from Reviewer:</strong></p>" +
-                "<div style='background: #fff5f5; padding: 15px; border-radius: 6px; border: 1px solid #fed7d7; color: #c53030;'>" +
+                "<div style='background: #fff5f5; padding: 15px; border-radius: 6px; border: 1px solid #fed7d7; color: #c53030;'>"
+                +
                 remarks + "</div>" +
                 "<p>If you have any questions, feel free to contact us.</p>" +
                 "<p>Best regards,<br/>CyberLearnix Team</p>";
@@ -488,9 +519,11 @@ public class IdentityService {
         String content = "<h3>Dear " + name + ",</h3>" +
                 "<p>The reviewer has requested changes/clarification on your application submission.</p>" +
                 "<p><strong>Action Required:</strong></p>" +
-                "<div style='background: #fffaf0; padding: 15px; border-radius: 6px; border: 1px solid #feebc8; color: #dd6b20;'>" +
+                "<div style='background: #fffaf0; padding: 15px; border-radius: 6px; border: 1px solid #feebc8; color: #dd6b20;'>"
+                +
                 remarks + "</div>" +
-                "<p>Please log back in or get in touch with HR to provide the requested details so that we can proceed with your approval.</p>" +
+                "<p>Please log back in or get in touch with HR to provide the requested details so that we can proceed with your approval.</p>"
+                +
                 "<p>Best regards,<br/>CyberLearnix Team</p>";
         emailNotificationService.sendEmail(to, subject, content);
     }
@@ -498,8 +531,8 @@ public class IdentityService {
     private void triggerMockWhatsAppNotification(Member member) {
         // Mock WhatsApp integration - prints logging output for verification
         System.out.println("[WhatsApp Mock Notification] Sending WhatsApp message to: " + member.getPhone());
-        System.out.println("[WhatsApp Mock Notification] Message: Hello " + member.getFullName() + 
-                ", your CyberLearnix ID card has been issued! ID: " + member.getMemberId() + 
+        System.out.println("[WhatsApp Mock Notification] Message: Hello " + member.getFullName() +
+                ", your CyberLearnix ID card has been issued! ID: " + member.getMemberId() +
                 ". Verify here: " + member.getVerificationUrl());
     }
 
@@ -510,9 +543,9 @@ public class IdentityService {
     public List<IdentityAuditLog> getRecentLogs() {
         return auditLogRepository.findTop50ByOrderByTimestampDesc();
     }
-    
+
     // --- Stats / Dashboard Metrics ---
-    
+
     public Map<String, Object> getIdentityStats() {
         long totalMembers = memberRepository.count();
         long students = memberRepository.countByMemberType("Student");
@@ -520,22 +553,21 @@ public class IdentityService {
         long employees = memberRepository.countEmployees();
         long instructors = memberRepository.countByMemberType("Instructor");
         long managers = memberRepository.countByMemberType("Manager");
-        
+
         long pending = responseRepository.countByStatus("Pending");
         long rejected = responseRepository.countByStatus("Rejected");
-        
+
         List<Member> recentlyAdded = memberRepository.findTop5ByOrderByCreatedAtDesc();
-        
+
         return Map.of(
-            "totalMembers", totalMembers,
-            "students", students,
-            "interns", interns,
-            "employees", employees,
-            "instructors", instructors,
-            "managers", managers,
-            "pendingApprovals", pending,
-            "rejectedRequests", rejected,
-            "recentlyAdded", recentlyAdded
-        );
+                "totalMembers", totalMembers,
+                "students", students,
+                "interns", interns,
+                "employees", employees,
+                "instructors", instructors,
+                "managers", managers,
+                "pendingApprovals", pending,
+                "rejectedRequests", rejected,
+                "recentlyAdded", recentlyAdded);
     }
 }

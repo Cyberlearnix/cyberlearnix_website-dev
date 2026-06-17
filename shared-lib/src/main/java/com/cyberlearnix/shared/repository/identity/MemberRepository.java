@@ -26,9 +26,9 @@ public interface MemberRepository extends JpaRepository<Member, String> {
            " LOWER(m.email) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            " LOWER(m.phone) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            " LOWER(m.memberId) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
-           "(:memberType IS NULL OR m.memberType = :memberType) AND " +
-           "(:department IS NULL OR m.department = :department) AND " +
-           "(:status IS NULL OR m.status = :status) AND " +
+           "(:memberType IS NULL OR LOWER(m.memberType) = LOWER(:memberType)) AND " +
+           "(:department IS NULL OR LOWER(m.department) = LOWER(:department)) AND " +
+           "(:status IS NULL OR LOWER(m.status) = LOWER(:status)) AND " +
            "(:isActive IS NULL OR m.isActive = :isActive)")
     Page<Member> searchMembers(
             @Param("query") String query,

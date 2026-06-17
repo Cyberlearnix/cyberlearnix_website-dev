@@ -125,11 +125,11 @@ jobs:
 
       - name: Run unit tests — ${{ matrix.service }}
         if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
-        run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Djunit.platform.tag.include.pattern=unit
+        run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Dgroups=unit
 
       - name: Run integration tests — ${{ matrix.service }}
         if: matrix.changed == 'true' || needs.changes.outputs.shared-lib == 'true'
-        run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Djunit.platform.tag.include.pattern=integration
+        run: ./gradlew :${{ matrix.service }}:test --no-daemon -Dspring.profiles.active=test -Dgroups=integration
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false"
 
