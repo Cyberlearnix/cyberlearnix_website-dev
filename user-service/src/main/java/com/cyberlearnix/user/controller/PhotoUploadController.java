@@ -59,7 +59,7 @@ public class PhotoUploadController {
         try {
             Map<String, String> result = googleDriveService.uploadFile(file);
             String fileId = result.get("fileId");
-            String viewUrl = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000";
+            String viewUrl = "/api/public/verify/photo/" + fileId;
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "url",     viewUrl,

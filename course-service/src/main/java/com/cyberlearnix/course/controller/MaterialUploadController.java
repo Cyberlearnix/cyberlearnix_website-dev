@@ -75,7 +75,7 @@ public class MaterialUploadController {
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
                     "fileId",    fileId,
-                    "url",       "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000",
+                    "url",       "/api/materials/drive/stream/" + fileId,
                     "viewUrl",   result.get("viewUrl"),
                     "streamUrl", result.get("streamUrl"),
                     "name",      result.get("name"),
@@ -124,7 +124,7 @@ public class MaterialUploadController {
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
                     "fileId",    fileId,
-                    "url",       "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000",
+                    "url",       "/api/materials/drive/stream/" + fileId,
                     "viewUrl",   result.get("viewUrl"),
                     "streamUrl", result.get("streamUrl"),
                     "name",      result.get("name"),
@@ -345,10 +345,6 @@ public class MaterialUploadController {
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             HttpServletResponse response) throws IOException {
 
-        if (userId == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, AUTH_REQUIRED);
-            return;
-        }
         if (!googleDriveService.isEnabled()) {
             response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Google Drive not configured");
             return;
@@ -419,7 +415,7 @@ public class MaterialUploadController {
             return ResponseEntity.ok(Map.of(
                     KEY_SUCCESS, true,
                     "fileId",    fileId,
-                    "url",       "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1000",
+                    "url",       "/api/materials/drive/stream/" + fileId,
                     "viewUrl",   result.get("viewUrl"),
                     "streamUrl", result.get("streamUrl"),
                     "name",      result.get("name")

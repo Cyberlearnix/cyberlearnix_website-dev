@@ -1376,12 +1376,12 @@
             if (!url) return '';
             const urlStr = String(url).trim();
             if (urlStr.startsWith('data:image')) return urlStr;
-            const driveMatch = urlStr.match(/drive\.google\.com\/file\/d\/([^/?\s]+)/) ||
-                               urlStr.match(/drive\.google\.com\/uc\?export=view&id=([^/?\s]+)/) ||
-                               urlStr.match(/drive\.google\.com\/uc\?id=([^/?\s]+)/) ||
-                               urlStr.match(/drive\.google\.com\/open\?id=([^/?\s]+)/) ||
-                               urlStr.match(/drive\.google\.com\/thumbnail\?id=([^/?\s]+)/) ||
-                               urlStr.match(/googleusercontent\.com\/[^/]+\/d\/([^/?\s]+)/);
+            const driveMatch = urlStr.match(/drive\.google\.com\/file\/d\/([^/?\s&]+)/) ||
+                               urlStr.match(/drive\.google\.com\/uc\?export=view&id=([^/?\s&]+)/) ||
+                               urlStr.match(/drive\.google\.com\/uc\?id=([^/?\s&]+)/) ||
+                               urlStr.match(/drive\.google\.com\/open\?id=([^/?\s&]+)/) ||
+                               urlStr.match(/drive\.google\.com\/thumbnail\?id=([^/?\s&]+)/) ||
+                               urlStr.match(/googleusercontent\.com\/[^/]+\/d\/([^/?\s&]+)/);
             if (driveMatch) {
                 return `${API_BASE}/api/public/verify/photo/${driveMatch[1]}`;
             }

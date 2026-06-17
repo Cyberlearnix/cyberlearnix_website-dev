@@ -1273,9 +1273,39 @@ app.post('/api/upload-image', express.raw({ type: '*/*', limit: '25mb' }), async
             body: JSON.stringify({ role: 'reader', type: 'anyone' })
         });
 
-        res.json({ url: `https://drive.google.com/thumbnail?id=${uploaded.id}&sz=w1000`, fileId: uploaded.id });
+        res.json({ url: `/api/drive/image/${uploaded.id}`, fileId: uploaded.id });
     } catch (err) {
         console.error('Drive upload error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── DRIVE IMAGE PROXY ────────────────────────────────────────────────────────
+// GET /api/drive/image/:fileId — proxy-streams a Drive file (images, docs) to the client.
+// No auth required — files are already made public when uploaded.
+app.get('/api/drive/image/:fileId', async (req, res) => {
+    const fileId = req.params.fileId;
+    if (!fileId || !/^[a-zA-Z0-9_\-]{10,100}$/.test(fileId)) {
+        return res.status(400).json({ error: 'Invalid file ID' });
+    }
+    if (!process.env.GOOGLE_REFRESH_TOKEN && !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+        return res.status(503).json({ error: 'Google Drive not configured' });
+    }
+    try {
+        const token = await getDriveToken();
+        const driveRes = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!driveRes.ok) {
+            return res.status(driveRes.status).json({ error: 'Drive fetch failed' });
+        }
+        const contentType = driveRes.headers.get('content-type') || 'application/octet-stream';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        driveRes.body.pipe(res);
+    } catch (err) {
+        console.error('Drive image proxy error:', err);
         res.status(500).json({ error: err.message });
     }
 });
