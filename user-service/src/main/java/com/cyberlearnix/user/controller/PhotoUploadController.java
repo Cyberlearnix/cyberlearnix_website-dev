@@ -51,9 +51,9 @@ public class PhotoUploadController {
                     .body(Map.of("error", "Only image files are allowed"));
         }
 
-        if (file.getSize() > 5 * 1024 * 1024) {
+        if (file.getSize() > 20 * 1024 * 1024) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Photo must be under 5MB"));
+                    .body(Map.of("error", "Photo must be under 20MB"));
         }
 
         try {

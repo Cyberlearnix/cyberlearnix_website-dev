@@ -64,9 +64,9 @@ public class MaterialUploadController {
             return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for thumbnails"));
         }
 
-        // Max 5MB
-        if (file.getSize() > 5 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Thumbnail must be under 5MB"));
+        // Max 20MB
+        if (file.getSize() > 20 * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Thumbnail must be under 20MB"));
         }
 
         try {
@@ -114,8 +114,8 @@ public class MaterialUploadController {
             return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Only image files are allowed for module images"));
         }
 
-        if (file.getSize() > 5 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Module image must be under 5MB"));
+        if (file.getSize() > 20 * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of(KEY_ERROR, "Module image must be under 20MB"));
         }
 
         try {
