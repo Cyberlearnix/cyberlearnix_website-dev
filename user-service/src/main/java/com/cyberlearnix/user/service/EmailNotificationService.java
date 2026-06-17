@@ -81,4 +81,13 @@ public class EmailNotificationService {
             System.err.println("Admin notification SMTP failed: " + e.getMessage());
         }
     }
+
+    @Async
+    public void sendEmail(String to, String subject, String bodyHtml) {
+        String wrapped = wrapInTemplate(subject, bodyHtml);
+        boolean success = resendService.sendEmail(to, subject, wrapped);
+        if (!success) {
+            sendViaSmtp(to, subject, wrapped);
+        }
+    }
 }
