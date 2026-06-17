@@ -33,7 +33,7 @@ imagePullSecrets:
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
   gateway-service: "17e82ec5027ca68a654d1f0fe44c239d0075ffe2"
-  user-service: "386efa5d9e958a5d485f18d1153c5b804ae18a20"
+  user-service: "77d97da4abc8d8991f708dcee228e5cc7fd0e039"
   course-service: "17e82ec5027ca68a654d1f0fe44c239d0075ffe2"
   enrollment-service: "17e82ec5027ca68a654d1f0fe44c239d0075ffe2"
   notification-service: "17e82ec5027ca68a654d1f0fe44c239d0075ffe2"
