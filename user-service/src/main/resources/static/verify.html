@@ -1608,7 +1608,7 @@
 
         // Initial check for URL parameters
         window.addEventListener('DOMContentLoaded', () => {
-            // Path structure check (e.g. /verify/CLX-20260616-0004)
+            // Path structure check (e.g. /verify/CLX-20260616-0004 or legacy /CLX-FOUND-0001)
             const pathname = window.location.pathname;
             const pathParts = pathname.split('/').filter(Boolean);
             let enrollmentId = '';
@@ -1616,6 +1616,12 @@
             const verifyIdx = pathParts.indexOf('verify');
             if (verifyIdx !== -1 && pathParts[verifyIdx + 1]) {
                 enrollmentId = decodeURIComponent(pathParts[verifyIdx + 1]);
+            } else {
+                // Fallback for legacy QR codes (e.g., /CLX-FOUND-0001)
+                const clxPart = pathParts.find(part => part.startsWith('CLX-'));
+                if (clxPart) {
+                    enrollmentId = decodeURIComponent(clxPart);
+                }
             }
             
             // Fallback to query parameters
@@ -1724,7 +1730,7 @@
         window.resetVerification = () => {
             form.reset();
             // Clear URL paths dynamically to allow manual form state resetting
-            if (window.location.pathname.includes('/verify/')) {
+            if (window.location.pathname.includes('/verify/') || window.location.pathname.split('/').some(part => part.startsWith('CLX-'))) {
                 window.history.pushState({}, '', '/verify');
             }
             showViewState('form');

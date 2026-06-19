@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Controller
 public class PublicVerifyPageController {
 
-    @GetMapping("/verify/{enrollmentNumber}")
+    @GetMapping({"/verify/{enrollmentNumber}", "/CLX-{enrollmentNumber}"})
     public String forwardToVerifyHtml(@PathVariable String enrollmentNumber) {
         return "forward:/verify.html";
     }
