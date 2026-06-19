@@ -176,7 +176,7 @@ public class IdentityService {
         member.setMemberId(memberId);
 
         // Generate QR pointing to verification URL
-        String verifyUrl = "https://cyberlearnix.com/" + memberId;
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + memberId;
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -213,7 +213,7 @@ public class IdentityService {
             member.setMemberId(generateMemberId(member.getMemberType()));
         }
 
-        String verifyUrl = "https://cyberlearnix.com/" + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -263,7 +263,7 @@ public class IdentityService {
             String newMemberId = generateMemberId(normalizedRoleType);
             member.setMemberId(newMemberId);
 
-            String verifyUrl = "https://cyberlearnix.com/" + newMemberId;
+            String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + newMemberId;
             member.setVerificationUrl(verifyUrl);
 
             try {
@@ -318,7 +318,7 @@ public class IdentityService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
-        String verifyUrl = "https://cyberlearnix.com/" + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
