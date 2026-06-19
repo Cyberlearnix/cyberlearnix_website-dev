@@ -163,7 +163,7 @@ public class IdentityService {
         member.setFullName(response.getFullName());
         member.setEmail(response.getEmail());
         member.setPhone(response.getPhone());
-        member.setMemberType(roleType);
+        member.setMemberType(normalizeRoleType(roleType));
         member.setProfilePhoto(response.getPhotoUrl());
         member.setStatus("Approved");
         member.setJoiningDate(LocalDate.now());
@@ -176,7 +176,7 @@ public class IdentityService {
         member.setMemberId(memberId);
 
         // Generate QR pointing to verification URL
-        String verifyUrl = "https://cyberlearnix.com/" + memberId;
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + memberId;
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -206,12 +206,14 @@ public class IdentityService {
         member.setUpdatedAt(LocalDateTime.now());
         member.setStatus("Approved");
         member.setIsActive(true);
+        // Normalise memberType to consistent Title Case
+        member.setMemberType(normalizeRoleType(member.getMemberType()));
 
         if (member.getMemberId() == null || member.getMemberId().isBlank()) {
             member.setMemberId(generateMemberId(member.getMemberType()));
         }
 
-        String verifyUrl = "https://cyberlearnix.com/" + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -256,11 +258,12 @@ public class IdentityService {
 
         // If Role Type changes, we generate a NEW Member ID and new QR Code!
         if (newRoleType != null && !newRoleType.equalsIgnoreCase(oldRoleType)) {
-            member.setMemberType(newRoleType);
-            String newMemberId = generateMemberId(newRoleType);
+            String normalizedRoleType = normalizeRoleType(newRoleType);
+            member.setMemberType(normalizedRoleType);
+            String newMemberId = generateMemberId(normalizedRoleType);
             member.setMemberId(newMemberId);
 
-            String verifyUrl = "https://cyberlearnix.com/" + newMemberId;
+            String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + newMemberId;
             member.setVerificationUrl(verifyUrl);
 
             try {
@@ -315,7 +318,7 @@ public class IdentityService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
-        String verifyUrl = "https://cyberlearnix.com/" + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -336,11 +339,10 @@ public class IdentityService {
     public Page<Member> searchMembers(String query, String type, String department, String status, Boolean isActive,
             Pageable pageable) {
         return memberRepository.searchMembers(
-                query == null || query.isBlank() ? null : query,
-                type == null || type.isBlank() ? null : type,
-                department == null || department.isBlank() ? null : department,
-                status == null || status.isBlank() ? null : status,
-                isActive,
+                query == null || query.isBlank() ? null : query.trim().toLowerCase(),
+                type == null || type.isBlank() ? null : type.trim().toLowerCase(),
+                department == null || department.isBlank() ? null : department.trim().toLowerCase(),
+                status == null || status.isBlank() ? null : status.trim().toLowerCase(),
                 pageable);
     }
 
@@ -371,6 +373,39 @@ public class IdentityService {
 
         int currentYear = LocalDate.now().getYear();
         return String.format("CLX-%s-%d-%04d", prefix, currentYear, currentCount + 1);
+    }
+
+    /** Normalise role type to Title Case so DB values are consistent regardless of input casing. */
+    private String normalizeRoleType(String roleType) {
+        if (roleType == null || roleType.isBlank()) return roleType;
+        String lower = roleType.trim().toLowerCase();
+        switch (lower) {
+            case "student":       return "Student";
+            case "intern":        return "Intern";
+            case "instructor":    return "Instructor";
+            case "mentor":        return "Mentor";
+            case "employee":      return "Employee";
+            case "hr":            return "HR";
+            case "team lead":     return "Team Lead";
+            case "manager":       return "Manager";
+            case "director":      return "Director";
+            case "ceo":           return "CEO";
+            case "founder":       return "Founder";
+            case "consultant":    return "Consultant";
+            case "guest speaker": return "Guest Speaker";
+            case "partner":       return "Partner";
+            default:
+                // Generic Title Case for unknown values
+                String[] words = lower.split("\\s+");
+                StringBuilder sb = new StringBuilder();
+                for (String w : words) {
+                    if (!w.isEmpty()) {
+                        if (sb.length() > 0) sb.append(' ');
+                        sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
+                    }
+                }
+                return sb.toString();
+        }
     }
 
     private String getRolePrefix(String roleType) {

@@ -79,6 +79,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/verify/**", "/verify.html", "/CLX-*", "/logo.png", "/favicon.ico").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/request-otp", "/api/auth/resend-otp", "/api/auth/verify-otp", "/api/auth/reset-password", "/api/auth/refresh-token", "/api/auth/request-login-otp", "/api/auth/verify-otp-login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/admin-reset-credentials").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/auth/admin-reset-password").hasRole("ADMIN")
