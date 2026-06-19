@@ -22,13 +22,13 @@ public interface MemberRepository extends JpaRepository<Member, String> {
     List<Member> findTop5ByOrderByCreatedAtDesc();
 
     @Query("SELECT m FROM Member m WHERE " +
-           "(:query IS NULL OR LOWER(m.fullName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           " LOWER(m.email) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           " LOWER(m.phone) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           " LOWER(m.memberId) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
-           "(:memberType IS NULL OR LOWER(m.memberType) = LOWER(:memberType)) AND " +
-           "(:department IS NULL OR LOWER(m.department) = LOWER(:department)) AND " +
-           "(:status IS NULL OR LOWER(m.status) = LOWER(:status))")
+           "(:query IS NULL OR LOWER(m.fullName) LIKE CONCAT('%', CAST(:query AS string), '%') OR " +
+           " LOWER(m.email) LIKE CONCAT('%', CAST(:query AS string), '%') OR " +
+           " LOWER(m.phone) LIKE CONCAT('%', CAST(:query AS string), '%') OR " +
+           " LOWER(m.memberId) LIKE CONCAT('%', CAST(:query AS string), '%')) AND " +
+           "(:memberType IS NULL OR LOWER(m.memberType) = CAST(:memberType AS string)) AND " +
+           "(:department IS NULL OR LOWER(m.department) = CAST(:department AS string)) AND " +
+           "(:status IS NULL OR LOWER(m.status) = CAST(:status AS string))")
     Page<Member> searchMembers(
             @Param("query") String query,
             @Param("memberType") String memberType,

@@ -339,10 +339,10 @@ public class IdentityService {
     public Page<Member> searchMembers(String query, String type, String department, String status, Boolean isActive,
             Pageable pageable) {
         return memberRepository.searchMembers(
-                query == null || query.isBlank() ? null : query,
-                type == null || type.isBlank() ? null : type,
-                department == null || department.isBlank() ? null : department,
-                status == null || status.isBlank() ? null : status,
+                query == null || query.isBlank() ? null : query.trim().toLowerCase(),
+                type == null || type.isBlank() ? null : type.trim().toLowerCase(),
+                department == null || department.isBlank() ? null : department.trim().toLowerCase(),
+                status == null || status.isBlank() ? null : status.trim().toLowerCase(),
                 pageable);
     }
 
