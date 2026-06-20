@@ -40,8 +40,18 @@ public class IdentityService {
     @Autowired
     private EmailNotificationService emailNotificationService;
 
-    @Value("${app.public-url:https://cyberlearnix.com}")
     private String publicUrl;
+
+    @Value("${app.public-url:https://www.cyberlearnix.com}")
+    public void setPublicUrl(String url) {
+        if (url != null) {
+            url = url.trim();
+            url = url.replace("verify.cyberlearnix.com", "www.cyberlearnix.com");
+            url = url.replace("verify.cyberlearnix", "www.cyberlearnix.com");
+            url = url.replace("https://cyberlearnix.com", "https://www.cyberlearnix.com");
+        }
+        this.publicUrl = url;
+    }
 
     private static final int QR_SIZE = 400;
 
@@ -176,7 +186,7 @@ public class IdentityService {
         member.setMemberId(memberId);
 
         // Generate QR pointing to verification URL
-        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + memberId;
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + memberId;
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -213,7 +223,7 @@ public class IdentityService {
             member.setMemberId(generateMemberId(member.getMemberType()));
         }
 
-        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -263,7 +273,7 @@ public class IdentityService {
             String newMemberId = generateMemberId(normalizedRoleType);
             member.setMemberId(newMemberId);
 
-            String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + newMemberId;
+            String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + newMemberId;
             member.setVerificationUrl(verifyUrl);
 
             try {
@@ -318,7 +328,7 @@ public class IdentityService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
-        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "verify/" : "/verify/") + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
