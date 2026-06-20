@@ -3,6 +3,7 @@ package com.cyberlearnix.user.repository;
 import com.cyberlearnix.shared.entity.identity.Member;
 import com.cyberlearnix.shared.repository.identity.MemberRepository;
 import com.cyberlearnix.shared.repository.user.UserRepository;
+import com.cyberlearnix.shared.entity.user.UserProfile;
 import com.cyberlearnix.user.service.IdentityService;
 import com.cyberlearnix.user.service.OtpService;
 import com.cyberlearnix.user.service.EmailNotificationService;
@@ -18,19 +19,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import javax.sql.DataSource;
 
-@Disabled("Local diagnostic tool — requires PostgreSQL on localhost:5999. Remove @Disabled to run locally.")
+@Disabled("Local diagnostic tool — requires PostgreSQL on localhost:5432. Remove @Disabled to run locally.")
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
-    "spring.datasource.url=jdbc:postgresql://127.0.0.1:5999/cyberlearnix_users?options=-c%20timezone=UTC&timezone=UTC&prepareThreshold=0",
+    "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/cyberlearnix_users?options=-c%20timezone=UTC&timezone=UTC&prepareThreshold=0",
     "spring.datasource.username=postgres",
-    "spring.datasource.password=Cyb3rL3arnix#2026!DB",
+    "spring.datasource.password=CyberLearnix@DB2026!SecurePass",
     "spring.datasource.driver-class-name=org.postgresql.Driver",
     "spring.jpa.hibernate.ddl-auto=update",
     "admin.seeder.enabled=false"
 })
-@Transactional
+//@Transactional
 public class DiagnosticIT {
 
     @MockBean private OtpService otpService;
@@ -40,11 +42,60 @@ public class DiagnosticIT {
     @Autowired private IdentityService identityService;
     @Autowired private MemberRepository memberRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private com.cyberlearnix.shared.repository.user.UserProfileRepository userProfileRepository;
+    @Autowired private com.cyberlearnix.user.seeder.DomainCorrectionSeeder domainCorrectionSeeder;
     @Autowired private DataSource dataSource;
 
     @Test
     public void runDiagnostics() {
         System.out.println("=== DIAGNOSTICS START ===");
+        
+        // Setup a dummy Member with an incorrect domain
+        Member badMember = new Member();
+        badMember.setMemberId("CLX-EMP-9999");
+        badMember.setFullName("Bad Member Domain Test");
+        badMember.setEmail("badmember@example.com");
+        badMember.setPhone("+919876543210");
+        badMember.setMemberType("Employee");
+        badMember.setVerificationUrl("https://verify.cyberlearnix.com/verify/CLX-EMP-9999");
+        badMember.setIsActive(true);
+        badMember.setStatus("Approved");
+        badMember = memberRepository.save(badMember);
+        System.out.println("Saved dummy bad member: " + badMember.getId());
+
+        // Setup a UserProfile with an enrollment number
+        UserProfile profile = new UserProfile();
+        profile.setId("test-profile-id");
+        profile.setFullName("Student Domain Test");
+        profile.setEmail("studenttest@example.com");
+        profile.setRole("student");
+        profile.setEnrollmentNumber("CLX-20260620-9999");
+        profile.setQrCodeData("data:image/png;base64,dummy"); // old/invalid QR code
+        profile = userProfileRepository.save(profile);
+        System.out.println("Saved dummy user profile: " + profile.getId());
+
+        // Execute Domain Correction Seeder manually to correct them
+        System.out.println("Manually running DomainCorrectionSeeder...");
+        domainCorrectionSeeder.run();
+
+        // Verify Member domain correction
+        Member correctedMember = memberRepository.findById(badMember.getId()).get();
+        System.out.println("Corrected Member URL: " + correctedMember.getVerificationUrl());
+        org.junit.jupiter.api.Assertions.assertFalse(correctedMember.getVerificationUrl().contains("verify.cyberlearnix.com"));
+        org.junit.jupiter.api.Assertions.assertTrue(correctedMember.getVerificationUrl().contains("www.cyberlearnix.com"));
+        org.junit.jupiter.api.Assertions.assertTrue(correctedMember.getVerificationUrl().contains("verify.html?enrollment="));
+        org.junit.jupiter.api.Assertions.assertTrue(correctedMember.getQrCodeUrl().startsWith("data:image/png;base64,"));
+
+        // Verify UserProfile QR code correction
+        UserProfile correctedProfile = userProfileRepository.findById(profile.getId()).get();
+        System.out.println("Corrected Profile QR Code Data starts with: " + correctedProfile.getQrCodeData().substring(0, Math.min(50, correctedProfile.getQrCodeData().length())));
+        org.junit.jupiter.api.Assertions.assertNotEquals("data:image/png;base64,dummy", correctedProfile.getQrCodeData());
+        org.junit.jupiter.api.Assertions.assertTrue(correctedProfile.getQrCodeData().startsWith("data:image/png;base64,"));
+        
+        // Clean up test records
+        memberRepository.delete(correctedMember);
+        userProfileRepository.delete(correctedProfile);
+        System.out.println("Cleaned up dummy test records.");
         try (Connection conn = dataSource.getConnection()) {
             DatabaseMetaData metaData = conn.getMetaData();
             System.out.println("DB Product Name: " + metaData.getDatabaseProductName());
@@ -126,6 +177,75 @@ public class DiagnosticIT {
             System.out.println("Member saved successfully: " + saved.getMemberId());
         } catch (Exception e) {
             System.out.println("addMemberManually FAILED:");
+            e.printStackTrace();
+        }
+
+        // Print existing members verification URLs
+        try {
+            System.out.println("Querying member verification URLs...");
+            Iterable<Member> members = memberRepository.findAll();
+            for (Member member : members) {
+                System.out.println("Member ID: " + member.getMemberId() + ", Name: " + member.getFullName() + ", Verification URL: " + member.getVerificationUrl());
+            }
+        } catch (Exception e) {
+            System.out.println("Querying members FAILED:");
+            e.printStackTrace();
+        }
+
+        // Print existing user profiles
+        try {
+            System.out.println("Querying user profiles...");
+            Iterable<UserProfile> profiles = userProfileRepository.findAll();
+            for (UserProfile p : profiles) {
+                System.out.println("Profile ID: " + p.getId() + ", Name: " + p.getFullName() + ", Email: " + p.getEmail() + ", Enrollment: " + p.getEnrollmentNumber() + ", Has QR: " + (p.getQrCodeData() != null && !p.getQrCodeData().isEmpty()));
+            }
+        } catch (Exception e) {
+            System.out.println("Querying user profiles FAILED:");
+            e.printStackTrace();
+        }
+
+        // Search all tables and columns for 'verify.cyberlearnix'
+        try {
+            System.out.println("=== DB SEARCH FOR 'verify.cyberlearnix' ===");
+            try (Connection conn = dataSource.getConnection()) {
+                DatabaseMetaData meta = conn.getMetaData();
+                String[] types = {"TABLE"};
+                try (ResultSet tables = meta.getTables(null, null, "%", types)) {
+                    while (tables.next()) {
+                        String tableName = tables.getString("TABLE_NAME");
+                        try (ResultSet cols = meta.getColumns(null, null, tableName, "%")) {
+                            while (cols.next()) {
+                                String colName = cols.getString("COLUMN_NAME");
+                                String typeName = cols.getString("TYPE_NAME");
+                                if ("varchar".equalsIgnoreCase(typeName) || "text".equalsIgnoreCase(typeName)) {
+                                    String sql = "SELECT COUNT(*) FROM \"" + tableName + "\" WHERE \"" + colName + "\" LIKE '%verify.cyberlearnix%'";
+                                    try (Statement stmt = conn.createStatement();
+                                         ResultSet countRs = stmt.executeQuery(sql)) {
+                                        if (countRs.next()) {
+                                            int count = countRs.getInt(1);
+                                            if (count > 0) {
+                                                System.out.println("FOUND in table '" + tableName + "', column '" + colName + "': " + count + " rows match.");
+                                                String selectSql = "SELECT \"" + colName + "\" FROM \"" + tableName + "\" WHERE \"" + colName + "\" LIKE '%verify.cyberlearnix%' LIMIT 5";
+                                                try (Statement selectStmt = conn.createStatement();
+                                                     ResultSet selectRs = selectStmt.executeQuery(selectSql)) {
+                                                    while (selectRs.next()) {
+                                                        System.out.println("  Value: " + selectRs.getString(1));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } catch (Exception colEx) {
+                                        // Ignore errors on specific column queries (e.g. system tables)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            System.out.println("=== DB SEARCH END ===");
+        } catch (Exception e) {
+            System.out.println("DB search failed: " + e.getMessage());
             e.printStackTrace();
         }
         System.out.println("=== DIAGNOSTICS END ===");

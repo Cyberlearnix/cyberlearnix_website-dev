@@ -30,8 +30,17 @@ public class EnrollmentCardService {
 
     @Autowired private UserProfileRepository userProfileRepository;
 
-    @Value("${app.public-url:https://cyberlearnix.com}")
     private String publicUrl;
+
+    @Value("${app.public-url:https://cyberlearnix.com}")
+    public void setPublicUrl(String url) {
+        if (url != null) {
+            url = url.trim();
+            url = url.replace("verify.cyberlearnix.com", "cyberlearnix.com");
+            url = url.replace("verify.cyberlearnix", "cyberlearnix.com");
+        }
+        this.publicUrl = url;
+    }
 
     private static final int QR_SIZE = 400;
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -54,7 +63,7 @@ public class EnrollmentCardService {
             if (base != null && base.endsWith("/")) {
                 base = base.substring(0, base.length() - 1);
             }
-            String verifyUrl = base + "/verify/" + enrollmentNumber;
+            String verifyUrl = base + "/verify.html?enrollment=" + enrollmentNumber;
             qrBase64 = generateQrCode(verifyUrl);
 
             // Set on the profile only just before saving so that a save failure
@@ -72,6 +81,28 @@ public class EnrollmentCardService {
                     + profile.getEmail() + ": " + e.getMessage());
             e.printStackTrace();
             return false;
+        }
+    }
+
+    /**
+     * Regenerates and updates the QR code for an existing user profile using the sanitized public URL.
+     */
+    public void updateQrCode(UserProfile profile) {
+        if (profile.getEnrollmentNumber() == null || profile.getEnrollmentNumber().isBlank()) {
+            return;
+        }
+        try {
+            String base = publicUrl;
+            if (base != null && base.endsWith("/")) {
+                base = base.substring(0, base.length() - 1);
+            }
+            String verifyUrl = base + "/verify.html?enrollment=" + profile.getEnrollmentNumber();
+            String qrBase64 = generateQrCode(verifyUrl);
+            profile.setQrCodeData(qrBase64);
+            userProfileRepository.save(profile);
+            System.out.println("[EnrollmentCard] Updated QR code for user profile " + profile.getEmail() + " using URL: " + verifyUrl);
+        } catch (Exception e) {
+            System.err.println("[EnrollmentCard] Failed to update QR code for " + profile.getEmail() + ": " + e.getMessage());
         }
     }
 
