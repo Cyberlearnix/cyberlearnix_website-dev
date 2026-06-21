@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cyberlearnix ID Card – Laxmi Prasana</title>
+  <!-- QR code generator (loaded from CDN – works offline once cached) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    /* ─── RESET ─────────────────────────────────────────── */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    /* ─── SCREEN PREVIEW ─────────────────────────────────── */
+    body {
+      background: #d8d8d8;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      gap: 30px;
+    }
+
+    h2 {
+      color: #333;
+      font-size: 14px;
+      font-weight: normal;
+      text-align: center;
+    }
+
+    .page-preview {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ─── CARD BASE ───────────────────────────────────────── */
+    /*  CR-80 portrait:  54 mm × 85.6 mm  */
+    .id-card {
+      width:  54mm;
+      height: 85.6mm;
+      border-radius: 4mm;
+      overflow: hidden;
+      position: relative;
+      background: #fffef8;
+      box-shadow: 0 6px 24px rgba(0,0,0,.25);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    /* ─── SHARED HEADER ──────────────────────────────────── */
+    .card-header {
+      background: linear-gradient(135deg, #f7b731 0%, #f5c842 60%, #e8a820 100%);
+      padding: 2.8mm 3mm 2.2mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1mm;
+      border-bottom: 0.6mm solid #d4920a;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 2mm;
+    }
+
+    .logo-img {
+      width:  9mm;
+      height: 9mm;
+      object-fit: contain;
+    }
+
+    .brand-block {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-name {
+      font-size: 5.8pt;
+      font-weight: 800;
+      color: #1a1a2e;
+      letter-spacing: 0.2pt;
+      line-height: 1.1;
+    }
+
+    .brand-pvt {
+      font-size: 3.2pt;
+      color: #1a1a2e;
+      letter-spacing: 0.1pt;
+    }
+
+    .brand-tagline {
+      font-size: 2.8pt;
+      font-weight: 700;
+      color: #3a3a3a;
+      letter-spacing: 0.8pt;
+      margin-top: 0.5mm;
+    }
+
+    .iso-text {
+      font-size: 2.5pt;
+      color: #4a3900;
+      border: 0.3mm solid #4a3900;
+      padding: 0.3mm 1.5mm;
+      border-radius: 0.8mm;
+      letter-spacing: 0.3pt;
+    }
+
+    /* ─── FRONT – decorative diagonal stripe ─────────────── */
+    .front-card::after {
+      content: '';
+      position: absolute;
+      top: 18mm;
+      right: -8mm;
+      width: 18mm;
+      height: 70mm;
+      background: linear-gradient(135deg,
+          rgba(247,183,49,.18) 0%,
+          rgba(245,200,66,.08) 100%);
+      transform: rotate(-20deg);
+      border-radius: 4mm;
+      pointer-events: none;
+    }
+
+    /* ─── FRONT BODY ─────────────────────────────────────── */
+    .front-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4mm 3.5mm 3mm;
+    }
+
+    .photo-ring {
+      width:  19mm;
+      height: 19mm;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 1.8mm solid #f7b731;
+      box-shadow: 0 2px 8px rgba(247,183,49,.5);
+      background: #e8e8e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 3mm;
+      flex-shrink: 0;
+    }
+
+    .photo-ring img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* photo placeholder silhouette */
+    .photo-placeholder-svg {
+      width: 60%;
+      opacity: .35;
+    }
+
+    .person-name {
+      font-size: 7.5pt;
+      font-weight: 900;
+      color: #1a1a2e;
+      letter-spacing: 0.6pt;
+      text-align: center;
+      margin-bottom: 0.8mm;
+    }
+
+    .person-role {
+      font-size: 5.5pt;
+      font-style: italic;
+      color: #e07b00;
+      font-weight: 600;
+      margin-bottom: 2.5mm;
+    }
+
+    .divider {
+      width: 82%;
+      height: 0.4mm;
+      background: linear-gradient(to right,
+          transparent, #f7b731 25%, #f7b731 75%, transparent);
+      margin-bottom: 2.5mm;
+    }
+
+    .details {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.8mm;
+    }
+
+    .detail-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2mm;
+      font-size: 3.9pt;
+      color: #333;
+      line-height: 1.3;
+    }
+
+    .detail-row .lbl {
+      font-weight: 700;
+      color: #1a1a2e;
+      min-width: 9mm;
+      flex-shrink: 0;
+    }
+
+    .detail-row .val {
+      color: #444;
+      word-break: break-all;
+    }
+
+    /* ─── BACK BODY ──────────────────────────────────────── */
+    .back-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4mm 3mm 3mm;
+    }
+
+    .terms-title {
+      font-size: 8pt;
+      font-weight: 900;
+      color: #1a1a2e;
+      text-align: center;
+      letter-spacing: 0.4pt;
+      line-height: 1.25;
+      margin-bottom: 2.5mm;
+    }
+
+    .terms-text {
+      font-size: 3.4pt;
+      color: #444;
+      text-align: center;
+      line-height: 1.65;
+      margin-bottom: 2.8mm;
+    }
+
+    .website-link {
+      font-size: 3.8pt;
+      color: #0057b8;
+      text-decoration: underline;
+      margin-bottom: 2.5mm;
+      font-weight: 600;
+    }
+
+    #qrcode-back canvas,
+    #qrcode-back img {
+      width:  16mm !important;
+      height: 16mm !important;
+      border: 0.5mm solid #ccc;
+      padding: 1mm;
+      background: white;
+    }
+
+    /* ─── PRINT ───────────────────────────────────────────── */
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+        margin: 0;
+        gap: 0;
+      }
+
+      h2, .print-hint { display: none; }
+
+      .page-preview {
+        width: 210mm;          /* A4 */
+        min-height: 297mm;
+        padding: 15mm;
+        gap: 6mm;
+        justify-content: flex-start;
+        align-items: flex-start;
+        page-break-after: always;
+      }
+
+      .id-card {
+        box-shadow: none;
+        border: 0.3mm solid #ccc;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Cyberlearnix ID Card &nbsp;|&nbsp; Print: Ctrl+P → No Margins → Scale 100%</h2>
+  <p class="print-hint" style="font-size:12px;color:#666;text-align:center;max-width:500px;">
+    Print settings: Paper&nbsp;A4 · Margins&nbsp;None · Scale&nbsp;100% · Background graphics&nbsp;ON
+  </p>
+
+  <div class="page-preview">
+
+    <!-- ══════════════ FRONT CARD ══════════════ -->
+    <div class="id-card front-card">
+
+      <!-- Header -->
+      <div class="card-header">
+        <div class="header-top">
+          <img src="user-service/src/main/resources/logo.png"
+               class="logo-img" alt="Cyberlearnix Logo" />
+          <div class="brand-block">
+            <div class="brand-name">Cyberlearnix</div>
+            <div class="brand-pvt">Private Limited</div>
+            <div class="brand-tagline">LEARN. CODE. INNOVATE. GROW.</div>
+          </div>
+        </div>
+        <div class="iso-text">ISO 9001:2015 Certified</div>
+      </div>
+
+      <!-- Body -->
+      <div class="front-body">
+
+        <!-- Photo circle -->
+        <div class="photo-ring">
+          <!--
+            To use a real photo, replace the SVG below with:
+            <img src="path/to/photo.jpg" alt="Photo" />
+          -->
+          <svg class="photo-placeholder-svg" viewBox="0 0 60 72" fill="#888"
+               xmlns="http://www.w3.org/2000/svg">
+            <circle cx="30" cy="22" r="14"/>
+            <path d="M2 66c0-15.464 12.536-28 28-28s28 12.536 28 28"/>
+          </svg>
+        </div>
+
+        <div class="person-name">LAXMI PRASANA</div>
+        <div class="person-role">Intern</div>
+        <div class="divider"></div>
+
+        <div class="details">
+          <div class="detail-row">
+            <span class="lbl">ID&nbsp;:</span>
+            <span class="val">CLX-20251212-001</span>
+          </div>
+          <div class="detail-row">
+            <span class="lbl">Phone&nbsp;:</span>
+            <span class="val">123-456-7890</span>
+          </div>
+          <div class="detail-row">
+            <span class="lbl">Email&nbsp;:</span>
+            <span class="val">thanujathanuja211@gmail.com</span>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /front-card -->
+
+
+    <!-- ══════════════ BACK CARD ══════════════ -->
+    <div class="id-card back-card">
+
+      <!-- Header (same as front) -->
+      <div class="card-header">
+        <div class="header-top">
+          <img src="user-service/src/main/resources/logo.png"
+               class="logo-img" alt="Cyberlearnix Logo" />
+          <div class="brand-block">
+            <div class="brand-name">Cyberlearnix</div>
+            <div class="brand-pvt">Private Limited</div>
+            <div class="brand-tagline">LEARN. CODE. INNOVATE. GROW.</div>
+          </div>
+        </div>
+        <div class="iso-text">ISO 9001:2015 Certified</div>
+      </div>
+
+      <!-- Body -->
+      <div class="back-body">
+        <div class="terms-title">TERMS &amp;<br>CONDITION</div>
+
+        <div class="terms-text">
+          This card is issued for official business purposes only
+          and remains the property of the company. It is
+          non-transferable and must be returned upon termination.
+          Loss or misuse must be reported immediately. The company
+          is not responsible for unauthorized use, and terms may
+          change without prior notice.
+        </div>
+
+        <div class="website-link">https://www.cyberlearnix.com</div>
+
+        <div id="qrcode-back"></div>
+      </div>
+
+    </div><!-- /back-card -->
+
+  </div><!-- /page-preview -->
+
+  <script>
+    // Generate QR code pointing to the company website
+    new QRCode(document.getElementById("qrcode-back"), {
+      text: "https://www.cyberlearnix.com",
+      width:  61,   // ~16mm @ 96dpi
+      height: 61,
+      colorDark:  "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  </script>
+
+</body>
+</html>
