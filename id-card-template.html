@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CyberLearnix ID Card System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+/* ── VARIABLES ── */
+:root{
+  --navy:#1E2456;
+  --orange:#F5A623;
+  --white:#fff;
+  --light:#f0f2f9;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--light);color:#222;min-height:100vh;}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--navy);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 28px;
+  box-shadow:0 2px 12px rgba(0,0,0,.35);
+  position:sticky;top:0;z-index:100;
+}
+.topbar-brand{display:flex;align-items:center;gap:14px;}
+.topbar img{height:40px;object-fit:contain;}
+.topbar-title{font-size:19px;font-weight:800;letter-spacing:.3px;}
+.topbar-sub{font-size:10px;opacity:.65;letter-spacing:1px;margin-top:1px;}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;background:#fff;
+  border-bottom:2.5px solid #dde2f5;
+  padding:0 28px;gap:2px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.tab-btn{
+  padding:12px 24px;border:none;background:none;cursor:pointer;
+  font-size:13px;font-weight:700;color:#777;
+  border-bottom:3px solid transparent;margin-bottom:-2.5px;
+  transition:.2s;letter-spacing:.2px;
+}
+.tab-btn:hover{color:var(--navy);}
+.tab-btn.active{color:var(--navy);border-bottom-color:var(--orange);}
+
+/* ── PANELS ── */
+.panel{display:none;padding:28px 32px;}
+.panel.active{display:block;}
+
+/* ── CARDS STRIP ── */
+.preview-strip{
+  display:flex;gap:36px;flex-wrap:wrap;justify-content:center;
+  background:linear-gradient(135deg,#dde3f7,#e8eaf8);
+  border-radius:16px;padding:32px 28px;
+  margin-bottom:22px;
+  box-shadow:inset 0 2px 8px rgba(0,0,0,.06);
+}
+.card-label{
+  text-align:center;font-size:11px;font-weight:800;
+  color:var(--navy);margin-bottom:9px;
+  text-transform:uppercase;letter-spacing:1.5px;
+}
+
+/* ════════════════════════════════════════
+   ID CARD  ·  5.4 cm × 8.5 cm
+   Screen preview uses px at ~96dpi ratio
+   Print CSS overrides to exact mm
+   ════════════════════════════════════════ */
+.id-card{
+  width:204px;      /* 54mm */
+  height:321px;     /* 85mm */
+  border-radius:14px;
+  overflow:hidden;
+  position:relative;
+  background:#fff;
+  box-shadow:0 10px 36px rgba(30,36,86,.28);
+  display:flex;flex-direction:column;
+  flex-shrink:0;
+}
+
+/* ── WAVE decoration – top right ── */
+.wave-tr{
+  position:absolute;top:0;right:0;
+  width:100px;height:130px;
+  pointer-events:none;z-index:1;
+  overflow:hidden;
+}
+/* ── BLOB decoration – bottom left ── */
+.blob-bl{
+  position:absolute;bottom:0;left:0;
+  width:90px;height:90px;
+  pointer-events:none;z-index:1;
+  overflow:hidden;
+}
+
+/* ── CARD HEADER ── */
+.card-header{
+  position:relative;z-index:3;
+  padding:10px 12px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+}
+.card-header .logo-img{height:26px;object-fit:contain;max-width:130px;}
+.brand-name{font-size:8.8pt;font-weight:900;color:var(--navy);letter-spacing:.2px;line-height:1.1;margin-top:2px;}
+.brand-pvt{font-size:4.8pt;color:#555;letter-spacing:.1px;}
+.brand-tagline{font-size:4.8pt;font-weight:700;color:#444;letter-spacing:.9px;margin-top:1px;}
+.brand-reg{font-size:4.2pt;color:#777;margin-top:1px;}
+.iso-badge{
+  font-size:4.2pt;color:#4a3900;
+  border:.35px solid #9a7800;
+  padding:1px 5px;border-radius:2px;
+  margin-top:2px;letter-spacing:.3px;
+  background:rgba(245,166,35,.08);
+}
+.header-line{
+  width:80%;height:.4px;
+  background:linear-gradient(to right,transparent,var(--orange) 30%,var(--orange) 70%,transparent);
+  margin:5px 0 0;
+}
+
+/* ── FRONT BODY ── */
+.front-body{
+  position:relative;z-index:3;
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:10px 14px 10px;
+}
+.photo-ring{
+  width:74px;height:74px;border-radius:50%;
+  border:3.5px solid var(--orange);
+  overflow:hidden;background:#dde;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:9px;flex-shrink:0;
+  box-shadow:0 3px 12px rgba(245,166,35,.42);
+}
+.photo-ring img{width:100%;height:100%;object-fit:cover;display:block;}
+.person-name{
+  font-size:11.5pt;font-weight:900;color:var(--navy);
+  letter-spacing:.9px;text-align:center;
+  margin-bottom:2px;line-height:1.15;
+}
+.person-role{
+  font-size:8.5pt;font-style:italic;color:var(--orange);
+  font-weight:700;margin-bottom:9px;
+}
+.card-divider{
+  width:76%;height:.4px;
+  background:linear-gradient(to right,transparent,var(--orange) 25%,var(--orange) 75%,transparent);
+  margin-bottom:9px;
+}
+.card-details{width:100%;display:flex;flex-direction:column;gap:5px;align-items:center;}
+.det-row{font-size:7pt;color:#333;text-align:center;line-height:1.35;}
+.det-row b{color:var(--navy);font-weight:800;}
+
+/* ── BACK BODY ── */
+.back-body{
+  position:relative;z-index:3;
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:8px 14px 10px;
+}
+.terms-title{
+  font-size:10pt;font-weight:900;color:var(--navy);
+  text-align:center;letter-spacing:.5px;line-height:1.25;
+  margin-bottom:8px;
+}
+.qr-box{
+  border:1px solid #e0e0e0;padding:4px;
+  background:#fff;border-radius:4px;
+  margin-bottom:4px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+.qr-box canvas,.qr-box img{display:block;}
+.scan-label{font-size:5.5pt;color:#777;text-align:center;margin-bottom:7px;letter-spacing:.6px;font-style:italic;}
+.terms-body{font-size:5pt;color:#555;text-align:center;line-height:1.65;margin-bottom:7px;padding:0 2px;}
+.card-website{font-size:6pt;color:#0055cc;text-decoration:underline;font-weight:700;text-align:center;}
+
+/* ── ACTION ROW ── */
+.actions-bar{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  background:#fff;padding:16px 20px;
+  border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.07);
+  margin-bottom:20px;
+}
+.emp-select-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:220px;}
+.emp-select-wrap label{font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;}
+.emp-select-wrap select{
+  flex:1;padding:9px 12px;
+  border:1.5px solid #dde;border-radius:8px;
+  font-size:13px;outline:none;
+}
+.emp-select-wrap select:focus{border-color:var(--orange);}
+
+/* ── BUTTONS ── */
+.btn{
+  padding:9px 20px;border:none;border-radius:8px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  transition:.18s;display:inline-flex;align-items:center;gap:7px;
+  text-decoration:none;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--orange);color:#fff;}
+.btn-primary:hover{background:#d48b0d;}
+.btn-navy{background:var(--navy);color:#fff;}
+.btn-navy:hover{background:#131842;}
+.btn-outline{background:#fff;color:var(--navy);border:2px solid var(--navy);}
+.btn-outline:hover{background:var(--navy);color:#fff;}
+.btn-red{background:#d63031;color:#fff;}
+.btn-red:hover{background:#a22020;}
+.btn-sm{padding:5px 12px;font-size:11px;}
+.btn-green{background:#00b894;color:#fff;}
+.btn-green:hover{background:#009e7e;}
+
+/* ── FORM ── */
+.form-card{
+  background:#fff;padding:24px;border-radius:12px;
+  box-shadow:0 2px 12px rgba(0,0,0,.08);
+  margin-bottom:22px;
+}
+.form-card h3{color:var(--navy);margin-bottom:18px;font-size:15px;display:flex;align-items:center;gap:8px;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group label{font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.6px;}
+.form-group input,.form-group select{
+  padding:9px 12px;border:1.5px solid #dde;border-radius:8px;
+  font-size:13px;outline:none;transition:.18s;
+}
+.form-group input:focus,.form-group select:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(245,166,35,.15);}
+.photo-upload-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.photo-thumb{
+  width:72px;height:72px;border-radius:50%;
+  border:3px solid var(--orange);object-fit:cover;
+  background:#eee;display:block;
+}
+.form-actions{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;}
+
+/* ── TABLE ── */
+.tbl-wrap{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:var(--navy);color:#fff;}
+th,td{padding:10px 14px;text-align:left;vertical-align:middle;}
+tbody tr:nth-child(even){background:#f8f9fd;}
+tbody tr:hover{background:#eef0fb;}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--orange);color:#fff;}
+
+/* ── SEARCH ── */
+.search-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.search-bar input{
+  flex:1;min-width:200px;padding:9px 14px;
+  border:1.5px solid #dde;border-radius:8px;font-size:13px;outline:none;
+}
+.search-bar input:focus{border-color:var(--orange);}
+
+/* ── BULK PANEL ── */
+.bulk-box{
+  background:#fff;padding:28px;border-radius:14px;
+  box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:540px;
+}
+.bulk-box h3{color:var(--navy);margin-bottom:12px;font-size:15px;}
+.code-sample{
+  background:#f4f5fb;border:1px solid #dde;border-radius:6px;
+  padding:10px 14px;font-family:monospace;font-size:11px;
+  color:#333;margin:8px 0;white-space:pre;
+}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:28px;right:28px;
+  background:var(--navy);color:#fff;
+  padding:12px 22px;border-radius:10px;
+  font-size:13px;font-weight:700;
+  box-shadow:0 4px 20px rgba(0,0,0,.25);
+  z-index:9999;opacity:0;transition:opacity .3s;
+  pointer-events:none;
+}
+.toast.show{opacity:1;}
+
+/* ── PRINT ── */
+@media print{
+  .topbar,.tabs,.actions-bar,.search-bar,.tbl-wrap,.form-card,.no-print,
+  .panel:not(.active),.card-label,.bulk-box{display:none!important;}
+
+  body,html{background:#fff!important;margin:0;padding:0;}
+  .panel.active{display:block!important;padding:0!important;}
+  .preview-strip{
+    background:#fff!important;padding:10mm!important;
+    display:flex!important;flex-wrap:wrap!important;
+    gap:6mm!important;justify-content:flex-start!important;
+    border-radius:0!important;box-shadow:none!important;
+  }
+  .id-card{
+    width:54mm!important;height:85mm!important;
+    border-radius:4mm!important;
+    box-shadow:none!important;border:.25mm solid #ccc!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid!important;
+  }
+  /* scale font sizes for exact mm */
+  .person-name{font-size:8pt!important;}
+  .person-role{font-size:6.5pt!important;}
+  .det-row{font-size:5.5pt!important;}
+  .terms-title{font-size:8pt!important;}
+  .terms-body{font-size:4pt!important;}
+  .card-website{font-size:5pt!important;}
+  .brand-name{font-size:7pt!important;}
+  .card-header .logo-img{height:20px!important;}
+  .photo-ring{width:58px!important;height:58px!important;}
+  @page{size:A4 portrait;margin:0;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <img id="topbar-logo" src="%%LOGO%%" alt="CyberLearnix"/>
+    <div>
+      <div class="topbar-title">CyberLearnix</div>
+      <div class="topbar-sub">ID CARD MANAGEMENT SYSTEM</div>
+    </div>
+  </div>
+  <div style="opacity:.75;font-size:12px;">Professional Corporate ID Cards</div>
+</div>
+
+<!-- ══ TABS ══ -->
+<div class="tabs no-print">
+  <button class="tab-btn active"   onclick="switchTab('preview',this)">&#128196;&nbsp; Preview &amp; Print</button>
+  <button class="tab-btn"          onclick="switchTab('manage',this)">&#128101;&nbsp; Manage</button>
+  <button class="tab-btn"          onclick="switchTab('bulk',this)">&#128203;&nbsp; Bulk Import</button>
+</div>
+
+<!-- ══════════════════════════════════════
+     TAB 1 – PREVIEW & PRINT
+══════════════════════════════════════ -->
+<div id="tab-preview" class="panel active">
+
+  <!-- action bar -->
+  <div class="actions-bar no-print">
+    <div class="emp-select-wrap">
+      <label>Employee:</label>
+      <select id="empSelect" onchange="loadSelected()">
+        <option value="-1">— Select —</option>
+      </select>
+    </div>
+    <button class="btn btn-navy"    onclick="window.print()">&#128424;&nbsp;Print</button>
+    <button class="btn btn-primary" onclick="exportPDF()">&#128196;&nbsp;PDF</button>
+    <button class="btn btn-green"   onclick="exportPNG()">&#128247;&nbsp;PNG</button>
+  </div>
+
+  <!-- CARDS -->
+  <div class="preview-strip" id="printArea">
+
+    <!-- FRONT -->
+    <div class="no-print" id="front-wrap">
+      <div class="card-label no-print">&#9654; Front Side</div>
+      <div class="id-card" id="card-front">
+
+        <!-- wave top-right -->
+        <div class="wave-tr">
+          <svg width="100" height="130" viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M100 0 C70 20, 60 50, 85 80 C95 95, 105 115, 100 130 L100 0 Z" fill="#1E2456" opacity=".13"/>
+            <path d="M100 0 C60 25, 45 60, 75 90 C90 108, 100 120, 100 130 L100 0 Z" fill="#F5A623" opacity=".20"/>
+          </svg>
+        </div>
+        <!-- blob bottom-left -->
+        <div class="blob-bl">
+          <svg width="90" height="90" viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 90 C0 55, 25 25, 60 10 C75 4, 88 1, 90 0 L90 90 Z" fill="#F5A623" opacity=".22"/>
+            <path d="M0 90 C5 60, 28 35, 55 18 C70 9, 85 3, 90 0 L90 90 Z" fill="#1E2456" opacity=".10"/>
+          </svg>
+        </div>
+
+        <div class="card-header">
+          <img class="logo-img" src="%%LOGO%%" alt="CyberLearnix Logo"/>
+          <div class="brand-name">Cyberlearnix</div>
+          <div class="brand-pvt">Private Limited</div>
+          <div class="brand-tagline">LEARN. CODE. INNOVATE. GROW.</div>
+          <div class="brand-reg">Registered under MCA, Govt. of India</div>
+          <div class="iso-badge">ISO 9001:2015 Certified</div>
+          <div class="header-line"></div>
+        </div>
+
+        <div class="front-body">
+          <div class="photo-ring">
+            <img id="card-photo"
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 72' fill='%23bbb'%3E%3Ccircle cx='30' cy='22' r='14'/%3E%3Cpath d='M2 68c0-15.464 12.536-28 28-28s28 12.536 28 28'/%3E%3C/svg%3E"
+              alt="Photo"
+            />
+          </div>
+          <div class="person-name"  id="card-name">EMPLOYEE NAME</div>
+          <div class="person-role"  id="card-role">Role</div>
+          <div class="card-divider"></div>
+          <div class="card-details">
+            <div class="det-row"><b>ID&nbsp;:</b>&nbsp;<span id="card-id">CLX-0000-000</span></div>
+            <div class="det-row"><b>Phone&nbsp;:</b>&nbsp;<span id="card-phone">—</span></div>
+            <div class="det-row"><b>Email&nbsp;:</b>&nbsp;<span id="card-email">—</span></div>
+          </div>
+        </div>
+
+      </div><!-- /card-front -->
+    </div>
+
+    <!-- BACK -->
+    <div id="back-wrap">
+      <div class="card-label no-print">&#9664; Back Side</div>
+      <div class="id-card" id="card-back">
+
+        <div class="wave-tr">
+          <svg width="100" height="130" viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M100 0 C70 20, 60 50, 85 80 C95 95, 105 115, 100 130 L100 0 Z" fill="#1E2456" opacity=".13"/>
+            <path d="M100 0 C60 25, 45 60, 75 90 C90 108, 100 120, 100 130 L100 0 Z" fill="#F5A623" opacity=".20"/>
+          </svg>
+        </div>
+        <div class="blob-bl">
+          <svg width="90" height="90" viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 90 C0 55, 25 25, 60 10 C75 4, 88 1, 90 0 L90 90 Z" fill="#F5A623" opacity=".22"/>
+            <path d="M0 90 C5 60, 28 35, 55 18 C70 9, 85 3, 90 0 L90 90 Z" fill="#1E2456" opacity=".10"/>
+          </svg>
+        </div>
+
+        <div class="card-header">
+          <img class="logo-img" src="%%LOGO%%" alt="CyberLearnix Logo"/>
+          <div class="brand-name">Cyberlearnix</div>
+          <div class="brand-pvt">Private Limited</div>
+          <div class="brand-tagline">LEARN. CODE. INNOVATE. GROW.</div>
+          <div class="brand-reg">Registered under MCA, Govt. of India</div>
+          <div class="iso-badge">ISO 9001:2015 Certified</div>
+          <div class="header-line"></div>
+        </div>
+
+        <div class="back-body">
+          <div class="terms-title">TERMS &amp;<br>CONDITION</div>
+          <div class="qr-box"><div id="qrcode"></div></div>
+          <div class="scan-label">&#128269; Scan to Verify</div>
+          <div class="terms-body">
+            This card is issued for official business purposes only and remains
+            the property of CyberLearnix. It must be returned upon termination.
+            Loss or misuse must be reported immediately. Unauthorized use,
+            reproduction, or alteration is strictly prohibited.
+          </div>
+          <div class="card-website">https://www.cyberlearnix.com</div>
+        </div>
+
+      </div><!-- /card-back -->
+    </div>
+
+  </div><!-- /preview-strip -->
+
+  <p class="no-print" style="text-align:center;color:#999;font-size:12px;margin-top:6px;">
+    Print: <kbd>Ctrl+P</kbd> → Margins: <strong>None</strong> · Scale: <strong>100%</strong> · Background graphics: <strong>ON</strong>
+  </p>
+
+</div><!-- /tab-preview -->
+
+<!-- ══════════════════════════════════════
+     TAB 2 – MANAGE
+══════════════════════════════════════ -->
+<div id="tab-manage" class="panel">
+
+  <div class="form-card">
+    <h3>&#10010; Add / Edit Employee</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. LAXMI PRASANA"/>
+      </div>
+      <div class="form-group">
+        <label>Role *</label>
+        <select id="f-role">
+          <option>Intern</option>
+          <option>Employee</option>
+          <option>Faculty</option>
+          <option>Student</option>
+          <option>Manager</option>
+          <option>Staff</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Employee ID <span style="font-weight:400;opacity:.7">(auto if blank)</span></label>
+        <input type="text" id="f-id" placeholder="CLX-INT-2025-001"/>
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="text" id="f-phone" placeholder="1234567890"/>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="f-email" placeholder="user@cyberlearnix.com"/>
+      </div>
+      <div class="form-group photo-upload-wrap">
+        <label>Profile Photo</label>
+        <img id="form-photo-thumb" class="photo-thumb"
+          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 72' fill='%23bbb'%3E%3Ccircle cx='30' cy='22' r='14'/%3E%3Cpath d='M2 68c0-15.464 12.536-28 28-28s28 12.536 28 28'/%3E%3C/svg%3E"
+          alt="thumb"/>
+        <input type="file" accept="image/*" id="f-photo" onchange="handlePhotoUpload(this)"
+          style="font-size:11px;max-width:160px;"/>
+      </div>
+    </div>
+    <input type="hidden" id="f-edit-idx" value="-1"/>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="saveEmployee()">&#128190;&nbsp;Save Employee</button>
+      <button class="btn btn-outline" onclick="clearForm()">&#10005;&nbsp;Clear</button>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchQ" placeholder="Search by name, ID, role, email…" oninput="renderTable()"/>
+    <button class="btn btn-navy btn-sm" onclick="renderTable()">&#128269;</button>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Photo</th>
+          <th>Name</th>
+          <th>Role</th>
+          <th>ID</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="empTableBody">
+        <tr><td colspan="8" style="text-align:center;padding:28px;color:#aaa;">No employees yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TAB 3 – BULK IMPORT
+══════════════════════════════════════ -->
+<div id="tab-bulk" class="panel">
+  <div class="bulk-box">
+    <h3>&#128203; Bulk Import via CSV</h3>
+    <p style="color:#666;font-size:13px;margin-bottom:16px;">
+      Upload a CSV with columns: <strong>name, role, phone, email</strong><br>
+      Employee IDs are auto-generated.
+    </p>
+    <div class="code-sample">name,role,phone,email
+LAXMI PRASANA,Intern,1234567890,laxmi@cyberlearnix.com
+SINDHU,Intern,9876543210,sindhu@cyberlearnix.com</div>
+    <div class="form-group" style="margin:16px 0;">
+      <label>Upload CSV File</label>
+      <input type="file" accept=".csv" id="csvFileInput" onchange="importCSV(this)"
+        style="padding:9px;border:2px dashed #ccc;border-radius:8px;font-size:13px;width:100%;"/>
+    </div>
+    <button class="btn btn-green" onclick="downloadSampleCSV()">&#11015;&nbsp;Download Sample CSV</button>
+  </div>
+  <div id="importMsg" style="margin-top:18px;"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════
+const LOGO = "%%LOGO%%";
+
+let employees = JSON.parse(localStorage.getItem("clx_emp_v3") || "[]");
+let photos    = JSON.parse(localStorage.getItem("clx_photo_v3") || "{}");
+let pendingPhoto = null;
+
+// ── TABS ──
+function switchTab(name, btn) {
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  btn.classList.add("active");
+}
+
+// ── TOAST ──
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+// ── AUTO-ID ──
+function genId(role) {
+  const map = { Intern:"INT", Employee:"EMP", Faculty:"FAC", Student:"STU", Manager:"MGR", Staff:"STF" };
+  const code = map[role] || "EMP";
+  const yr = new Date().getFullYear();
+  const seq = String(employees.length + 1).padStart(3, "0");
+  return `CLX-${code}-${yr}-${seq}`;
+}
+
+// ── SAVE EMPLOYEE ──
+function saveEmployee() {
+  const name  = (document.getElementById("f-name").value || "").trim().toUpperCase();
+  const role  = document.getElementById("f-role").value;
+  const empId = (document.getElementById("f-id").value || "").trim() || genId(role);
+  const phone = (document.getElementById("f-phone").value || "").trim();
+  const email = (document.getElementById("f-email").value || "").trim();
+  const idx   = parseInt(document.getElementById("f-edit-idx").value);
+
+  if (!name) { alert("Name is required."); return; }
+
+  const emp = { name, role, id: empId, phone, email };
+
+  if (idx >= 0) {
+    employees[idx] = emp;
+    if (pendingPhoto) { photos[empId] = pendingPhoto; }
+  } else {
+    employees.push(emp);
+    if (pendingPhoto) { photos[empId] = pendingPhoto; }
+  }
+
+  persist();
+  pendingPhoto = null;
+  clearForm();
+  renderTable();
+  populateSelect();
+
+  // Jump to preview
+  const previewBtn = document.querySelector(".tab-btn");
+  switchTab("preview", previewBtn);
+  loadEmployee(idx >= 0 ? idx : employees.length - 1);
+  toast("✓ Employee saved.");
+}
+
+function persist() {
+  localStorage.setItem("clx_emp_v3",   JSON.stringify(employees));
+  localStorage.setItem("clx_photo_v3", JSON.stringify(photos));
+}
+
+function clearForm() {
+  ["f-name","f-id","f-phone","f-email"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-role").value = "Intern";
+  document.getElementById("f-edit-idx").value = "-1";
+  document.getElementById("form-photo-thumb").src =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 72' fill='%23bbb'%3E%3Ccircle cx='30' cy='22' r='14'/%3E%3Cpath d='M2 68c0-15.464 12.536-28 28-28s28 12.536 28 28'/%3E%3C/svg%3E";
+  document.getElementById("f-photo").value = "";
+  pendingPhoto = null;
+}
+
+// ── PHOTO UPLOAD ──
+function handlePhotoUpload(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingPhoto = e.target.result;
+    document.getElementById("form-photo-thumb").src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ── SELECT ──
+function populateSelect() {
+  const sel = document.getElementById("empSelect");
+  sel.innerHTML = '<option value="-1">— Select Employee —</option>';
+  employees.forEach((e, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = e.name + " (" + e.id + ")";
+    sel.appendChild(opt);
+  });
+}
+
+function loadSelected() {
+  const idx = parseInt(document.getElementById("empSelect").value);
+  if (idx >= 0) loadEmployee(idx);
+}
+
+// ── LOAD CARD ──
+let qrInst = null;
+function loadEmployee(idx) {
+  if (idx < 0 || idx >= employees.length) return;
+  const e = employees[idx];
+
+  document.getElementById("card-name").textContent  = e.name;
+  document.getElementById("card-role").textContent  = e.role;
+  document.getElementById("card-id").textContent    = e.id;
+  document.getElementById("card-phone").textContent = e.phone || "—";
+  document.getElementById("card-email").textContent = e.email || "—";
+
+  const photoSrc = photos[e.id] || "";
+  document.getElementById("card-photo").src = photoSrc ||
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 72' fill='%23bbb'%3E%3Ccircle cx='30' cy='22' r='14'/%3E%3Cpath d='M2 68c0-15.464 12.536-28 28-28s28 12.536 28 28'/%3E%3C/svg%3E";
+
+  document.getElementById("empSelect").value = idx;
+  buildQR(e);
+}
+
+// ── QR ──
+function buildQR(e) {
+  const el = document.getElementById("qrcode");
+  el.innerHTML = "";
+  // Keep payload short to avoid QR overflow — encode only the verify URL
+  const payload = "https://portal.cyberlearnix.com/verify/" + encodeURIComponent(e.id);
+  qrInst = new QRCode(el, {
+    text: payload,
+    width: 82, height: 82,
+    colorDark: "#000000", colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+// ── TABLE ──
+function renderTable() {
+  const q = (document.getElementById("searchQ").value || "").toLowerCase();
+  const rows = employees
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) =>
+      e.name.toLowerCase().includes(q) ||
+      e.id.toLowerCase().includes(q) ||
+      e.role.toLowerCase().includes(q) ||
+      (e.email || "").toLowerCase().includes(q)
+    );
+
+  const tb = document.getElementById("empTableBody");
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:26px;color:#aaa;">No results found.</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(({ e, i }) => {
+    const thumb = photos[e.id]
+      ? `<img src="${photos[e.id]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--orange);" />`
+      : `<span style="display:inline-block;width:34px;height:34px;border-radius:50%;background:#dde;"></span>`;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${thumb}</td>
+      <td><strong>${e.name}</strong></td>
+      <td><span class="badge">${e.role}</span></td>
+      <td style="font-family:monospace;font-size:11px;">${e.id}</td>
+      <td>${e.phone || "—"}</td>
+      <td style="font-size:11px;">${e.email || "—"}</td>
+      <td>
+        <button class="btn btn-navy btn-sm" onclick="previewCard(${i})">&#128065;</button>
+        <button class="btn btn-outline btn-sm" onclick="editCard(${i})">&#9998;</button>
+        <button class="btn btn-red btn-sm" onclick="deleteCard(${i})">&#128465;</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function previewCard(i) {
+  loadEmployee(i);
+  switchTab("preview", document.querySelectorAll(".tab-btn")[0]);
+}
+
+function editCard(i) {
+  const e = employees[i];
+  document.getElementById("f-name").value  = e.name;
+  document.getElementById("f-role").value  = e.role;
+  document.getElementById("f-id").value    = e.id;
+  document.getElementById("f-phone").value = e.phone;
+  document.getElementById("f-email").value = e.email;
+  document.getElementById("f-edit-idx").value = i;
+  if (photos[e.id]) document.getElementById("form-photo-thumb").src = photos[e.id];
+  switchTab("manage", document.querySelectorAll(".tab-btn")[1]);
+}
+
+function deleteCard(i) {
+  if (!confirm("Delete " + employees[i].name + "?")) return;
+  delete photos[employees[i].id];
+  employees.splice(i, 1);
+  persist();
+  renderTable();
+  populateSelect();
+  toast("Employee deleted.");
+}
+
+// ── BULK CSV ──
+function importCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete(res) {
+      let added = 0;
+      res.data.forEach(row => {
+        const name = ((row.name || row.Name || "")).trim().toUpperCase();
+        if (!name) return;
+        const role  = row.role  || row.Role  || "Employee";
+        const phone = row.phone || row.Phone || "";
+        const email = row.email || row.Email || "";
+        const id    = genId(role);
+        employees.push({ name, role, id, phone, email });
+        added++;
+      });
+      persist();
+      renderTable();
+      populateSelect();
+      document.getElementById("importMsg").innerHTML =
+        `<div style="background:#e6faf0;border:1.5px solid #00b894;border-radius:10px;padding:14px 18px;color:#007a5e;font-weight:700;">
+          ✓ Imported ${added} employee(s) successfully.
+        </div>`;
+      toast("✓ " + added + " employees imported.");
+    }
+  });
+}
+
+function downloadSampleCSV() {
+  const csv = "name,role,phone,email\nLAXMI PRASANA,Intern,1234567890,laxmi@cyberlearnix.com\nSINDHU,Intern,9876543210,sindhu@cyberlearnix.com\nRAJEEV KUMAR,Employee,9001234567,rajeev@cyberlearnix.com";
+  const a = document.createElement("a");
+  a.href = "data:text/csv," + encodeURIComponent(csv);
+  a.download = "sample_employees.csv";
+  a.click();
+}
+
+// ── EXPORT PDF ──
+async function exportPDF() {
+  toast("Generating PDF…");
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+  const scl = 4;
+  const fc = await html2canvas(document.getElementById("card-front"), { scale:scl, useCORS:true, allowTaint:true, backgroundColor:"#fff" });
+  const bc = await html2canvas(document.getElementById("card-back"),  { scale:scl, useCORS:true, allowTaint:true, backgroundColor:"#fff" });
+  pdf.addImage(fc.toDataURL("image/png"), "PNG", 15, 15, 54, 85);
+  pdf.addImage(bc.toDataURL("image/png"), "PNG", 74, 15, 54, 85);
+  const name = (document.getElementById("card-name").textContent || "card").replace(/\s+/g,"-");
+  pdf.save("CyberLearnix-ID-" + name + ".pdf");
+  toast("✓ PDF downloaded.");
+}
+
+// ── EXPORT PNG ──
+async function exportPNG() {
+  toast("Generating PNG…");
+  const canvas = await html2canvas(document.getElementById("card-front"), { scale:5, useCORS:true, allowTaint:true, backgroundColor:"#fff" });
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  const name = (document.getElementById("card-name").textContent || "card").replace(/\s+/g,"-");
+  a.download = "CyberLearnix-Front-" + name + ".png";
+  a.click();
+  toast("✓ PNG downloaded.");
+}
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+(function init() {
+  if (!employees.length) {
+    // seed demo employees
+    employees = [
+      { name:"LAXMI PRASANA", role:"Intern",   id:"CLX-INT-2025-001", phone:"123-456-7890", email:"thanujathanuja211@gmail.com" },
+      { name:"SINDHU",        role:"Intern",   id:"CLX-INT-2025-002", phone:"123-456-7890", email:"thanujathanuja211@gmail.com" }
+    ];
+    persist();
+  }
+  populateSelect();
+  document.getElementById("empSelect").value = 0;
+  loadEmployee(0);
+  renderTable();
+})();
+</script>
+</body>
+</html>
