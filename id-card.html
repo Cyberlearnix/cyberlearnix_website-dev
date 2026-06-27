@@ -692,18 +692,67 @@ function loadEmployee(idx) {
   buildQR(e);
 }
 
-// ── QR ──
+// ── QR with logo overlay ──
 function buildQR(e) {
   const el = document.getElementById("qrcode");
   el.innerHTML = "";
-  // Keep payload short to avoid QR overflow — encode only the verify URL
   const payload = "https://portal.cyberlearnix.com/verify/" + encodeURIComponent(e.id);
+
+  // H = 30% error correction — allows logo to cover ~22% safely
   qrInst = new QRCode(el, {
     text: payload,
-    width: 82, height: 82,
-    colorDark: "#000000", colorLight: "#ffffff",
-    correctLevel: QRCode.CorrectLevel.M
+    width: 90, height: 90,
+    colorDark:  "#1E2456",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
   });
+
+  // QRCode.js renders to both <canvas> (hidden) and <img> (visible).
+  // We draw the logo onto the canvas then push the result back into the <img>.
+  setTimeout(() => {
+    const canvas = el.querySelector("canvas");
+    const imgEl  = el.querySelector("img");
+    if (!canvas) return;
+
+    const ctx  = canvas.getContext("2d");
+    const cw   = canvas.width;
+    const ch   = canvas.height;
+    const size = Math.round(cw * 0.24);          // logo = 24% of QR
+    const pad  = 4;
+    const x    = Math.round((cw - size) / 2);
+    const y    = Math.round((ch - size) / 2);
+    const r    = 5;                               // corner radius of white backing
+
+    const logoImg = new Image();
+    logoImg.onload = () => {
+      // 1. Draw white rounded-square backing so logo pops over dark dots
+      const bx = x - pad, by = y - pad;
+      const bw = size + pad * 2, bh = size + pad * 2;
+      ctx.beginPath();
+      ctx.moveTo(bx + r, by);
+      ctx.lineTo(bx + bw - r, by);
+      ctx.arcTo(bx + bw, by,      bx + bw, by + r,      r);
+      ctx.lineTo(bx + bw, by + bh - r);
+      ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r);
+      ctx.lineTo(bx + r,  by + bh);
+      ctx.arcTo(bx,       by + bh, bx, by + bh - r,     r);
+      ctx.lineTo(bx,      by + r);
+      ctx.arcTo(bx,       by,      bx + r, by,           r);
+      ctx.closePath();
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "rgba(0,0,0,0.08)";
+      ctx.shadowBlur  = 3;
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+
+      // 2. Draw the logo centred inside the backing
+      ctx.drawImage(logoImg, x, y, size, size);
+
+      // 3. Push updated canvas pixels back into the visible <img>
+      if (imgEl) imgEl.src = canvas.toDataURL("image/png");
+    };
+    logoImg.src = LOGO;
+  }, 120);
 }
 
 // ── TABLE ──
