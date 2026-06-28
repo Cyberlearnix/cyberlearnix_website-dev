@@ -186,7 +186,7 @@ public class IdentityService {
         member.setMemberId(memberId);
 
         // Generate QR pointing to verification URL
-        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + memberId;
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify/" + memberId;
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -223,7 +223,7 @@ public class IdentityService {
             member.setMemberId(generateMemberId(member.getMemberType()));
         }
 
-        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify/" + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
@@ -243,15 +243,25 @@ public class IdentityService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
-        member.setFullName(details.getFullName());
-        member.setEmail(details.getEmail());
-        member.setPhone(details.getPhone());
-        member.setProfilePhoto(details.getProfilePhoto());
+        if (details.getFullName() != null && !details.getFullName().isBlank())
+            member.setFullName(details.getFullName());
+        if (details.getEmail() != null && !details.getEmail().isBlank())
+            member.setEmail(details.getEmail());
+        if (details.getPhone() != null)
+            member.setPhone(details.getPhone());
+        if (details.getProfilePhoto() != null)
+            member.setProfilePhoto(details.getProfilePhoto());
+        if (details.getDesignation() != null)
+            member.setDesignation(details.getDesignation());
+        if (details.getDepartment() != null)
+            member.setDepartment(details.getDepartment());
+        if (details.getMemberType() != null && !details.getMemberType().isBlank())
+            member.setMemberType(normalizeRoleType(details.getMemberType()));
         member.setUpdatedAt(LocalDateTime.now());
 
         Member saved = memberRepository.save(member);
         logAudit(saved.getMemberId(), "UPDATED", adminEmail,
-                "Updated personal details of member " + saved.getMemberId());
+                "Updated details of member " + saved.getMemberId() + " (" + saved.getFullName() + ")");
 
         return saved;
     }
@@ -273,7 +283,7 @@ public class IdentityService {
             String newMemberId = generateMemberId(normalizedRoleType);
             member.setMemberId(newMemberId);
 
-            String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + newMemberId;
+            String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify/" + newMemberId;
             member.setVerificationUrl(verifyUrl);
 
             try {
@@ -328,7 +338,7 @@ public class IdentityService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
-        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify.html?enrollment=" + member.getMemberId();
+        String verifyUrl = publicUrl + (publicUrl.endsWith("/") ? "" : "/") + "verify/" + member.getMemberId();
         member.setVerificationUrl(verifyUrl);
 
         try {
