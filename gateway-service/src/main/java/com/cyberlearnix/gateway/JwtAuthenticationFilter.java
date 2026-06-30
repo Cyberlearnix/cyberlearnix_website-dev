@@ -144,6 +144,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         if (path.startsWith("/api/auth/") ||
             path.startsWith("/api/public/") ||
+            path.startsWith("/api/cms") ||
             path.startsWith("/api/careers") ||
             path.startsWith("/api/contact-submissions") ||
             path.startsWith("/api/shop") ||
