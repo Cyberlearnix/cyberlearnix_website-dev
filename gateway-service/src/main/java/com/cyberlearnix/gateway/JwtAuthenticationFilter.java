@@ -198,6 +198,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 if (!remaining.isEmpty() && !remaining.contains("/")) {
                     return true; // Matches /api/forms/{id}
                 }
+                if (remaining.endsWith("/token") && !remaining.replace("/token", "").contains("/")) {
+                    return true; // Matches /api/forms/{id}/token
+                }
                 if (path.endsWith("/responses") || path.endsWith("/responses/check")) {
                     return true;
                 }
