@@ -26,6 +26,9 @@ public class Page {
     @Column(nullable = false)
     private String title;
 
+    @Column(columnDefinition = "TEXT")
+    private String subtitle;
+
     @Column(unique = true, nullable = false)
     private String slug;
 

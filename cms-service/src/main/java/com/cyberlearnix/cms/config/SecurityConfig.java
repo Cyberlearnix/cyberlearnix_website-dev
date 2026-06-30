@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/cms/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/cms/pages/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cms/pages", "/api/cms/pages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cms/media/**").permitAll()
                         .requestMatchers("/api/cms/**").hasRole("ADMIN")
                         .requestMatchers("/student/**").permitAll()

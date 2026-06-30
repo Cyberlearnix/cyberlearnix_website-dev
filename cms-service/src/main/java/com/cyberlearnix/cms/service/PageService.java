@@ -43,6 +43,7 @@ public class PageService {
     public Page createPage(PageCreateDTO dto) {
         Page page = new Page();
         page.setTitle(dto.getTitle());
+        page.setSubtitle(dto.getSubtitle());
         page.setSlug(dto.getSlug());
         page.setTemplateName(dto.getTemplateName());
         page.setIsPublished(dto.getIsPublished() != null ? dto.getIsPublished() : false);
@@ -59,6 +60,7 @@ public class PageService {
     public Page updatePage(Long id, PageCreateDTO dto) {
         return pageRepository.findById(id).map(page -> {
             if (dto.getTitle() != null) page.setTitle(dto.getTitle());
+            if (dto.getSubtitle() != null) page.setSubtitle(dto.getSubtitle());
             if (dto.getSlug() != null) page.setSlug(dto.getSlug());
             if (dto.getTemplateName() != null) page.setTemplateName(dto.getTemplateName());
             if (dto.getIsPublished() != null) page.setIsPublished(dto.getIsPublished());
