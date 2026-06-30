@@ -245,19 +245,17 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -p "$SERVER_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          SERVICES=$(echo "$CHANGED_SERVICES" | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin)))")
-          REGISTRY="ghcr.io/cyberlearnix"
-
-          for svc in $SERVICES; do
-            IMAGE="${REGISTRY}/cyberlearnix-${svc}:${GIT_SHA}"
-            echo "🚀 Deploying $svc → $IMAGE"
-            ssh -i ~/.ssh/id_deploy -p "$SERVER_PORT" \
-              -o StrictHostKeyChecking=no \
-              -o ConnectTimeout=30 \
-              "root@${SERVER_HOST}" \
-              "kubectl set image deployment/${svc} ${svc}=${IMAGE} -n ${K3S_NAMESPACE} && \
-               kubectl rollout status deployment/${svc} -n ${K3S_NAMESPACE} --timeout=300s"
-          done
+          ssh -i ~/.ssh/id_deploy -p "$SERVER_PORT" \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            "root@${SERVER_HOST}" \
+            "echo '=== PODS STATUS ===' && kubectl get pods -n ${K3S_NAMESPACE} && \
+             for pod in \$(kubectl get pods -n ${K3S_NAMESPACE} -o jsonpath='{.items[*].metadata.name}'); do \
+               echo '========================================'; \
+               echo \"LOGS FOR POD: \$pod\"; \
+               echo '========================================'; \
+               kubectl logs \$pod -n ${K3S_NAMESPACE} --tail=50 || true; \
+             done"
 
           rm -f ~/.ssh/id_deploy
-          echo "✅ All services deployed successfully"
+          echo "✅ Diagnostic check completed successfully"
