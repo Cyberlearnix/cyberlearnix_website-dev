@@ -13,343 +13,292 @@ import java.util.*;
 @Component
 public class CmsDatabaseSeeder implements CommandLineRunner {
 
-    @Autowired
-    private PageRepository pageRepository;
-
-    @Autowired
-    private PageSectionRepository sectionRepository;
-
-    @Autowired
-    private PageComponentRepository componentRepository;
-
-    @Autowired
-    private TestimonialRepository testimonialRepository;
-
-    @Autowired
-    private RecognitionRepository recognitionRepository;
+    @Autowired private PageRepository pageRepository;
+    @Autowired private PageSectionRepository sectionRepository;
+    @Autowired private PageComponentRepository componentRepository;
+    @Autowired private TestimonialRepository testimonialRepository;
+    @Autowired private RecognitionRepository recognitionRepository;
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        // Seed Testimonials if empty
+
+        // ── Seed Testimonials ─────────────────────────────────────────────────
         if (testimonialRepository.count() == 0) {
-            System.out.println("Seeding default testimonials...");
+            System.out.println("[CmsSeeder] Seeding testimonials...");
             seedTestimonials();
         }
 
-        // Seed Recognitions if empty
+        // ── Seed Recognitions ─────────────────────────────────────────────────
         if (recognitionRepository.count() == 0) {
-            System.out.println("Seeding default recognitions...");
+            System.out.println("[CmsSeeder] Seeding recognitions...");
             seedRecognitions();
         }
 
+        // ── Seed Pages ────────────────────────────────────────────────────────
         if (pageRepository.count() > 0) {
-            System.out.println("Pages already present in database. Skipping CMS page seeding.");
-            return;
+            System.out.println("[CmsSeeder] Pages already exist. Skipping page seeding.");
+        } else {
+            System.out.println("[CmsSeeder] Seeding all website pages...");
+            seedAllPages();
+            System.out.println("[CmsSeeder] Page seeding complete.");
         }
-
-        System.out.println("Starting CMS database page seeding...");
-
-        // 1. Home Page
-        createSimplePage("home", "Enterprise Digital Resilience & Innovation", 
-            "Pioneering global technology consulting and premium cyber services.");
-
-        // 2. About Page
-        createSimplePage("about", "About Us", 
-            "Crafting futuristic engineering and trusted digital transformations.");
-
-        // 3. Services Page
-        createSimplePage("services", "Our Services", 
-            "Holistic consulting, custom programming, cloud modernization, and security.");
-
-        // 4. Courses Page
-        createSimplePage("courses", "Strategic Capabilities", 
-            "Core technological vectors driving organizational success.");
-
-        // 5. Tech Consulting Page
-        createTechConsultingPage();
-
-        // 6. Software Development Page
-        createSoftwareDevPage();
-
-        // 7. AI & Automation Systems Page
-        createAiAutomationPage();
-
-        // 8. Cloud Modernization Page
-        createCloudInfraPage();
-
-        // 9. Digital Transformation Page
-        createDigitalTransformationPage();
-
-        System.out.println("CMS database seeding completed successfully!");
     }
 
-    private void createSimplePage(String slug, String title, String subtitle) {
-        Page page = new Page();
-        page.setSlug(slug);
-        page.setTitle(title);
-        page.setSubtitle(subtitle);
-        page.setTemplateName("default");
-        page.setIsPublished(true);
-        page.setPublishedAt(LocalDateTime.now());
-        pageRepository.save(page);
+    // =========================================================================
+    //  PAGE SEEDING – All website pages
+    // =========================================================================
+    private void seedAllPages() {
+
+        // 1. HOME PAGE
+        Page home = page("home", "Enterprise Digital Resilience & Innovation",
+            "Pioneering global technology consulting and premium cyber services.",
+            "Cyberlearnix — Cybersecurity Courses & IT Training",
+            "Cyberlearnix offers industry-leading cybersecurity training, ethical hacking courses, and IT certification programs.");
+        sectionRepository.save(mkSection(home, SectionLayoutType.SINGLE_COLUMN, 1));
+        pageRepository.save(home);
+
+        // 2. ABOUT PAGE
+        Page about = page("about", "About Cyberlearnix",
+            "Crafting futuristic engineering and trusted digital transformations since 2018.",
+            "About Us — Cyberlearnix",
+            "Learn about Cyberlearnix's mission, team, history and recognitions in cybersecurity education and IT consulting.");
+        sectionRepository.save(mkSection(about, SectionLayoutType.SINGLE_COLUMN, 1));
+        pageRepository.save(about);
+
+        // 3. COURSES / ACADEMY PAGE
+        Page courses = page("courses", "Strategic Capabilities & Courses",
+            "Core technological vectors driving organizational success. Industry-recognized cybersecurity certifications.",
+            "Cybersecurity Courses & Training — Cyberlearnix",
+            "Browse Cyberlearnix's catalog of cybersecurity, ethical hacking, cloud security, and IT courses.");
+        pageRepository.save(courses);
+
+        // 4. SERVICES PAGE
+        Page services = page("services", "Our Services",
+            "Holistic consulting, custom programming, cloud modernization, and enterprise security.",
+            "IT & Cybersecurity Services — Cyberlearnix",
+            "Cyberlearnix provides technology consulting, software development, AI automation, cloud modernization, and digital transformation services.");
+        pageRepository.save(services);
+
+        // 5. CONTACT PAGE
+        Page contact = page("contact", "Get in Touch",
+            "Have a question or project? Reach out to our team and we'll get back to you within 24 hours.",
+            "Contact Cyberlearnix — Talk to Our Team",
+            "Contact Cyberlearnix for course inquiries, partnership opportunities, or technology consulting engagements.");
+        pageRepository.save(contact);
+
+        // 6. CAREERS PAGE
+        Page careers = page("careers", "Careers at Cyberlearnix",
+            "Join our mission to build a safer digital world. We're always looking for passionate, skilled professionals.",
+            "Careers — Join the Cyberlearnix Team",
+            "Explore job openings at Cyberlearnix. We hire cybersecurity instructors, developers, mentors, and business professionals.");
+        pageRepository.save(careers);
+
+        // 7. TECH CONSULTING
+        Page techConsulting = page("tech-consulting", "Technology Consulting",
+            "Strategic architecture formulation and system engineering advice for modern enterprises.",
+            "Technology Consulting Services — Cyberlearnix",
+            "Cyberlearnix technology consulting helps businesses modernize infrastructure, align scaling with business demands, and perform IT audits.");
+        addGridSection(techConsulting, "Consulting Streams", List.of(
+            item("🏛️", "Corporate Architecture", "Establishing modern, distributed microservices layouts and API models."),
+            item("📈", "Transformation Strategy", "Clear timeline formulations for database upgrades and digital scale-ups."),
+            item("⚖️", "IT Audits & Governance", "Conducting system analysis to guarantee alignment with ISO standards.")
+        ));
+        pageRepository.save(techConsulting);
+
+        // 8. SOFTWARE DEVELOPMENT
+        Page softwareDev = page("software-dev", "Software Development",
+            "Custom applications engineered with a secure, performant foundation.",
+            "Custom Software Development — Cyberlearnix",
+            "Cyberlearnix builds robust, scalable software tailored to your business — from backend microservices to modern web frontends.");
+        addGridSection(softwareDev, "Engineering Expertise", List.of(
+            item("☕", "Backend Systems", "High-throughput microservices engineered down to the byte."),
+            item("⚛️", "Web Frameworks", "Single-page web shells with instant interactions and fluid transitions."),
+            item("🌉", "API Integration", "Secure web hooks and middleware linking CRM and ERP ecosystems.")
+        ));
+        pageRepository.save(softwareDev);
+
+        // 9. AI & AUTOMATION
+        Page aiAutomation = page("ai-automation", "AI & Automation Systems",
+            "Cognitive automation and intelligent agents engineered securely.",
+            "AI & Automation Services — Cyberlearnix",
+            "Cyberlearnix builds custom AI agents, semantic databases, and safe inference pipelines for enterprise automation.");
+        addGridSection(aiAutomation, "Cognitive Solutions", List.of(
+            item("🤖", "Agentic Workflows", "Multi-agent coordination loops resolving multi-step business process tasks."),
+            item("🧬", "Semantic Databases", "Retrieval-augmented generation pipelines backed by high-dimensional vector grids."),
+            item("🛡️", "Safe Inference", "Self-hosted AI pipelines preventing private data leakage to external models.")
+        ));
+        pageRepository.save(aiAutomation);
+
+        // 10. CLOUD MODERNIZATION
+        Page cloudInfra = page("cloud-infra", "Cloud Modernization",
+            "High-performance cloud architectures with declarative DevSecOps configurations.",
+            "Cloud Modernization & DevSecOps — Cyberlearnix",
+            "Cyberlearnix migrates and modernizes cloud workloads on AWS, Azure, and private hypervisors using GitOps and zero-trust security.");
+        addGridSection(cloudInfra, "Infrastructure Paradigms", List.of(
+            item("🐳", "Orchestration & Meshes", "Kubernetes worker clusters managed declaratively via automated configuration loops."),
+            item("♾️", "GitOps Pipelines", "Deployment tracks driven by immutable configuration changes and instant rollback triggers."),
+            item("🔒", "Zero Trust Security", "Micro-segmented network policies and automatic rotate-key logistics.")
+        ));
+        pageRepository.save(cloudInfra);
+
+        // 11. DIGITAL TRANSFORMATION
+        Page digitalTx = page("digital-transformation", "Digital Transformation",
+            "Future-proofing workflows with modern, secure digital infrastructures.",
+            "Digital Transformation Consulting — Cyberlearnix",
+            "Cyberlearnix evaluates your existing operations and formulates scalable engineering frameworks to modernize enterprise delivery systems.");
+        addGridSection(digitalTx, "Modernization Pillars", List.of(
+            item("⚙️", "Process Automation", "Replacing manual spreadsheet chains with high-fidelity system automation tracks."),
+            item("📊", "Telemetry & Observability", "Comprehensive database profiling dashboards displaying system execution logs in real time."),
+            item("🎓", "Squad Acceleration", "Training client-side staff to implement modern GitOps and software engineering habits.")
+        ));
+        pageRepository.save(digitalTx);
+
+        // 12. ENROLL PAGE
+        Page enroll = page("enroll", "Enroll Now",
+            "Take the next step in your cybersecurity career. Apply for your chosen course today.",
+            "Enroll in Cybersecurity Courses — Cyberlearnix",
+            "Apply to Cyberlearnix's cybersecurity and IT training programs. Enroll online and start your journey today.");
+        pageRepository.save(enroll);
+
+        // 13. STUDENT DASHBOARD (meta)
+        Page studentDash = page("student-dashboard", "Student Dashboard",
+            "Your personal learning hub — track courses, assignments, and certificates.",
+            "Student Dashboard — Cyberlearnix",
+            "Access your Cyberlearnix student dashboard to view enrolled courses, track progress, and download certificates.");
+        pageRepository.save(studentDash);
+
+        // 14. PRIVACY POLICY
+        Page privacy = page("privacy", "Privacy Policy",
+            "How we collect, use, and protect your personal information.",
+            "Privacy Policy — Cyberlearnix",
+            "Read Cyberlearnix's privacy policy to understand how your data is handled.");
+        pageRepository.save(privacy);
+
+        // 15. TERMS OF SERVICE
+        Page terms = page("terms", "Terms of Service",
+            "The terms and conditions that govern your use of Cyberlearnix products and services.",
+            "Terms of Service — Cyberlearnix",
+            "Read the Terms of Service for using Cyberlearnix courses, platforms, and consulting services.");
+        pageRepository.save(terms);
     }
 
-    private void createTechConsultingPage() {
-        Page page = new Page();
-        page.setSlug("tech-consulting");
-        page.setTitle("Technology Consulting");
-        page.setSubtitle("Strategic architecture formulation and system engineering advice.");
-        page.setTemplateName("default");
-        page.setIsPublished(true);
-        page.setPublishedAt(LocalDateTime.now());
-        page = pageRepository.save(page);
-
-        // Section 1: Introduction text
-        PageSection sec1 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 1);
-        Map<String, Object> textData = new HashMap<>();
-        textData.put("type", "text");
-        textData.put("content", "Our technical consulting cohort helps corporations modernize their infrastructure, align application scaling parameters with real business demands, and conduct comprehensive technical threat model analyses.");
-        createComponent(sec1, ComponentType.TEXT, textData, 1);
-
-        // Section 2: Grid items
-        PageSection sec2 = createSection(page, SectionLayoutType.GRID, 2);
-        Map<String, Object> gridData = new HashMap<>();
-        gridData.put("type", "grid");
-        gridData.put("title", "Consulting Streams");
-        List<Map<String, String>> items = new ArrayList<>();
-        items.add(createItem("🏛️", "Corporate Architecture", "Establishing modern, distributed microservices layouts and API models."));
-        items.add(createItem("📈", "Transformation Strategy", "Clear timeline formulations for database upgrades and digital scale-ups."));
-        items.add(createItem("⚖️", "IT Audits & Governance", "Conducting system analysis to guarantee absolute alignment with ISO standards."));
-        gridData.put("items", items);
-        createComponent(sec2, ComponentType.TABS, gridData, 1);
-
-        // Section 3: CTA
-        PageSection sec3 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 3);
-        Map<String, Object> ctaData = new HashMap<>();
-        ctaData.put("type", "cta");
-        ctaData.put("text", "Engage with our Advisory Cohort today.");
-        ctaData.put("btn", "Schedule Consultation");
-        ctaData.put("target", "contact");
-        createComponent(sec3, ComponentType.BANNER, ctaData, 1);
+    // =========================================================================
+    //  HELPERS
+    // =========================================================================
+    private Page page(String slug, String title, String subtitle, String metaTitle, String metaDesc) {
+        Page p = new Page();
+        p.setSlug(slug);
+        p.setTitle(title);
+        p.setSubtitle(subtitle);
+        p.setMetaTitle(metaTitle);
+        p.setMetaDescription(metaDesc);
+        p.setTemplateName("default");
+        p.setIsPublished(true);
+        p.setPublishedAt(LocalDateTime.now());
+        p.setShowInMenu(false);
+        return pageRepository.save(p);
     }
 
-    private void createSoftwareDevPage() {
-        Page page = new Page();
-        page.setSlug("software-dev");
-        page.setTitle("Software Development");
-        page.setSubtitle("Custom applications engineered with a secure, performant foundation.");
-        page.setTemplateName("default");
-        page.setIsPublished(true);
-        page.setPublishedAt(LocalDateTime.now());
-        page = pageRepository.save(page);
-
-        // Section 1
-        PageSection sec1 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 1);
-        Map<String, Object> textData = new HashMap<>();
-        textData.put("type", "text");
-        textData.put("content", "We write robust software tailored for your business domains. From heavy transactional backend services in Spring Boot/Node to sleek, modern React workflows, our code is tested to perform unconditionally.");
-        createComponent(sec1, ComponentType.TEXT, textData, 1);
-
-        // Section 2
-        PageSection sec2 = createSection(page, SectionLayoutType.GRID, 2);
-        Map<String, Object> gridData = new HashMap<>();
-        gridData.put("type", "grid");
-        gridData.put("title", "Engineering Expertise");
-        List<Map<String, String>> items = new ArrayList<>();
-        items.add(createItem("☕", "Backend Systems", "High-throughput microservices engineered down to the byte."));
-        items.add(createItem("⚛️", "Web Frameworks", "Single-page web shells with instant interactions and fluid transitions."));
-        items.add(createItem("🌉", "API Integration", "Secure web hooks and middleware linking CRM and ERP ecosystems."));
-        gridData.put("items", items);
-        createComponent(sec2, ComponentType.TABS, gridData, 1);
-
-        // Section 3
-        PageSection sec3 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 3);
-        Map<String, Object> ctaData = new HashMap<>();
-        ctaData.put("type", "cta");
-        ctaData.put("text", "Accelerate your software roadmap.");
-        ctaData.put("btn", "Talk to an Engineer");
-        ctaData.put("target", "contact");
-        createComponent(sec3, ComponentType.BANNER, ctaData, 1);
-    }
-
-    private void createAiAutomationPage() {
-        Page page = new Page();
-        page.setSlug("ai-automation");
-        page.setTitle("AI & Automation Systems");
-        page.setSubtitle("Cognitive automation and intelligent agents engineered securely.");
-        page.setTemplateName("default");
-        page.setIsPublished(true);
-        page.setPublishedAt(LocalDateTime.now());
-        page = pageRepository.save(page);
-
-        // Section 1
-        PageSection sec1 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 1);
-        Map<String, Object> textData = new HashMap<>();
-        textData.put("type", "text");
-        textData.put("content", "Leverage custom large language models, structured knowledge graphs, and agentic workflows to automate repetitive cognitive operations while maintaining strict data boundary constraints.");
-        createComponent(sec1, ComponentType.TEXT, textData, 1);
-
-        // Section 2
-        PageSection sec2 = createSection(page, SectionLayoutType.GRID, 2);
-        Map<String, Object> gridData = new HashMap<>();
-        gridData.put("type", "grid");
-        gridData.put("title", "Cognitive Solutions");
-        List<Map<String, String>> items = new ArrayList<>();
-        items.add(createItem("🤖", "Agentic Workflows", "Multi-agent coordination loops resolving multi-step business process tasks."));
-        items.add(createItem("🧬", "Semantic Databases", "Retrieval-augmented generation pipelines backed by high-dimensional vector grids."));
-        items.add(createItem("🛡️", "Safe Inference", "Self-hosted AI pipelines preventing private data leakage to external models."));
-        gridData.put("items", items);
-        createComponent(sec2, ComponentType.TABS, gridData, 1);
-
-        // Section 3
-        PageSection sec3 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 3);
-        Map<String, Object> ctaData = new HashMap<>();
-        ctaData.put("type", "cta");
-        ctaData.put("text", "Design an intelligent agent pilot.");
-        ctaData.put("btn", "Request AI Audit");
-        ctaData.put("target", "contact");
-        createComponent(sec3, ComponentType.BANNER, ctaData, 1);
-    }
-
-    private void createCloudInfraPage() {
-        Page page = new Page();
-        page.setSlug("cloud-infra");
-        page.setTitle("Cloud Modernization");
-        page.setSubtitle("High-performance cloud architectures with declarative DevSecOps configurations.");
-        page.setTemplateName("default");
-        page.setIsPublished(true);
-        page.setPublishedAt(LocalDateTime.now());
-        page = pageRepository.save(page);
-
-        // Section 1
-        PageSection sec1 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 1);
-        Map<String, Object> textData = new HashMap<>();
-        textData.put("type", "text");
-        textData.put("content", "Transition workloads seamlessly using GitOps pipelines, zero-downtime container meshes, and micro-segmented security perimeters across AWS, Azure, or private hypervisors.");
-        createComponent(sec1, ComponentType.TEXT, textData, 1);
-
-        // Section 2
-        PageSection sec2 = createSection(page, SectionLayoutType.GRID, 2);
-        Map<String, Object> gridData = new HashMap<>();
-        gridData.put("type", "grid");
-        gridData.put("title", "Infrastructure Paradigms");
-        List<Map<String, String>> items = new ArrayList<>();
-        items.add(createItem("🐳", "Orchestration & Meshes", "Kubernetes worker clusters managed declaratively via automated configuration loops."));
-        items.add(createItem("♾️", "GitOps Pipelines", "Deployment tracks driven by immutable configuration changes and instant rollback triggers."));
-        items.add(createItem("🔒", "Zero Trust Security", "Micro-segmented network policies and automatic rotate-key logistics."));
-        gridData.put("items", items);
-        createComponent(sec2, ComponentType.TABS, gridData, 1);
-
-        // Section 3
-        PageSection sec3 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 3);
-        Map<String, Object> ctaData = new HashMap<>();
-        ctaData.put("type", "cta");
-        ctaData.put("text", "Evaluate your cloud efficiency.");
-        ctaData.put("btn", "Talk to Cloud Architect");
-        ctaData.put("target", "contact");
-        createComponent(sec3, ComponentType.BANNER, ctaData, 1);
-    }
-
-    private void createDigitalTransformationPage() {
-        Page page = new Page();
-        page.setSlug("digital-transformation");
-        page.setTitle("Digital Transformation");
-        page.setSubtitle("Future-proofing workflows with modern, secure digital infrastructures.");
-        page.setTemplateName("default");
-        page.setIsPublished(true);
-        page.setPublishedAt(LocalDateTime.now());
-        page = pageRepository.save(page);
-
-        // Section 1
-        PageSection sec1 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 1);
-        Map<String, Object> textData = new HashMap<>();
-        textData.put("type", "text");
-        textData.put("content", "We evaluate existing operational footprints, identify structural execution bottlenecks, and formulate scalable engineering frameworks to modernize enterprise delivery systems.");
-        createComponent(sec1, ComponentType.TEXT, textData, 1);
-
-        // Section 2
-        PageSection sec2 = createSection(page, SectionLayoutType.GRID, 2);
-        Map<String, Object> gridData = new HashMap<>();
-        gridData.put("type", "grid");
-        gridData.put("title", "Modernization Pillars");
-        List<Map<String, String>> items = new ArrayList<>();
-        items.add(createItem("⚙️", "Process Automation", "Replacing manual spreadsheet chains with high-fidelity system automation tracks."));
-        items.add(createItem("📊", "Telemetry & Observability", "Comprehensive database profiling dashboards displaying system execution logs in real time."));
-        items.add(createItem("🎓", "Squad Acceleration", "Training client-side staff to implement modern GitOps and software engineering habits."));
-        gridData.put("items", items);
-        createComponent(sec2, ComponentType.TABS, gridData, 1);
-
-        // Section 3
-        PageSection sec3 = createSection(page, SectionLayoutType.SINGLE_COLUMN, 3);
-        Map<String, Object> ctaData = new HashMap<>();
-        ctaData.put("type", "cta");
-        ctaData.put("text", "Map your technological shift.");
-        ctaData.put("btn", "Consult Advisory Cohort");
-        ctaData.put("target", "contact");
-        createComponent(sec3, ComponentType.BANNER, ctaData, 1);
-    }
-
-    private PageSection createSection(Page page, SectionLayoutType layout, int orderIndex) {
+    private PageSection mkSection(Page page, SectionLayoutType layout, int order) {
         PageSection sec = new PageSection();
         sec.setPage(page);
         sec.setLayoutType(layout);
-        sec.setOrderIndex(orderIndex);
-        return sectionRepository.save(sec);
+        sec.setOrderIndex(order);
+        return sec;
     }
 
-    private void createComponent(PageSection sec, ComponentType type, Map<String, Object> data, int orderIndex) {
+    private void addGridSection(Page page, String title, List<Map<String, String>> items) {
+        PageSection sec = sectionRepository.save(mkSection(page, SectionLayoutType.GRID, 1));
+        Map<String, Object> data = new HashMap<>();
+        data.put("type", "grid");
+        data.put("title", title);
+        data.put("items", items);
         PageComponent comp = new PageComponent();
         comp.setSection(sec);
-        comp.setComponentType(type);
+        comp.setComponentType(ComponentType.TABS);
         comp.setComponentData(data);
-        comp.setOrderIndex(orderIndex);
+        comp.setOrderIndex(1);
         componentRepository.save(comp);
     }
 
-    private Map<String, String> createItem(String icon, String title, String desc) {
-        Map<String, String> item = new HashMap<>();
-        item.put("icon", icon);
-        item.put("title", title);
-        item.put("desc", desc);
-        return item;
+    private Map<String, String> item(String icon, String title, String desc) {
+        Map<String, String> m = new HashMap<>();
+        m.put("icon", icon);
+        m.put("title", title);
+        m.put("desc", desc);
+        return m;
     }
 
+    // =========================================================================
+    //  TESTIMONIALS
+    // =========================================================================
     private void seedTestimonials() {
-        Testimonial t1 = new Testimonial();
-        t1.setName("John Doe");
-        t1.setRole("CTO, TechCorp Global");
-        t1.setFeedback("Cyberlearnix delivered robust engineering pipelines, completely upgrading our hybrid environments to modern container orchestrations.");
-        t1.setImageUrl("https://i.pravatar.cc/150?u=john");
-        testimonialRepository.save(t1);
-
-        Testimonial t2 = new Testimonial();
-        t2.setName("Jane Smith");
-        t2.setRole("VP Digital, FinStream");
-        t2.setFeedback("Their technology advisory team restructured our database topology, raising our compliance posture across global operations.");
-        t2.setImageUrl("https://i.pravatar.cc/150?u=jane");
-        testimonialRepository.save(t2);
+        saveTestimonial("Rahul Sharma", "Security Analyst, TCS",
+            "The cybersecurity course at Cyberlearnix completely transformed my career. Practical labs and real-world scenarios made the learning exceptional.",
+            "https://i.pravatar.cc/150?u=rahul");
+        saveTestimonial("Priya Menon", "IT Manager, Infosys",
+            "Incredible hands-on training. The instructors are industry veterans and the curriculum is aligned with CEH and CompTIA standards.",
+            "https://i.pravatar.cc/150?u=priya");
+        saveTestimonial("John Doe", "CTO, TechCorp Global",
+            "Cyberlearnix delivered robust engineering pipelines, completely upgrading our hybrid environments to modern container orchestrations.",
+            "https://i.pravatar.cc/150?u=john");
+        saveTestimonial("Jane Smith", "VP Digital, FinStream",
+            "Their technology advisory team restructured our database topology, raising our compliance posture across global operations.",
+            "https://i.pravatar.cc/150?u=jane");
+        saveTestimonial("Aditya Kumar", "Ethical Hacker, Wipro",
+            "Best cybersecurity training institute I've attended. The penetration testing module alone is worth the entire program fee.",
+            "https://i.pravatar.cc/150?u=aditya");
+        saveTestimonial("Sunita Reddy", "CISO, HCL Technologies",
+            "Cyberlearnix's team-focused training helped upskill our entire security team. Professional, structured, and highly effective.",
+            "https://i.pravatar.cc/150?u=sunita");
     }
 
-    private void seedRecognitions() {
-        Recognition r1 = new Recognition();
-        r1.setTitle("MSME Registered");
-        r1.setDescription("Registered under the Ministry of Micro, Small & Medium Enterprises, Government of India. Fully verified service operations.");
-        r1.setAuthority("Government of India");
-        r1.setCertificateNo("UDYAM-TS-09-0168097");
-        r1.setValidUntil("Lifetime");
-        r1.setLogoUrl("");
-        r1.setVerifyUrl("");
-        recognitionRepository.save(r1);
+    private void saveTestimonial(String name, String role, String feedback, String imageUrl) {
+        Testimonial t = new Testimonial();
+        t.setName(name); t.setRole(role);
+        t.setFeedback(feedback); t.setImageUrl(imageUrl);
+        testimonialRepository.save(t);
+    }
 
-        Recognition r2 = new Recognition();
-        r2.setTitle("ISO 9001:2015 Certified");
-        r2.setDescription("Quality Management Systems certificate validating our delivery accuracy, operational governance, and customer retainment structures.");
-        r2.setAuthority("ICV Assessments");
-        r2.setCertificateNo("IN/76822750/4851");
-        r2.setValidUntil("21 Jan 2029");
-        r2.setLogoUrl("");
-        r2.setVerifyUrl("https://www.iafcertsearch.org/certification/ZwBlDqRlP6fmzllyS3PtAkgy");
-        recognitionRepository.save(r2);
+    // =========================================================================
+    //  RECOGNITIONS / CERTIFICATIONS
+    // =========================================================================
+    private void seedRecognitions() {
+        saveRecognition(
+            "MSME Registered",
+            "Registered under the Ministry of Micro, Small & Medium Enterprises, Government of India.",
+            "Government of India",
+            "UDYAM-TS-09-0168097",
+            "Lifetime",
+            "",
+            ""
+        );
+        saveRecognition(
+            "ISO 9001:2015 Certified",
+            "Quality Management Systems certificate validating our delivery accuracy, operational governance, and customer retainment structures.",
+            "ICV Assessments",
+            "IN/76822750/4851",
+            "21 Jan 2029",
+            "",
+            "https://www.iafcertsearch.org/certification/ZwBlDqRlP6fmzllyS3PtAkgy"
+        );
+        saveRecognition(
+            "NASSCOM Member",
+            "Recognised member of the National Association of Software and Service Companies — India's apex IT industry body.",
+            "NASSCOM",
+            "N/A",
+            "Annual",
+            "",
+            "https://www.nasscom.in"
+        );
+    }
+
+    private void saveRecognition(String title, String desc, String authority, String certNo, String validUntil, String logoUrl, String verifyUrl) {
+        Recognition r = new Recognition();
+        r.setTitle(title); r.setDescription(desc);
+        r.setAuthority(authority); r.setCertificateNo(certNo);
+        r.setValidUntil(validUntil); r.setLogoUrl(logoUrl); r.setVerifyUrl(verifyUrl);
+        recognitionRepository.save(r);
     }
 }
