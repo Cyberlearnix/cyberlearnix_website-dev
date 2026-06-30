@@ -1,4 +1,3 @@
-// Clean deploy trigger comment
 package com.cyberlearnix.cms.config;
 
 import com.cyberlearnix.shared.entity.cms.*;
@@ -21,6 +20,27 @@ public class CmsDatabaseSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // Run seeding in a background thread to prevent slow DB connections or lock timeouts
+        // from blocking the main startup thread and failing the Kubernetes readiness probe.
+        Thread seedingThread = new Thread(() -> {
+            try {
+                System.out.println("[CmsSeeder] Background thread started. Waiting 5s for context setup...");
+                Thread.sleep(5000);
+                performSeeding();
+            } catch (InterruptedException e) {
+                System.err.println("[CmsSeeder] Seeding thread interrupted: " + e.getMessage());
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                System.err.println("[CmsSeeder] Error in seeding thread: " + e.getMessage());
+            }
+        }, "CmsSeeding-Thread");
+        
+        seedingThread.setDaemon(true);
+        seedingThread.start();
+        System.out.println("[CmsSeeder] Seeding thread scheduled in background.");
+    }
+
+    private void performSeeding() {
         System.out.println("[CmsSeeder] Starting database seeding check...");
 
         // ── Seed Testimonials ─────────────────────────────────────────────────
