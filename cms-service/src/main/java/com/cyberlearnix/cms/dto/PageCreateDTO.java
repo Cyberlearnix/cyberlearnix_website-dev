@@ -6,6 +6,7 @@ import java.util.Map;
 @Data
 public class PageCreateDTO {
     private String title;
+    private String subtitle;
     private String slug;
     private String templateName;
     private Boolean isPublished;
