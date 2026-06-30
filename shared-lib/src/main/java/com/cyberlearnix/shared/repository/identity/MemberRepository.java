@@ -43,6 +43,18 @@ public interface MemberRepository extends JpaRepository<Member, String> {
     @Query("SELECT COUNT(m) FROM Member m WHERE LOWER(m.memberType) = 'employee' OR LOWER(m.memberType) = 'hr' OR LOWER(m.memberType) = 'manager' OR LOWER(m.memberType) = 'director' OR LOWER(m.memberType) = 'ceo'")
     long countEmployees();
 
-    @Query("SELECT m FROM Member m WHERE m.status = 'Approved' AND m.isActive = true AND LOWER(m.memberType) NOT IN ('student', 'intern') ORDER BY m.fullName ASC")
+    @Query("SELECT m FROM Member m WHERE m.status = 'Approved' AND m.isActive = true AND LOWER(m.memberType) NOT IN ('student', 'intern') " +
+           "ORDER BY CASE LOWER(m.memberType) " +
+           "  WHEN 'founder' THEN 1 " +
+           "  WHEN 'director' THEN 2 " +
+           "  WHEN 'partner' THEN 3 " +
+           "  WHEN 'ceo' THEN 4 " +
+           "  WHEN 'manager' THEN 5 " +
+           "  WHEN 'hr' THEN 6 " +
+           "  WHEN 'team lead' THEN 7 " +
+           "  WHEN 'instructor' THEN 8 " +
+           "  WHEN 'mentor' THEN 9 " +
+           "  WHEN 'employee' THEN 10 " +
+           "  ELSE 11 END ASC, m.fullName ASC")
     List<Member> findPublicDirectoryMembers();
 }
