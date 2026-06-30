@@ -60,7 +60,6 @@ spec:
     {{- end }}
 {{- end }}
 {{- end }}
-{{- end }}
 {{- /* ── Dedicated WebSocket Ingress for lab terminal ─────────────────────────────
      Routes /labs/terminal directly to lab-service, bypassing Spring Cloud Gateway.
      Spring Cloud Gateway (Reactor Netty WebsocketRoutingFilter) re-encodes frames
@@ -88,12 +87,6 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: {{ .Values.ingress.corsAllowOrigin | default "*" | quote }}
-    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,x-user-id,x-user-role,Content-Disposition"
-    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
-    nginx.ingress.kubernetes.io/cors-max-age: "3600"
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: {{ .Values.ingress.className }}
@@ -126,12 +119,6 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: {{ .Values.ingress.corsAllowOrigin | default "*" | quote }}
-    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,x-user-id,x-user-role,Content-Disposition"
-    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
-    nginx.ingress.kubernetes.io/cors-max-age: "3600"
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: {{ .Values.ingress.className }}
@@ -152,4 +139,5 @@ spec:
                 name: lab-service
                 port:
                   name: http
+{{- end }}
 {{- end }}
