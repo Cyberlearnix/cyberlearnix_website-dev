@@ -22,15 +22,33 @@ public class CmsDatabaseSeeder implements CommandLineRunner {
     @Autowired
     private PageComponentRepository componentRepository;
 
+    @Autowired
+    private TestimonialRepository testimonialRepository;
+
+    @Autowired
+    private RecognitionRepository recognitionRepository;
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        // Seed Testimonials if empty
+        if (testimonialRepository.count() == 0) {
+            System.out.println("Seeding default testimonials...");
+            seedTestimonials();
+        }
+
+        // Seed Recognitions if empty
+        if (recognitionRepository.count() == 0) {
+            System.out.println("Seeding default recognitions...");
+            seedRecognitions();
+        }
+
         if (pageRepository.count() > 0) {
-            System.out.println("Pages already present in database. Skipping CMS seeding.");
+            System.out.println("Pages already present in database. Skipping CMS page seeding.");
             return;
         }
 
-        System.out.println("Starting CMS database seeding...");
+        System.out.println("Starting CMS database page seeding...");
 
         // 1. Home Page
         createSimplePage("home", "Enterprise Digital Resilience & Innovation", 
@@ -295,5 +313,43 @@ public class CmsDatabaseSeeder implements CommandLineRunner {
         item.put("title", title);
         item.put("desc", desc);
         return item;
+    }
+
+    private void seedTestimonials() {
+        Testimonial t1 = new Testimonial();
+        t1.setName("John Doe");
+        t1.setRole("CTO, TechCorp Global");
+        t1.setFeedback("Cyberlearnix delivered robust engineering pipelines, completely upgrading our hybrid environments to modern container orchestrations.");
+        t1.setImageUrl("https://i.pravatar.cc/150?u=john");
+        testimonialRepository.save(t1);
+
+        Testimonial t2 = new Testimonial();
+        t2.setName("Jane Smith");
+        t2.setRole("VP Digital, FinStream");
+        t2.setFeedback("Their technology advisory team restructured our database topology, raising our compliance posture across global operations.");
+        t2.setImageUrl("https://i.pravatar.cc/150?u=jane");
+        testimonialRepository.save(t2);
+    }
+
+    private void seedRecognitions() {
+        Recognition r1 = new Recognition();
+        r1.setTitle("MSME Registered");
+        r1.setDescription("Registered under the Ministry of Micro, Small & Medium Enterprises, Government of India. Fully verified service operations.");
+        r1.setAuthority("Government of India");
+        r1.setCertificateNo("UDYAM-TS-09-0168097");
+        r1.setValidUntil("Lifetime");
+        r1.setLogoUrl("");
+        r1.setVerifyUrl("");
+        recognitionRepository.save(r1);
+
+        Recognition r2 = new Recognition();
+        r2.setTitle("ISO 9001:2015 Certified");
+        r2.setDescription("Quality Management Systems certificate validating our delivery accuracy, operational governance, and customer retainment structures.");
+        r2.setAuthority("ICV Assessments");
+        r2.setCertificateNo("IN/76822750/4851");
+        r2.setValidUntil("21 Jan 2029");
+        r2.setLogoUrl("");
+        r2.setVerifyUrl("https://www.iafcertsearch.org/certification/ZwBlDqRlP6fmzllyS3PtAkgy");
+        recognitionRepository.save(r2);
     }
 }
