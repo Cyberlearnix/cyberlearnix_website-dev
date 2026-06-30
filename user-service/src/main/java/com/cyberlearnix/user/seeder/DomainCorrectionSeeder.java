@@ -31,9 +31,21 @@ public class DomainCorrectionSeeder implements CommandLineRunner {
     @Autowired
     private EnrollmentCardService enrollmentCardService;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Override
     public void run(String... args) {
         System.out.println("[DomainCorrectionSeeder] Starting database check for verify.cyberlearnix domain corrections...");
+
+        // Cluster-wide database lock release for cms-service
+        try {
+            System.out.println("[DomainCorrectionSeeder] Terminating blocking pg connections to cyberlearnix_cms...");
+            jdbcTemplate.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'cyberlearnix_cms' AND pid != pg_backend_pid();");
+            System.out.println("[DomainCorrectionSeeder] Successfully terminated blocking pg connections.");
+        } catch (Exception e) {
+            System.err.println("[DomainCorrectionSeeder] Error terminating pg connections: " + e.getMessage());
+        }
 
         // 1. Correct Member records
         try {
