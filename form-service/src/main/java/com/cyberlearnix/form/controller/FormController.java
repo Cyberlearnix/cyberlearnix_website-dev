@@ -38,6 +38,20 @@ public class FormController {
         return ResponseEntity.ok(formService.getForm(id));
     }
 
+    @GetMapping("/{id}/token")
+    public ResponseEntity<?> getFormToken(@PathVariable String id) {
+        try {
+            com.cyberlearnix.form.dto.FormResponseDTO form = formService.getForm(id);
+            if (form != null && form.isActive()) {
+                return ResponseEntity.ok(Map.of("token", form.getToken(), "title", form.getTitle()));
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "Form not found or inactive"));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FormResponseDTO> createForm(@Valid @RequestBody FormRequestDTO form) {
