@@ -32,18 +32,18 @@ imagePullSecrets:
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
-  gateway-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  user-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  course-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  enrollment-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  notification-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  shop-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  form-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  admin-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  cms-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  instructor-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  attendance-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
-  lab-service: "9a0ea455a631b4ac9d6d635ef4579cf321bbc042"
+  gateway-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  user-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  course-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  enrollment-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  notification-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  shop-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  form-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  admin-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  cms-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  instructor-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  attendance-service: "ebca298701f957c55cb3c2650721e473fe382602"
+  lab-service: "ebca298701f957c55cb3c2650721e473fe382602"
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
