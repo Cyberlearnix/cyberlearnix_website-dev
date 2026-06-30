@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.Optional;
@@ -161,6 +163,33 @@ public class PublicVerifyController {
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Stream error: " + e.getMessage());
             }
         }
+    }
+
+    /**
+     * Public endpoint to retrieve approved team members for the website about page.
+     * Excludes student and intern roles to prevent unauthorized display.
+     */
+    @GetMapping("/about-members")
+    public ResponseEntity<List<Map<String, Object>>> getPublicAboutMembers() {
+        List<Member> members = memberRepository.findPublicDirectoryMembers();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Member m : members) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("memberId", m.getMemberId());
+            item.put("fullName", m.getFullName());
+            item.put("role", m.getMemberType());
+
+            String photoUrl = m.getProfilePhoto();
+            if (photoUrl != null && !photoUrl.isBlank()) {
+                String fileId = extractDriveFileId(photoUrl);
+                if (fileId != null) {
+                    photoUrl = "/api/public/verify/photo/" + fileId;
+                }
+            }
+            item.put("photoUrl", photoUrl);
+            result.add(item);
+        }
+        return ResponseEntity.ok(result);
     }
 
     /**
