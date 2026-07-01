@@ -23,9 +23,13 @@ public class TeamsMeeting {
     @Column(name = "graph_meeting_id", unique = true)
     private String graphMeetingId;
 
-    /** Clickable URL users open to join the meeting */
+    /** Clickable URL participants open to join the meeting */
     @Column(name = "join_url", length = 2048)
     private String joinUrl;
+
+    /** Host-only URL to start/launch the meeting (from Zoho GET session response) */
+    @Column(name = "start_link", length = 2048)
+    private String startLink;
 
     /** Meeting password returned by Zoho */
     @Column(name = "password")

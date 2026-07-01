@@ -60,12 +60,8 @@ public class ZohoSyncService {
 
     private static final List<String> SESSION_TYPES = List.of("ALL", "UPCOMING", "PAST");
 
-    /**
-     * Meeting Participant Report endpoint (official Zoho docs).
-     * Returns all participants who joined a meeting.
-     */
-    private static final String ATTENDEE_ENDPOINT =
-            "/{orgId}/participant/{sessionKey}.json?index=1&count=100";
+    /** Records per page when calling Zoho's participant report API. */
+    private static final int PARTICIPANT_PAGE_SIZE = 100;
 
     private final RestTemplate restTemplate;
     private final ZohoTokenService tokenService;
@@ -149,11 +145,11 @@ public class ZohoSyncService {
         result.put("meetingId", meetingId);
         result.put("sessionKey", sessionKey);
         result.put("subject", m.getSubject());
-        result.put("endpoint", meetingApiUrl + ATTENDEE_ENDPOINT);
+        result.put("endpoint", meetingApiUrl + "/{orgId}/participant/{sessionKey}.json?index=1&count=" + PARTICIPANT_PAGE_SIZE);
 
         try {
             ResponseEntity<Map> resp = restTemplate.exchange(
-                    meetingApiUrl + ATTENDEE_ENDPOINT,
+                    meetingApiUrl + "/{orgId}/participant/{sessionKey}.json?index=1&count=" + PARTICIPANT_PAGE_SIZE,
                     HttpMethod.GET,
                     new HttpEntity<>(zohoHeaders()),
                     Map.class,
@@ -409,6 +405,9 @@ public class ZohoSyncService {
                 strVal(s.get("meetingUrl")));
         if (joinLink != null) m.setJoinUrl(joinLink);
 
+        String startLink = strVal(s.get("startLink"));
+        if (startLink != null) m.setStartLink(startLink);
+
         String pw = firstNonNull(strVal(s.get("pwd")), strVal(s.get("password")));
         if (pw != null) m.setPassword(pw);
 
@@ -424,6 +423,8 @@ public class ZohoSyncService {
     }
 
     // ─── PARTICIPANT FETCH — Meeting Participant Report API ────────────────
+    // GET /{zsoid}/participant/{meetingKey}.json?index={page}&count={size}
+    // Paginated: index is 1-based page number; loop until a page returns < count rows.
 
     @SuppressWarnings("unchecked")
     protected int fetchAndStoreParticipants(TeamsMeeting m) {
@@ -433,62 +434,80 @@ public class ZohoSyncService {
             return 0;
         }
 
-        String url = meetingApiUrl + ATTENDEE_ENDPOINT;
-        log.info("[ZohoSync] Fetching attendance for meeting #{} (key={}, subject='{}')",
+        log.info("[ZohoSync] Fetching participant report for meeting #{} (key={}, subject='{}')",
                 m.getId(), sessionKey, m.getSubject());
-        log.info("[ZohoSync] URL: {}",
-                url.replace("{orgId}", orgId).replace("{sessionKey}", sessionKey));
 
-        List<Map<String, Object>> attendees;
-        int participantsCount = 0;
-        try {
-            ResponseEntity<Map> resp = restTemplate.exchange(
-                    url, HttpMethod.GET,
-                    new HttpEntity<>(zohoHeaders()), Map.class,
-                    orgId, sessionKey);
+        // ── Paginate through all pages ──────────────────────────────────────
+        List<Map<String, Object>> allAttendees = new ArrayList<>();
+        int pageIndex = 1;
+        int totalCount = 0;
 
-            Map<String, Object> body = resp.getBody();
-            log.info("[ZohoSync]   → HTTP {} keys={}",
-                    resp.getStatusCode().value(),
-                    body != null ? body.keySet() : "null");
-            log.info("[ZohoSync]   → body: {}",
-                    body != null ? truncate(body.toString(), 800) : "null");
+        while (true) {
+            String url = meetingApiUrl
+                    + "/{orgId}/participant/{sessionKey}.json?index=" + pageIndex
+                    + "&count=" + PARTICIPANT_PAGE_SIZE;
 
-            if (body != null && body.get("participantsCount") != null) {
-                participantsCount = (int) toLong(body.get("participantsCount"), 0L);
-                log.info("[ZohoSync]   → participantsCount={}", participantsCount);
+            log.info("[ZohoSync]   page {}: GET {}", pageIndex,
+                    url.replace("{orgId}", orgId).replace("{sessionKey}", sessionKey));
+
+            try {
+                ResponseEntity<Map> resp = restTemplate.exchange(
+                        url, HttpMethod.GET,
+                        new HttpEntity<>(zohoHeaders()), Map.class,
+                        orgId, sessionKey);
+
+                Map<String, Object> body = resp.getBody();
+                log.info("[ZohoSync]   → HTTP {} keys={}",
+                        resp.getStatusCode().value(),
+                        body != null ? body.keySet() : "null");
+
+                if (body != null && body.get("participantsCount") != null && pageIndex == 1) {
+                    totalCount = (int) toLong(body.get("participantsCount"), 0L);
+                    log.info("[ZohoSync]   → totalParticipantsCount={}", totalCount);
+                }
+
+                List<Map<String, Object>> page = extractAttendeeList(body);
+                log.info("[ZohoSync]   → {} record(s) on page {}", page.size(), pageIndex);
+                allAttendees.addAll(page);
+
+                if (page.size() < PARTICIPANT_PAGE_SIZE) break;   // last page
+                pageIndex++;
+
+            } catch (HttpClientErrorException ex) {
+                String raw = ex.getResponseBodyAsString();
+                int status = ex.getStatusCode().value();
+                log.warn("[ZohoSync]   → HTTP {} error: {}", status, truncate(raw, 400));
+
+                if (raw.contains("INVALID_OAUTHTOKEN") || raw.contains("INVALID_SCOPE") ||
+                        raw.contains("OAUTH_SCOPE_MISMATCH") || raw.contains("invalid_scope")) {
+                    log.error("[ZohoSync] *** OAUTH SCOPE ISSUE *** Token needs scope " +
+                            "'ZohoMeeting.meeting.READ' (included in ZohoMeeting.meeting.ALL).");
+                } else if (status == 400 && raw.contains("INVALID_MEETING_KEY")) {
+                    log.warn("[ZohoSync] 400 INVALID_MEETING_KEY — session not found or no data.");
+                } else if (status == 401 && raw.contains("UNAUTHORIZED_USER")) {
+                    log.error("[ZohoSync] 401 UNAUTHORIZED_USER — check org ID {}.", orgId);
+                } else if (status == 404) {
+                    log.warn("[ZohoSync] 404 — meeting not found in Zoho or no participants recorded.");
+                } else if (raw.contains("too many requests")) {
+                    log.warn("[ZohoSync] Rate limited by Zoho — retry on next scheduled run.");
+                }
+                m.setParticipantsSyncedAt(LocalDateTime.now());
+                meetingRepository.save(m);
+                return 0;
+            } catch (HttpServerErrorException ex) {
+                log.error("[ZohoSync]   → HTTP {} server error: {}",
+                        ex.getStatusCode().value(), ex.getResponseBodyAsString());
+                return 0;
+            } catch (Exception ex) {
+                log.error("[ZohoSync]   → unexpected error: {}", ex.getMessage());
+                return 0;
             }
-
-            attendees = extractAttendeeList(body);
-            log.info("[ZohoSync]   → extracted {} participant(s) from response", attendees.size());
-
-        } catch (HttpClientErrorException ex) {
-            String raw = ex.getResponseBodyAsString();
-            int status = ex.getStatusCode().value();
-            log.warn("[ZohoSync]   → HTTP {} error: {}", status, truncate(raw, 400));
-
-            if (raw.contains("INVALID_OAUTHTOKEN") || raw.contains("INVALID_SCOPE") ||
-                    raw.contains("OAUTH_SCOPE_MISMATCH") || raw.contains("invalid_scope")) {
-                log.error("[ZohoSync] *** OAUTH SCOPE ISSUE *** Token needs scope " +
-                        "'ZohoMeeting.meeting.READ' (included in ZohoMeeting.meeting.ALL).");
-            } else if (status == 404) {
-                log.warn("[ZohoSync] 404 — meeting not found in Zoho or no participants recorded.");
-            } else if (raw.contains("too many requests")) {
-                log.warn("[ZohoSync] Rate limited by Zoho — retry on next scheduled run.");
-            }
-            m.setParticipantsSyncedAt(LocalDateTime.now());
-            meetingRepository.save(m);
-            return 0;
-        } catch (HttpServerErrorException ex) {
-            log.error("[ZohoSync]   → HTTP {} server error: {}",
-                    ex.getStatusCode().value(), ex.getResponseBodyAsString());
-            return 0;
-        } catch (Exception ex) {
-            log.error("[ZohoSync]   → unexpected error: {}", ex.getMessage());
-            return 0;
         }
 
-        if (attendees.isEmpty()) {
+        log.info("[ZohoSync] Total participants fetched across {} page(s): {}",
+                pageIndex, allAttendees.size());
+
+        if (allAttendees.isEmpty()) {
             log.info("[ZohoSync] No participants for session {} — nobody joined, " +
                     "or meeting hasn't ended yet.", sessionKey);
             m.setParticipantsSyncedAt(LocalDateTime.now());
@@ -496,11 +515,11 @@ public class ZohoSyncService {
             return 0;
         }
 
-        // Save participants
+        // ── Persist ─────────────────────────────────────────────────────────
         participantRepository.deleteByMeetingId(m.getId());
 
         List<MeetingParticipant> saved = new ArrayList<>();
-        for (Map<String, Object> a : attendees) {
+        for (Map<String, Object> a : allAttendees) {
             MeetingParticipant p = new MeetingParticipant();
             p.setMeetingId(m.getId());
 
@@ -544,6 +563,19 @@ public class ZohoSyncService {
             // Duration — Zoho returns milliseconds (verified from docs: 82790ms ≈ 82s)
             long durMs = toLong(firstNonNullObj(a.get("duration"), a.get("durationMs")), 0L);
             p.setDurationSeconds(durMs > 0 ? durMs / 1000 : computeDurationSeconds(p));
+
+            // Role — "presenter" | "attendee"
+            p.setRole(strVal(firstNonNullObj(a.get("role"), a.get("participantRole"))));
+
+            // Source — "web" | "mobile" | "phone" | etc.
+            p.setSource(strVal(firstNonNullObj(a.get("source"), a.get("joinSource"))));
+
+            // Human-readable in/out window e.g. "02:20 PM - 02:21 PM"
+            p.setInAndOutTime(strVal(firstNonNullObj(
+                    a.get("inAndOutTime"), a.get("inOutTime"), a.get("sessionTime"))));
+
+            // Zoho member ZUID
+            p.setMemberId(strVal(firstNonNullObj(a.get("memberId"), a.get("uid"), a.get("userId"))));
 
             saved.add(p);
         }
@@ -604,6 +636,10 @@ public class ZohoSyncService {
                 .leaveTime(p.getLeaveTime())
                 .durationSeconds(p.getDurationSeconds())
                 .durationFormatted(formatDuration(p.getDurationSeconds()))
+                .role(p.getRole())
+                .source(p.getSource())
+                .inAndOutTime(p.getInAndOutTime())
+                .memberId(p.getMemberId())
                 .build();
     }
 
@@ -656,18 +692,38 @@ public class ZohoSyncService {
         return s.length() <= max ? s : s.substring(0, max) + "...(" + (s.length() - max) + " more)";
     }
 
+    /**
+     * Zoho Meeting API v2 list endpoint returns dates in the format:
+     *   "Jun 19, 2020 07:00 PM IST"   (2-digit day, zero-padded)
+     *   "Jun  7, 2020 07:00 PM IST"   (1-digit day, space-padded)
+     *   "Jun 7, 2020 07:00 PM IST"    (1-digit day, no padding)
+     *
+     * Strip the trailing timezone abbreviation then try each formatter.
+     */
+    private static final DateTimeFormatter ZOHO_DATE_FMT_SINGLE_D =
+            DateTimeFormatter.ofPattern("MMM d, yyyy hh:mm a", Locale.ENGLISH);
+
     private static LocalDateTime parseZohoDate(String raw) {
         if (raw == null || raw.isBlank()) return null;
-        String s = raw.trim();
-        s = s.replaceAll("\\s+[A-Z]{2,5}$", "").trim();
+        // Strip trailing timezone abbreviation (e.g. " IST", " UTC", " EST")
+        String s = raw.trim().replaceAll("\\s+[A-Z]{2,5}$", "").trim();
+        // Collapse any double-space (space-padded single-digit day "Jun  7" → "Jun 7")
+        s = s.replaceAll("  +", " ");
+        // Try "MMM dd, yyyy hh:mm a" first (covers zero-padded days)
         try { return LocalDateTime.parse(s, ZOHO_DATE_FMT); } catch (Exception ignore) {}
+        // Try "MMM d, yyyy hh:mm a" (covers single-digit non-padded days)
+        try { return LocalDateTime.parse(s, ZOHO_DATE_FMT_SINGLE_D); } catch (Exception ignore) {}
+        // ISO local datetime
         try { return LocalDateTime.parse(s); } catch (Exception ignore) {}
+        // ISO offset datetime
         try { return OffsetDateTime.parse(s).toLocalDateTime(); } catch (Exception ignore) {}
+        // Epoch millis
         try {
             return LocalDateTime.ofInstant(
                     Instant.ofEpochMilli(Long.parseLong(s)),
                     ZoneId.of("Asia/Kolkata"));
         } catch (NumberFormatException ignore) {}
+        log.warn("[ZohoSync] Could not parse date string: '{}'", raw);
         return null;
     }
 }

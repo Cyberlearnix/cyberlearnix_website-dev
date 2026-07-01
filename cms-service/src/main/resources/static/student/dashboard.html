@@ -37,6 +37,9 @@
       <button class="cl-nav-item" data-section="courses">
         <span class="nav-icon">📚</span> My Courses
       </button>
+      <button class="cl-nav-item" data-section="meetings">
+        <span class="nav-icon">📹</span> Meetings
+      </button>
       <button class="cl-nav-item" data-section="labs">
         <span class="nav-icon">🔬</span> My Labs
       </button>
@@ -114,6 +117,15 @@
           <span id="coursesCountBadge" class="badge badge-category"></span>
         </div>
         <div id="coursesContainer"><div class="cl-spinner"></div></div>
+      </div>
+
+      <!-- ── MEETINGS SECTION ── -->
+      <div class="cl-section" id="section-meetings">
+        <div class="section-header">
+          <h2 class="section-title">My Meetings</h2>
+          <span id="meetingsCountBadge" class="badge badge-category"></span>
+        </div>
+        <div id="meetingsContainer"><div class="cl-spinner"></div></div>
       </div>
 
       <!-- ── MY LABS SECTION ── -->
@@ -326,11 +338,12 @@ function showSection(name) {
   document.querySelectorAll('.cl-nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('section-' + name).classList.add('active');
   document.querySelector(`[data-section="${name}"]`).classList.add('active');
-  const titles = { home: 'Dashboard', courses: 'My Courses', labs: 'My Labs', profile: 'Profile', activity: 'Activity Logs' };
+  const titles = { home: 'Dashboard', courses: 'My Courses', meetings: 'My Meetings', labs: 'My Labs', profile: 'Profile', activity: 'Activity Logs' };
   document.getElementById('pageTitle').textContent = titles[name] || 'Dashboard';
   if (name === 'activity' && !activityLoaded) loadActivity();
   if (name === 'profile' && !profileLoaded) loadProfile();
   if (name === 'labs' && !labsLoaded) loadLabs();
+  if (name === 'meetings' && !meetingsLoaded) loadMeetings();
 }
 
 document.querySelectorAll('.cl-nav-item[data-section]').forEach(btn => {
@@ -590,6 +603,122 @@ async function resumeLab(assignmentId, btn) {
     btn.textContent = '▶️ Resume Lab';
     btn.disabled = false;
     showToast('Network error resuming lab.', 'error');
+  }
+}
+
+/* ── Meetings ── */
+let meetingsLoaded = false;
+
+function meetingStatusBadge(status, startDateTime, endDateTime) {
+  const now = new Date();
+  const start = startDateTime ? new Date(startDateTime) : null;
+  const end   = endDateTime   ? new Date(endDateTime)   : null;
+  if (status === 'CANCELLED') {
+    return `<span class="badge" style="background:#ef444422;color:#ef4444;border:1px solid #ef444444;">Cancelled</span>`;
+  }
+  if (start && end && now >= start && now <= end) {
+    return `<span class="badge" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;">🔴 Live Now</span>`;
+  }
+  if (start && start > now) {
+    return `<span class="badge" style="background:#3b82f622;color:#3b82f6;border:1px solid #3b82f644;">Upcoming</span>`;
+  }
+  return `<span class="badge" style="background:#6b728022;color:#6b7280;border:1px solid #6b728044;">Ended</span>`;
+}
+
+function meetingCard(m) {
+  const start = m.startDateTime ? new Date(m.startDateTime) : null;
+  const end   = m.endDateTime   ? new Date(m.endDateTime)   : null;
+  const now = new Date();
+  const isLive = start && end && now >= start && now <= end;
+  const isPast = end && now > end;
+  const startStr = start ? start.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  const endStr   = end   ? end.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+
+  return `
+    <div class="cl-card" style="margin-bottom:16px;padding:18px 20px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+            <span style="font-size:1.05rem;font-weight:700;color:var(--cl-text);">${m.subject || 'Untitled Meeting'}</span>
+            ${meetingStatusBadge(m.status, m.startDateTime, m.endDateTime)}
+          </div>
+          ${m.description ? `<div style="font-size:0.85rem;color:var(--cl-text-muted);margin-bottom:8px;">${m.description}</div>` : ''}
+          <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.82rem;color:var(--cl-text-muted);">
+            <span>📅 <strong>Start:</strong> ${startStr}</span>
+            <span>🕐 <strong>End:</strong> ${endStr}</span>
+            ${m.duration ? `<span>⏱ <strong>Duration:</strong> ${m.duration}</span>` : ''}
+          </div>
+          ${m.password ? `<div style="font-size:0.80rem;color:var(--cl-text-muted);margin-top:4px;">🔒 Password: <code style="background:var(--cl-border);padding:1px 5px;border-radius:3px;">${m.password}</code></div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:130px;align-items:flex-end;">
+          ${m.joinUrl && !isPast && m.status !== 'CANCELLED'
+            ? `<a href="${m.joinUrl}" target="_blank" rel="noopener noreferrer"
+                 class="btn ${isLive ? 'btn-primary' : 'btn-outline'} btn-sm"
+                 style="${isLive ? 'background:#22c55e;border-color:#22c55e;' : ''}">
+                 ${isLive ? '🔴 Join Now' : '📹 Join Meeting'}
+               </a>`
+            : isPast
+              ? `<span style="font-size:0.80rem;color:var(--cl-text-muted);text-align:right;">Meeting ended</span>`
+              : ''
+          }
+        </div>
+      </div>
+    </div>`;
+}
+
+async function loadMeetings() {
+  const container = document.getElementById('meetingsContainer');
+  container.innerHTML = '<div class="cl-spinner"></div>';
+  try {
+    // Wait for dashboard data if not yet loaded
+    if (!dashboardLoaded) await loadDashboard();
+
+    const courseIds = enrollmentsData.map(e => e.courseId).filter(Boolean);
+    let meetings = [];
+
+    if (courseIds.length > 0) {
+      // Fetch meetings for enrolled courses
+      const res = await apiFetch('/api/meetings/by-courses?courseIds=' + courseIds.join(','));
+      if (res.ok) {
+        meetings = await res.json();
+      }
+    }
+
+    // If no course-specific meetings, fall back to all upcoming meetings
+    if (!meetings.length) {
+      const res2 = await apiFetch('/api/meetings/upcoming');
+      if (res2.ok) meetings = await res2.json();
+    }
+
+    // Sort: live first, then upcoming, then past
+    const now = new Date();
+    meetings.sort((a, b) => {
+      const aStart = new Date(a.startDateTime);
+      const bStart = new Date(b.startDateTime);
+      const aEnd   = a.endDateTime ? new Date(a.endDateTime) : aStart;
+      const bEnd   = b.endDateTime ? new Date(b.endDateTime) : bStart;
+      const aLive = now >= aStart && now <= aEnd;
+      const bLive = now >= bStart && now <= bEnd;
+      if (aLive && !bLive) return -1;
+      if (!aLive && bLive) return 1;
+      return aStart - bStart;
+    });
+
+    const active = meetings.filter(m => m.status !== 'CANCELLED');
+    document.getElementById('meetingsCountBadge').textContent = active.length + (active.length === 1 ? ' meeting' : ' meetings');
+
+    if (!meetings.length) {
+      container.innerHTML = `<div class="empty-state">
+        <div class="empty-state-icon">📹</div>
+        <h3>No meetings yet</h3>
+        <p>Your scheduled meetings will appear here. The admin will share join links when sessions are scheduled.</p>
+      </div>`;
+    } else {
+      container.innerHTML = meetings.map(meetingCard).join('');
+    }
+    meetingsLoaded = true;
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Failed to load meetings</h3><p>${e.message}</p></div>`;
   }
 }
 
