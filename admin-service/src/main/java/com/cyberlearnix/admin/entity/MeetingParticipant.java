@@ -54,6 +54,22 @@ public class MeetingParticipant {
     @Column(name = "duration_seconds")
     private Long durationSeconds;
 
+    /** Role in the meeting — "presenter" or "attendee" (from Zoho participant report) */
+    @Column(name = "role", length = 50)
+    private String role;
+
+    /** How the participant joined — "web", "mobile", "phone", etc. */
+    @Column(name = "source", length = 50)
+    private String source;
+
+    /** Human-readable join/leave window from Zoho e.g. "02:20 PM - 02:21 PM" */
+    @Column(name = "in_and_out_time", length = 100)
+    private String inAndOutTime;
+
+    /** Zoho member ZUID (unique across Zoho; absent for guest participants) */
+    @Column(name = "member_id", length = 100)
+    private String memberId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

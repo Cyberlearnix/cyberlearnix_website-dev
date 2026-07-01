@@ -16,6 +16,19 @@ public interface TeamsMeetingRepository extends JpaRepository<TeamsMeeting, Long
     List<TeamsMeeting> findAllByStatusOrderByStartDateTimeAsc(String status);
     List<TeamsMeeting> findAllByCourseIdOrderByStartDateTimeAsc(Long courseId);
 
+    /**
+     * Returns all non-cancelled meetings whose courseId is in the given list,
+     * ordered by start time ascending (student-facing).
+     */
+    @Query("SELECT m FROM TeamsMeeting m WHERE m.courseId IN :courseIds AND m.status <> 'CANCELLED' ORDER BY m.startDateTime ASC")
+    List<TeamsMeeting> findByCourseIdInNotCancelled(@Param("courseIds") List<Long> courseIds);
+
+    /**
+     * Returns upcoming + live meetings (end time after threshold) ordered by start time.
+     */
+    @Query("SELECT m FROM TeamsMeeting m WHERE m.status <> 'CANCELLED' AND m.endDateTime >= :threshold ORDER BY m.startDateTime ASC")
+    List<TeamsMeeting> findUpcomingAndLive(@Param("threshold") LocalDateTime threshold);
+
     Optional<TeamsMeeting> findByGraphMeetingId(String graphMeetingId);
 
     /**

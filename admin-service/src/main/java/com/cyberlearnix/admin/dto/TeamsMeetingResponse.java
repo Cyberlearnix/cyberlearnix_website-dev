@@ -22,8 +22,11 @@ public class TeamsMeetingResponse {
     /** Zoho meeting key shown as Meeting ID to participants */
     private String meetingId;
 
-    /** URL users click to join the meeting */
+    /** URL participants click to join the meeting */
     private String joinUrl;
+
+    /** Host-only URL to launch/start the meeting */
+    private String startLink;
 
     /** Meeting password shown in the Zoho invitation */
     private String password;

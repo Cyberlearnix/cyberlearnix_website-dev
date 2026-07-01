@@ -85,17 +85,15 @@ public class TeamsMeetingController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> cancelMeeting(@PathVariable Long id) {
+    public ResponseEntity<?> deleteMeeting(@PathVariable Long id) {
         try {
-            teamsService.cancelMeeting(id);
-            return ResponseEntity.ok(Map.of("message", "Meeting cancelled successfully"));
+            teamsService.deleteMeeting(id);
+            return ResponseEntity.noContent().build();   // 204 — mirrors Zoho
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid operation", "message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to cancel meeting", "message", e.getMessage()));
+                    .body(Map.of("error", "Failed to delete meeting", "message", e.getMessage()));
         }
     }
 

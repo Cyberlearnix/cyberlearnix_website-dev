@@ -249,6 +249,29 @@ public class TeamsService {
     }
 
     /**
+     * Returns non-cancelled meetings for multiple courses at once (student dashboard).
+     */
+    public List<TeamsMeetingResponse> getMeetingsByCourseIds(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) return List.of();
+        return meetingRepository.findByCourseIdInNotCancelled(courseIds)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns all upcoming and in-progress non-cancelled meetings (student overview).
+     * Threshold is 1 hour in the past so a meeting that just started is still visible.
+     */
+    public List<TeamsMeetingResponse> getUpcomingMeetings() {
+        LocalDateTime threshold = LocalDateTime.now().minusHours(1);
+        return meetingRepository.findUpcomingAndLive(threshold)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Returns all meetings, optionally filtered by status.
      */
     public List<TeamsMeetingResponse> getMeetings(String status) {
@@ -260,9 +283,81 @@ public class TeamsService {
 
     /**
      * Returns a single meeting by local DB id.
+     *
+     * Calls Zoho's GET /{orgId}/sessions/{meetingKey}.json to fetch the latest
+     * topic, joinLink, startLink, and password, then persists any changes before
+     * returning — so the caller always sees up-to-date Zoho data.
      */
+    @Transactional
     public TeamsMeetingResponse getMeeting(Long id) {
-        return toResponse(findById(id));
+        TeamsMeeting meeting = findById(id);
+        if (meeting.getGraphMeetingId() != null && !"CANCELLED".equals(meeting.getStatus())) {
+            refreshFromZoho(meeting);
+        }
+        return toResponse(meeting);
+    }
+
+    /**
+     * Calls Zoho GET /{orgId}/sessions/{meetingKey}.json and updates the local
+     * entity with the latest joinLink, startLink, topic, and password.
+     * Silently swallows errors so a Zoho outage never breaks the GET flow.
+     */
+    @SuppressWarnings("unchecked")
+    private void refreshFromZoho(TeamsMeeting meeting) {
+        try {
+            ResponseEntity<Map> resp = restTemplate.exchange(
+                    meetingApiUrl + "/{orgId}/sessions/{sessionKey}.json",
+                    HttpMethod.GET,
+                    new HttpEntity<>(zohoHeaders()),
+                    Map.class,
+                    orgId,
+                    meeting.getGraphMeetingId());
+
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return;
+
+            Object sessionObj = resp.getBody().get("session");
+            if (!(sessionObj instanceof Map<?, ?> s)) return;
+
+            // topic / agenda
+            String topic = strVal(s.get("topic"));
+            if (topic != null && !topic.isBlank()) meeting.setSubject(topic);
+
+            // joinLink (participant URL)
+            String joinLink = strVal(s.get("joinLink"));
+            if (joinLink != null && !joinLink.isBlank()) meeting.setJoinUrl(joinLink);
+
+            // startLink (host-only launch URL)
+            String startLink = strVal(s.get("startLink"));
+            if (startLink != null && !startLink.isBlank()) meeting.setStartLink(startLink);
+
+            // password
+            String pwd = strVal(s.get("pwd"));
+            if (pwd != null && !pwd.isBlank()) meeting.setPassword(pwd);
+
+            meetingRepository.save(meeting);
+            log.info("[Zoho] Refreshed meeting #{} ({}) from Zoho GET session endpoint",
+                    meeting.getId(), meeting.getGraphMeetingId());
+        } catch (HttpClientErrorException ex) {
+            int status = ex.getStatusCode().value();
+            if (status == 404) {
+                log.warn("[Zoho] Session {} not found in Zoho (404) — skipping refresh.",
+                        meeting.getGraphMeetingId());
+            } else {
+                log.warn("[Zoho] GET session {} failed ({}): {}",
+                        meeting.getGraphMeetingId(), status,
+                        ex.getResponseBodyAsString());
+            }
+        } catch (Exception e) {
+            log.warn("[Zoho] Could not refresh meeting #{} from Zoho: {}",
+                    meeting.getId(), e.getMessage());
+        }
+    }
+
+    /** Null-safe string extractor (reused from ZohoSyncService pattern). */
+    private static String strVal(Object v) {
+        if (v == null) return null;
+        String s = String.valueOf(v).trim();
+        return s.isEmpty() ? null : s;
     }
 
     /**
@@ -296,17 +391,35 @@ public class TeamsService {
         log.info("Zoho update-meeting payload: {}", session);
 
         // PUT /api/v2/{orgId}/sessions/{sessionKey}.json
-        // If Zoho returns 403/INVALID_ORG_ID the session no longer exists in Zoho
+        // Zoho returns the full updated session object — capture joinLink / pwd.
+        // If Zoho returns a 4xx "not found" the session was deleted in Zoho
         // (e.g. expired past meeting) — re-create it so we get a fresh joinUrl.
         boolean recreated = false;
         try {
-            restTemplate.exchange(
+            ResponseEntity<Map> putResp = restTemplate.exchange(
                     meetingApiUrl + "/{orgId}/sessions/{sessionKey}.json",
                     HttpMethod.PUT,
                     new HttpEntity<>(body, zohoHeaders()),
                     Map.class,
                     orgId,
                     meeting.getGraphMeetingId());
+            // Extract updated fields from the Zoho response
+            // Response shape: { "session": { "meetingKey": ..., "joinLink": ..., "pwd": ... } }
+            if (putResp.getStatusCode().is2xxSuccessful() && putResp.getBody() != null) {
+                Object sessionObj = putResp.getBody().get("session");
+                if (sessionObj instanceof Map<?, ?> updatedSession) {
+                    Object newJoinLink = updatedSession.get("joinLink");
+                    if (newJoinLink != null && !String.valueOf(newJoinLink).isBlank()) {
+                        meeting.setJoinUrl(String.valueOf(newJoinLink));
+                        log.info("[Zoho] Updated joinUrl from PUT response for session {}",
+                                meeting.getGraphMeetingId());
+                    }
+                    Object newPwd = updatedSession.get("pwd");
+                    if (newPwd != null && !String.valueOf(newPwd).isBlank()) {
+                        meeting.setPassword(String.valueOf(newPwd));
+                    }
+                }
+            }
         } catch (HttpClientErrorException | HttpServerErrorException ex) {
             String raw = ex.getResponseBodyAsString();
             boolean isGone = raw.contains("INVALID_ORG_ID") ||
@@ -360,10 +473,9 @@ public class TeamsService {
             meeting.setInviteesJson(serializeInvitees(request.getInvitees()));
             syncPanelists(meeting.getGraphMeetingId(), oldInvitees, request.getInvitees());
         }
-        if (!recreated) {
-            // join URL unchanged on a normal update
-        }
 
+        log.info("[Zoho] Meeting #{} updated — recreated={}, joinUrl={}",
+                meeting.getId(), recreated, meeting.getJoinUrl());
         return toResponse(meetingRepository.save(meeting));
     }
 
@@ -377,39 +489,43 @@ public class TeamsService {
     /**
      * Cancels a meeting in Zoho and marks it cancelled locally.
      */
+    /**
+     * Calls Zoho DELETE /{orgId}/sessions/{sessionKey}.json (returns 204 No Content)
+     * then hard-deletes the record from the local DB.
+     * If Zoho reports the session no longer exists the local record is still removed.
+     */
     @Transactional
-    public void cancelMeeting(Long id) {
-        TeamsMeeting meeting = findById(id);
+    public void deleteMeeting(Long id) {
+        TeamsMeeting meeting = findById(id);   // throws IllegalArgumentException if not found
 
-        if ("CANCELLED".equals(meeting.getStatus())) {
-            throw new IllegalStateException("Meeting is already cancelled");
-        }
-
-        // DELETE /api/v2/{orgId}/sessions/{sessionKey}.json
-        // If the session no longer exists in Zoho, still mark as cancelled locally.
-        try {
-            restTemplate.exchange(
-                    meetingApiUrl + "/{orgId}/sessions/{sessionKey}.json",
-                    HttpMethod.DELETE,
-                    new HttpEntity<>(zohoHeaders()),
-                    Void.class,
-                    orgId,
-                    meeting.getGraphMeetingId());
-        } catch (HttpClientErrorException | HttpServerErrorException ex) {
-            String raw = ex.getResponseBodyAsString();
-            boolean isGone = raw.contains("INVALID_ORG_ID") ||
-                             raw.contains("Invalid Org Id") ||
-                             raw.contains("SESSION_NOT_FOUND") ||
-                             raw.contains("Invalid session");
-            if (!isGone) {
-                throw zohoError(ex);
+        if (meeting.getGraphMeetingId() != null) {
+            // DELETE /api/v2/{orgId}/sessions/{sessionKey}.json → 204 No Content
+            try {
+                restTemplate.exchange(
+                        meetingApiUrl + "/{orgId}/sessions/{sessionKey}.json",
+                        HttpMethod.DELETE,
+                        new HttpEntity<>(zohoHeaders()),
+                        Void.class,
+                        orgId,
+                        meeting.getGraphMeetingId());
+                log.info("[Zoho] Deleted session {} from Zoho (204).", meeting.getGraphMeetingId());
+            } catch (HttpClientErrorException | HttpServerErrorException ex) {
+                String raw = ex.getResponseBodyAsString();
+                boolean isGone = raw.contains("INVALID_ORG_ID") ||
+                                 raw.contains("Invalid Org Id") ||
+                                 raw.contains("SESSION_NOT_FOUND") ||
+                                 raw.contains("Invalid session");
+                if (!isGone) {
+                    throw zohoError(ex);
+                }
+                log.warn("[Zoho] Session {} was already absent in Zoho — removing locally.",
+                        meeting.getGraphMeetingId());
             }
-            log.warn("[Zoho] Session {} not found in Zoho during cancel — marking cancelled locally.",
-                    meeting.getGraphMeetingId());
         }
 
-        meeting.setStatus("CANCELLED");
-        meetingRepository.save(meeting);
+        // Hard-delete from local DB — Zoho has permanently removed the meeting
+        meetingRepository.deleteById(id);
+        log.info("[DB] Deleted meeting #{} from local store.", id);
     }
 
     // ---- helpers ----
@@ -476,6 +592,7 @@ public class TeamsService {
                 .batchId(m.getBatchId())
                 .meetingId(m.getGraphMeetingId())
                 .joinUrl(m.getJoinUrl())
+                .startLink(m.getStartLink())
                 .password(m.getPassword())
                 .duration(formatDuration(m.getStartDateTime(), m.getEndDateTime()))
                 .status(m.getStatus())
