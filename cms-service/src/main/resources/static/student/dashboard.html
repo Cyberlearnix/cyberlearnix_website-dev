@@ -13,6 +13,9 @@
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- Mobile sidebar backdrop -->
+<div class="cl-sidebar-backdrop" id="sidebarBackdrop"></div>
+
 <!-- App shell -->
 <div class="cl-app">
 
@@ -172,9 +175,9 @@
             </div>
             <div class="form-group">
               <label class="form-label">Profile Photo</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="url" class="form-control" id="pfPhoto" placeholder="https://..." style="flex:1;" />
-                <input type="file" id="pfPhotoFile" accept="image/*" style="width:180px;" />
+              <div class="upload-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="url" class="form-control" id="pfPhoto" placeholder="https://..." style="flex:1;min-width:160px;" />
+                <input type="file" id="pfPhotoFile" accept="image/*" style="width:180px;max-width:100%;" />
                 <button type="button" class="btn btn-secondary" id="uploadPhotoBtn">Upload</button>
               </div>
               <small class="form-text text-muted">You can paste a URL or upload a photo file.</small>
@@ -503,8 +506,26 @@ async function loadActivity() {
 
 /* ── Mobile menu ── */
 const menuToggle = document.getElementById('menuToggle');
+const sidebar = document.getElementById('sidebar');
+const backdrop = document.getElementById('sidebarBackdrop');
+
+function openSidebar() {
+  sidebar.classList.add('open');
+  if (backdrop) backdrop.classList.add('visible');
+}
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('visible');
+}
+
 if (window.innerWidth <= 768) menuToggle.style.display = 'flex';
-menuToggle.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+menuToggle.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+// Close sidebar when a nav item is tapped on mobile
+document.querySelectorAll('.cl-nav-item[data-section]').forEach(btn => {
+  btn.addEventListener('click', () => { if (window.innerWidth <= 768) closeSidebar(); });
+});
 
 /* ── Labs ── */
 let labsLoaded = false;

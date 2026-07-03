@@ -974,7 +974,7 @@ input, textarea, select {
 }
 
 /* ---------------------------------------------------------------
-   STUDENT PORTAL LAYOUT — App Shell, Sidebar, Header, Sections
+   STUDENT PORTAL LAYOUT ï¿½ App Shell, Sidebar, Header, Sections
    --------------------------------------------------------------- */
 
 /* -- CSS variable additions -- */
@@ -1204,7 +1204,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 @keyframes cl-spin { to { transform: rotate(360deg); } }
 
 /* ---------------------------------------------------------------
-   COURSE VIEWER — Outline Panel, Content Items, Modules
+   COURSE VIEWER ï¿½ Outline Panel, Content Items, Modules
    --------------------------------------------------------------- */
 
 .cl-outline-panel {
@@ -1285,10 +1285,73 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 /* -- Mobile Responsive -- */
 @media (max-width: 768px) {
-  .cl-sidebar { position: fixed; left: -280px; z-index: 200; transition: left 0.25s; }
+  /* Lock the app shell to viewport height so .cl-content can scroll internally */
+  .cl-app { height: 100vh; overflow: hidden; }
+
+  /* Sidebar flies in from left as an overlay */
+  .cl-sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    bottom: 0;
+    height: 100vh;
+    z-index: 200;
+    transition: left 0.25s;
+  }
   .cl-sidebar.open { left: 0; }
-  .cl-outline-panel { width: 100%; position: fixed; left: -100%; z-index: 200; transition: left 0.25s; }
+
+  /* Sidebar overlay backdrop */
+  .cl-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 199;
+  }
+  .cl-sidebar-backdrop.visible { display: block; }
+
+  /* Course outline panel overlay */
+  .cl-outline-panel {
+    width: 100%;
+    position: fixed;
+    left: -100%;
+    top: 0;
+    bottom: 0;
+    z-index: 200;
+    transition: left 0.25s;
+  }
   .cl-outline-panel.open { left: 0; }
-  .form-grid-2 { grid-template-columns: 1fr; }
+
+  /* Reduce inner padding for small screens */
+  .cl-content { padding: 16px; }
+  .cl-header { padding: 0 16px; }
+
+  /* Responsive grids */
+  .stats-grid        { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .courses-grid      { grid-template-columns: 1fr; }
+  .form-grid-2       { grid-template-columns: 1fr; }
+  .lab-meta-grid     { grid-template-columns: 1fr 1fr; }
+
+  /* Profile photo upload row wraps on narrow screens */
+  .upload-row {
+    flex-wrap: wrap !important;
+  }
+  .upload-row input[type="file"] {
+    width: 100% !important;
+  }
+
+  /* Table scroll on mobile */
+  .cl-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Stat value smaller on mobile */
+  .stat-value { font-size: 1.5rem; }
+
   #menuToggle { display: flex !important; }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; gap: 10px; }
+  .cl-content { padding: 12px; }
+  .cl-card { padding: 16px; }
+  .section-title { font-size: 1rem; }
 }
