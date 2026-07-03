@@ -37,8 +37,8 @@ public class TeamsMeeting {
 
     // ── Recurring fields ──────────────────────────────────────────────────────
 
-    @Column(name = "recurring", nullable = false, columnDefinition = "boolean not null default false")
-    private boolean recurring = false;
+    @Column(name = "recurring", columnDefinition = "boolean default false")
+    private Boolean recurring = false;
 
     /** DAILY, WEEKLY, MONTHLY — null for non-recurring meetings */
     @Column(name = "repeat_type")
