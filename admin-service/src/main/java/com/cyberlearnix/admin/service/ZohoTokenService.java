@@ -41,6 +41,9 @@ public class ZohoTokenService {
 
     private String cachedAccessToken;
     private Instant tokenExpiry = Instant.EPOCH;
+    // In-memory latest refresh token — updated on each successful refresh
+    // so Zoho's token-rotation policy doesn't invalidate us after the first use.
+    private String currentRefreshToken;
 
     public ZohoTokenService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -58,6 +61,9 @@ public class ZohoTokenService {
 
     @SuppressWarnings("unchecked")
     private void doRefresh() {
+        // Use the latest rotated token if we have one, otherwise fall back to config value
+        String tokenToUse = (currentRefreshToken != null) ? currentRefreshToken : refreshToken;
+
         String url = accountsUrl
                 + "/oauth/v2/token"
                 + "?refresh_token={refreshToken}"
@@ -67,7 +73,7 @@ public class ZohoTokenService {
 
         ResponseEntity<Map> response = restTemplate.postForEntity(
                 url, null, Map.class,
-                Map.of("refreshToken", refreshToken,
+                Map.of("refreshToken", tokenToUse,
                         "clientId", clientId,
                         "clientSecret", clientSecret));
 
@@ -81,5 +87,11 @@ public class ZohoTokenService {
                 ? ((Number) body.get("expires_in")).intValue()
                 : 3600;
         tokenExpiry = Instant.now().plusSeconds(expiresIn);
+
+        // Persist rotated refresh token in memory so subsequent refreshes use the latest token
+        String newRefreshToken = (String) body.get("refresh_token");
+        if (newRefreshToken != null && !newRefreshToken.isBlank()) {
+            currentRefreshToken = newRefreshToken;
+        }
     }
 }
