@@ -153,6 +153,11 @@ public class TeamsService {
         if (!request.getEndDateTime().isAfter(request.getStartDateTime())) {
             throw new IllegalArgumentException("End date/time must be after start date/time");
         }
+        // Allow up to 10 min in the past (clock skew / client round-trip tolerance).
+        if (request.getStartDateTime().isBefore(LocalDateTime.now().minusMinutes(10))) {
+            throw new IllegalArgumentException(
+                    "Meeting start time is too far in the past. Please choose a future time.");
+        }
 
         long durationMinutes = ChronoUnit.MINUTES.between(
                 request.getStartDateTime(), request.getEndDateTime());
@@ -162,7 +167,7 @@ public class TeamsService {
         session.put("topic", request.getSubject());
         session.put("agenda", request.getDescription() != null ? request.getDescription() : "");
         session.put("startTime", request.getStartDateTime().format(ZOHO_DATE_FMT));
-        session.put("duration", durationMinutes * 60L * 1000L); // Zoho expects milliseconds
+        session.put("duration", durationMinutes);   // Zoho expects MINUTES for session create/update
         session.put("timezone", "Asia/Kolkata");
         session.put("presenter", hostZuid);
 
@@ -382,7 +387,7 @@ public class TeamsService {
         session.put("topic", request.getSubject());
         session.put("agenda", request.getDescription() != null ? request.getDescription() : "");
         session.put("startTime", request.getStartDateTime().format(ZOHO_DATE_FMT));
-        session.put("duration", durationMinutes * 60L * 1000L); // Zoho expects milliseconds
+        session.put("duration", durationMinutes);   // Zoho expects MINUTES for session create/update
         session.put("timezone", "Asia/Kolkata");
         session.put("presenter", hostZuid);
         applyRecurringFields(session, request);

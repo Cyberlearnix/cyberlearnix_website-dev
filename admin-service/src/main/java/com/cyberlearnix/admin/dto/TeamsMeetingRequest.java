@@ -1,7 +1,6 @@
 package com.cyberlearnix.admin.dto;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,7 +17,9 @@ public class TeamsMeetingRequest {
     private String subject;
 
     @NotNull(message = "Start date/time is required")
-    @Future(message = "Start date/time must be in the future")
+    // NOTE: @Future is intentionally absent — the PUT/update path allows rescheduling
+    // meetings that are ongoing or have already started. Future enforcement is done
+    // manually inside TeamsService.scheduleMeeting() for the POST (create) path only.
     private LocalDateTime startDateTime;
 
     @NotNull(message = "End date/time is required")

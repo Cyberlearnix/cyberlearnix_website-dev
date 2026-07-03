@@ -223,15 +223,63 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 5. Deploy to K3s via SSH (port 6443 is firewalled; SSH on 9022 is open) ──
+  # ── 5. Update Helm image tags → ArgoCD auto-syncs to K3s ───────────────────
   deploy:
-    name: Deploy → K3s
+    name: Deploy → K3s (GitOps via ArgoCD)
     needs: [detect, build-push]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Deploy changed services via SSH
+      - uses: actions/checkout@v4
+        with:
+          # Use a PAT so the commit triggers the next CI run; GITHUB_TOKEN would not.
+          # If you don't have a PAT, remove token: and use the default GITHUB_TOKEN —
+          # ArgoCD will still pick up the Helm values change even if CI doesn't re-run.
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      # ── 5a. Update image SHAs in helm/values-k3s.yaml ──────────────────────
+      - name: Update image tags in Helm values
+        env:
+          CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          echo "Updating image tags for services: $CHANGED_SERVICES"
+          SERVICES=$(echo "$CHANGED_SERVICES" | jq -r '.[]')
+          for SERVICE in $SERVICES; do
+            # Replace the quoted SHA for this service in values-k3s.yaml
+            sed -i "s|  ${SERVICE}: \"[^\"]*\"|  ${SERVICE}: \"${GIT_SHA}\"|" helm/values-k3s.yaml
+            echo "  ✓ ${SERVICE} → ${GIT_SHA}"
+          done
+          echo "--- Updated tags ---"
+          grep -A1 "^images:" helm/values-k3s.yaml | head -30
+
+      # ── 5b. Commit & push values-k3s.yaml → ArgoCD detects change & syncs ──
+      - name: Commit updated Helm values
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add helm/values-k3s.yaml
+          # Only commit if there's a real change (idempotent on re-runs)
+          if git diff --staged --quiet; then
+            echo "No tag changes detected — skipping commit."
+          else
+            git commit -m "ci: update image tags → ${GIT_SHA:0:12}
+
+Services: ${{ needs.detect.outputs.matrix }}"
+            git push origin main
+            echo "✅ Helm values updated — ArgoCD will sync automatically."
+          fi
+
+      # ── 5c. Optional SSH health-check (non-blocking) ────────────────────────
+      # Checks pod status ~30s after push so ArgoCD has time to start a sync.
+      # Failures here are logged but never fail the pipeline — deployment
+      # health is owned by ArgoCD, not this step.
+      - name: Post-deploy health check (non-blocking)
+        if: ${{ secrets.SSH_DEPLOY_KEY != '' }}
         env:
           CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
           GIT_SHA: ${{ github.sha }}
@@ -243,19 +291,23 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "$SERVER_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$SERVER_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
           ssh -i ~/.ssh/id_deploy -p "$SERVER_PORT" \
             -o StrictHostKeyChecking=no \
             -o ConnectTimeout=30 \
-            "root@${SERVER_HOST}" \
-            "echo '=== PODS STATUS ===' && kubectl get pods -n ${K3S_NAMESPACE} && \
-             for pod in \$(kubectl get pods -n ${K3S_NAMESPACE} -o jsonpath='{.items[*].metadata.name}'); do \
-               echo '========================================'; \
-               echo \"LOGS FOR POD: \$pod\"; \
-               echo '========================================'; \
-               kubectl logs \$pod -n ${K3S_NAMESPACE} --tail=50 || true; \
-             done"
+            "root@${SERVER_HOST}" bash << 'REMOTE_EOF' || echo "⚠️  SSH health check failed — ArgoCD sync may still be in progress."
+          echo "=== PODS STATUS ==="
+          kubectl get pods -n "${K3S_NAMESPACE}" || true
+
+          echo "=== ARGOCD SYNC STATUS ==="
+          kubectl get application cyberlearnix -n argocd \
+            -o jsonpath='{.status.sync.status} {.status.health.status}' 2>/dev/null && echo || true
+
+          echo "=== RECENT EVENTS ==="
+          kubectl get events -n "${K3S_NAMESPACE}" \
+            --sort-by='.lastTimestamp' --field-selector type=Warning 2>/dev/null | tail -10 || true
+          REMOTE_EOF
 
           rm -f ~/.ssh/id_deploy
-          echo "✅ Diagnostic check completed successfully"
+          echo "✅ Health check complete."
