@@ -604,7 +604,7 @@ public class TeamsService {
                 .createdBy(m.getCreatedBy())
                 .createdAt(m.getCreatedAt())
                 .invitees(deserializeInvitees(m.getInviteesJson()))
-                .recurring(m.isRecurring())
+                .recurring(Boolean.TRUE.equals(m.getRecurring()))
                 .repeatType(m.getRepeatType())
                 .repeatEvery(m.getRepeatEvery())
                 .recurrenceEndDate(m.getRecurrenceEndDate())
