@@ -277,7 +277,7 @@ jobs:
       # Failures here are logged but never fail the pipeline — deployment
       # health is owned by ArgoCD, not this step.
       - name: Post-deploy health check (non-blocking)
-        if: ${{ secrets.SSH_DEPLOY_KEY != '' }}
+        if: "${{ secrets.SSH_DEPLOY_KEY != '' }}"
         env:
           CHANGED_SERVICES: ${{ needs.detect.outputs.matrix }}
           GIT_SHA: ${{ github.sha }}
