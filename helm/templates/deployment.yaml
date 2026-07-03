@@ -190,6 +190,26 @@ spec:
                   key: google-drive-folder-id
                   optional: true
             {{- end }}
+            {{- if eq $name "admin-service" }}
+            - name: ZOHO_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: zoho-client-id
+                  optional: true
+            - name: ZOHO_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: zoho-client-secret
+                  optional: true
+            - name: ZOHO_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cyberlearnix-secrets
+                  key: zoho-refresh-token
+                  optional: true
+            {{- end }}
             {{- if or (eq $name "user-service") (eq $name "notification-service") }}
             - name: MAIL_PASSWORD
               valueFrom:

@@ -267,9 +267,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No tag changes detected — skipping commit."
           else
-            git commit -m "ci: update image tags → ${GIT_SHA:0:12}
-
-Services: ${{ needs.detect.outputs.matrix }}"
+            git commit -m "ci: update image tags → ${GIT_SHA:0:12}"
             git push origin main
             echo "✅ Helm values updated — ArgoCD will sync automatically."
           fi
