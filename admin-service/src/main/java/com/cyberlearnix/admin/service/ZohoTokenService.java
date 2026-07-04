@@ -11,6 +11,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.Map;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 
 /**
  * Manages the Zoho OAuth 2.0 access token lifecycle.
@@ -148,6 +150,11 @@ public class ZohoTokenService {
     private void doRefresh() {
         String tokenToUse = getEffectiveRefreshToken();
 
+        if (tokenToUse == null || tokenToUse.isBlank()) {
+            throw new IllegalStateException(
+                "Zoho refresh token is not configured. Run the token seed script to re-authenticate.");
+        }
+
         String url = accountsUrl
                 + "/oauth/v2/token"
                 + "?refresh_token={refreshToken}"
@@ -155,15 +162,31 @@ public class ZohoTokenService {
                 + "&client_secret={clientSecret}"
                 + "&grant_type=refresh_token";
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                url, null, Map.class,
-                Map.of("refreshToken", tokenToUse,
-                        "clientId", clientId,
-                        "clientSecret", clientSecret));
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.postForEntity(
+                    url, null, Map.class,
+                    Map.of("refreshToken", tokenToUse,
+                            "clientId", clientId,
+                            "clientSecret", clientSecret));
+        } catch (HttpClientErrorException ex) {
+            throw new IllegalStateException(
+                "Zoho token refresh failed (HTTP " + ex.getStatusCode().value() + "): "
+                + ex.getResponseBodyAsString()
+                + ". The refresh token may have expired — please re-run the Zoho token seed.");
+        } catch (HttpServerErrorException ex) {
+            throw new IllegalStateException(
+                "Zoho accounts service returned a server error (HTTP "
+                + ex.getStatusCode().value() + ") — please try again later.");
+        }
 
         Map<String, Object> body = response.getBody();
         if (body == null || !body.containsKey("access_token")) {
-            throw new IllegalStateException("Zoho token refresh failed: " + body);
+            String errorDesc = body != null ? String.valueOf(body.getOrDefault("error_description", body)) : "null";
+            throw new IllegalStateException(
+                "Zoho token refresh failed — no access_token in response. "
+                + "Error: " + errorDesc
+                + ". Please re-run the Zoho token seed script (node seed-zoho-token.js).");
         }
 
         cachedAccessToken = (String) body.get("access_token");

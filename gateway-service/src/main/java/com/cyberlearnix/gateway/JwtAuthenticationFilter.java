@@ -134,6 +134,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (path.startsWith("/api/forms/payments/callback/")) return true;
             if (path.equals("/api/forms/payments/webhook")) return true;
             if (path.equals("/api/contact-submissions")) return true;  // Public contact form
+            // Zoho Meeting webhook — Zoho calls this without a JWT
+            if (path.startsWith("/api/attendance/webhooks/")) return true;
             return path.endsWith("/responses") || path.endsWith("/responses/check");
         }
 
@@ -156,7 +158,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             path.startsWith("/api/banners") ||
             path.startsWith("/api/promos") ||
             path.startsWith("/api/partners") ||
-            path.startsWith("/api/suggestions")) {
+            path.startsWith("/api/suggestions") ||
+            // Zoho Meeting webhook endpoints — called by Zoho without a JWT
+            path.startsWith("/api/attendance/webhooks/")) {
             return true;
         }
 

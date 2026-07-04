@@ -260,6 +260,7 @@ public class TeamsService {
         if (courseIds == null || courseIds.isEmpty()) return List.of();
         return meetingRepository.findByCourseIdInNotCancelled(courseIds)
                 .stream()
+                .filter(m -> m.getStartDateTime() != null && m.getEndDateTime() != null)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -272,6 +273,7 @@ public class TeamsService {
         LocalDateTime threshold = LocalDateTime.now().minusHours(1);
         return meetingRepository.findUpcomingAndLive(threshold)
                 .stream()
+                .filter(m -> m.getStartDateTime() != null && m.getEndDateTime() != null)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -612,7 +614,9 @@ public class TeamsService {
     }
 
     private String formatDuration(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null) return "N/A";
         long totalMinutes = ChronoUnit.MINUTES.between(start, end);
+        if (totalMinutes < 0) return "N/A";
         long hours = totalMinutes / 60;
         long minutes = totalMinutes % 60;
         if (hours == 0) return minutes + " min";
