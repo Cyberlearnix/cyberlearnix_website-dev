@@ -191,8 +191,16 @@ public class ZohoSyncService {
             result.put("status", ex.getStatusCode().value());
             result.put("error", ex.getResponseBodyAsString());
             return result;
+        } catch (Exception ex) {
+            // Catches token-refresh failures and other runtime errors
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("status", "ERROR");
+            result.put("error", ex.getMessage());
+            result.put("hint", "Check Zoho OAuth token \u2014 run: node seed-zoho-token.js");
+            return result;
         }
     }
+
 
     // ─── MEETING SYNC ──────────────────────────────────────────────────────
 
