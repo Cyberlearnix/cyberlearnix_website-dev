@@ -1,6 +1,6 @@
 package com.cyberlearnix.attendance.service;
 
-import com.cyberlearnix.attendance.entity.MeetingSession;
+import com.cyberlearnix.attendance.entity.MeetingAttendance;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -9,9 +9,6 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Broadcasts real-time attendance events over WebSocket (STOMP).
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -38,28 +35,27 @@ public class LiveAttendanceService {
         send(DEST_ADMIN_LIVE, msg);
     }
 
-    public void broadcastParticipantJoined(String meetingId, MeetingSession session) {
+    public void broadcastParticipantJoined(String meetingId, MeetingAttendance session) {
         Map<String, Object> payload = new HashMap<>();
         payload.put(KEY_EVENT, "PARTICIPANT_JOINED");
         payload.put(KEY_MEETING_ID, meetingId);
         payload.put(KEY_STUDENT_ID, session.getStudentId());
-        payload.put("studentName", session.getStudentName());
-        payload.put("studentEmail", session.getStudentEmail());
-        payload.put("joinedAt", session.getJoinedAt());
-        payload.put("sessionSequence", session.getSessionSequence());
+        payload.put("studentName", session.getStudentId());
+        payload.put("studentEmail", session.getStudentId());
+        payload.put("joinedAt", session.getJoinTime());
         payload.put(KEY_TIMESTAMP, System.currentTimeMillis());
         send(DEST_MEETING_PREFIX + meetingId + DEST_SUFFIX_ATTENDANCE, payload);
         send(DEST_ADMIN_LIVE, payload);
     }
 
-    public void broadcastParticipantLeft(String meetingId, MeetingSession session) {
+    public void broadcastParticipantLeft(String meetingId, MeetingAttendance session) {
         Map<String, Object> payload = new HashMap<>();
         payload.put(KEY_EVENT, "PARTICIPANT_LEFT");
         payload.put(KEY_MEETING_ID, meetingId);
         payload.put(KEY_STUDENT_ID, session.getStudentId());
-        payload.put("studentName", session.getStudentName());
-        payload.put("leftAt", session.getLeftAt());
-        payload.put("durationSeconds", session.getDurationSeconds());
+        payload.put("studentName", session.getStudentId());
+        payload.put("leftAt", session.getLeaveTime());
+        payload.put("durationMinutes", session.getDurationMinutes());
         payload.put(KEY_TIMESTAMP, System.currentTimeMillis());
         send(DEST_MEETING_PREFIX + meetingId + DEST_SUFFIX_ATTENDANCE, payload);
         send(DEST_ADMIN_LIVE, payload);
@@ -74,7 +70,6 @@ public class LiveAttendanceService {
         payload.put("status", status);
         payload.put(KEY_TIMESTAMP, System.currentTimeMillis());
         send(DEST_MEETING_PREFIX + meetingId + DEST_SUFFIX_ATTENDANCE, payload);
-        // Personal channel for student
         send("/topic/student/" + studentId + DEST_SUFFIX_ATTENDANCE, payload);
     }
 

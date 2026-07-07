@@ -2,8 +2,10 @@ package com.cyberlearnix.attendance.service;
 
 import com.cyberlearnix.attendance.dto.AttendanceDto;
 import com.cyberlearnix.attendance.dto.StudentAttendanceReport;
-import com.cyberlearnix.attendance.entity.*;
-import com.cyberlearnix.attendance.repository.*;
+import com.cyberlearnix.attendance.entity.Meeting;
+import com.cyberlearnix.attendance.entity.MeetingAttendance;
+import com.cyberlearnix.attendance.repository.MeetingAttendanceRepository;
+import com.cyberlearnix.attendance.repository.MeetingRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -18,25 +20,21 @@ import java.util.List;
 public class AttendanceExportService {
 
     private final MeetingRepository meetingRepo;
-    private final FinalAttendanceRepository finalAttRepo;
+    private final MeetingAttendanceRepository attendanceRepo;
     private final AttendanceAnalyticsService analyticsService;
 
-    /**
-     * Export all attendance for a meeting as Excel bytes.
-     */
     public byte[] exportMeetingAttendanceExcel(String meetingId) throws IOException {
         if (!meetingRepo.existsById(meetingId)) {
             throw new IllegalArgumentException("Meeting not found: " + meetingId);
         }
-        List<FinalAttendance> records = finalAttRepo.findByMeetingIdOrderByStudentNameAsc(meetingId);
+        List<MeetingAttendance> records = attendanceRepo.findByMeetingIdOrderByStudentIdAsc(meetingId);
 
         try (Workbook wb = new XSSFWorkbook()) {
             Sheet sheet = wb.createSheet("Attendance");
-            String[] cols = {"Student ID", "Name", "Email", "Duration (min)", "Meeting Duration (min)",
-                "Attendance %", "Status", "Rejoin Count", "Late", "Late By (min)", "Overridden", "Counts for Certificate"};
+            String[] cols = {"Student ID", "Duration (min)", "Attendance %", "Status", "Joined At", "Left At"};
             createStyledHeaderRow(sheet, cols, wb);
             int rowNum = 1;
-            for (FinalAttendance fa : records) {
+            for (MeetingAttendance fa : records) {
                 writeMeetingAttendanceRow(sheet.createRow(rowNum++), fa);
             }
             autoSize(sheet, cols.length);
@@ -46,9 +44,6 @@ public class AttendanceExportService {
         }
     }
 
-    /**
-     * Export student report for a course as Excel.
-     */
     public byte[] exportStudentReportExcel(String studentId, String courseId) throws IOException {
         StudentAttendanceReport report = analyticsService.buildStudentReport(studentId, courseId);
 
@@ -70,8 +65,6 @@ public class AttendanceExportService {
         }
     }
 
-    // ---- helpers ----
-
     private void createStyledHeaderRow(Sheet sheet, String[] cols, Workbook wb) {
         createStyledHeaderRow(sheet, cols, wb, 0);
     }
@@ -89,32 +82,27 @@ public class AttendanceExportService {
         }
     }
 
-    private void writeMeetingAttendanceRow(Row row, FinalAttendance fa) {
+    private void writeMeetingAttendanceRow(Row row, MeetingAttendance fa) {
         row.createCell(0).setCellValue(fa.getStudentId());
-        row.createCell(1).setCellValue(safe(fa.getStudentName()));
-        row.createCell(2).setCellValue(safe(fa.getStudentEmail()));
-        row.createCell(3).setCellValue(fa.getTotalActiveSeconds() != null ? fa.getTotalActiveSeconds() / 60.0 : 0);
-        row.createCell(4).setCellValue(fa.getMeetingDurationSeconds() != null ? fa.getMeetingDurationSeconds() / 60.0 : 0);
-        row.createCell(5).setCellValue(fa.getAttendancePercentage() != null ? fa.getAttendancePercentage() : 0);
-        row.createCell(6).setCellValue(fa.getStatus() != null ? fa.getStatus().name() : "");
-        row.createCell(7).setCellValue(fa.getRejoinCount() != null ? fa.getRejoinCount() : 0);
-        row.createCell(8).setCellValue(Boolean.TRUE.equals(fa.getLate()) ? "Yes" : "No");
-        row.createCell(9).setCellValue(fa.getLateByMinutes() != null ? fa.getLateByMinutes() : 0);
-        row.createCell(10).setCellValue(Boolean.TRUE.equals(fa.getOverridden()) ? "Yes" : "No");
-        row.createCell(11).setCellValue(Boolean.TRUE.equals(fa.getCountsForCertificate()) ? "Yes" : "No");
+        row.createCell(1).setCellValue(fa.getDurationMinutes() != null ? fa.getDurationMinutes() : 0);
+        row.createCell(2).setCellValue(fa.getAttendancePercentage() != null ? fa.getAttendancePercentage() : 0);
+        row.createCell(3).setCellValue(fa.getAttendanceStatus() != null ? fa.getAttendanceStatus().name() : "");
+        row.createCell(4).setCellValue(fa.getJoinTime() != null ? fa.getJoinTime().toString() : "");
+        row.createCell(5).setCellValue(fa.getLeaveTime() != null ? fa.getLeaveTime().toString() : "");
     }
 
     private void writeSummarySection(Sheet sheet, StudentAttendanceReport report) {
         Row r0 = sheet.createRow(0);
-        r0.createCell(0).setCellValue("Student");
-        r0.createCell(1).setCellValue(safe(report.getStudentName()) + " (" + safe(report.getStudentEmail()) + ")");
+        r0.createCell(0).setCellValue("Student:");
+        r0.createCell(1).setCellValue(report.getStudentName());
+        r0.createCell(3).setCellValue("Overall Attendance:");
+        r0.createCell(4).setCellValue(report.getOverallPercentage() != null ? report.getOverallPercentage() / 100.0 : 0);
+
         Row r1 = sheet.createRow(1);
-        r1.createCell(0).setCellValue("Overall %");
-        r1.createCell(1).setCellValue(report.getOverallPercentage() != null ? report.getOverallPercentage() : 0);
-        Row r2 = sheet.createRow(2);
-        r2.createCell(0).setCellValue("Certificate Eligible");
-        r2.createCell(1).setCellValue(Boolean.TRUE.equals(report.getCertificateEligible()) ? "YES" : "NO");
-        sheet.createRow(3);
+        r1.createCell(0).setCellValue("Total Classes:");
+        r1.createCell(1).setCellValue(report.getTotalMeetings() != null ? report.getTotalMeetings() : 0);
+        r1.createCell(3).setCellValue("Present Status:");
+        r1.createCell(4).setCellValue("P: " + report.getPresentCount() + ", L: " + report.getLateCount() + ", A: " + report.getAbsentCount());
     }
 
     private void writeSessionRow(Row row, AttendanceDto a) {
@@ -124,14 +112,16 @@ public class AttendanceExportService {
         row.createCell(3).setCellValue(a.getMeetingDurationSeconds() != null ? a.getMeetingDurationSeconds() / 60.0 : 0);
         row.createCell(4).setCellValue(a.getAttendancePercentage() != null ? a.getAttendancePercentage() : 0);
         row.createCell(5).setCellValue(a.getStatus() != null ? a.getStatus().name() : "");
-        row.createCell(6).setCellValue(Boolean.TRUE.equals(a.getLate()) ? "Yes" : "No");
+        row.createCell(6).setCellValue(Boolean.TRUE.equals(a.getLate()) ? "LATE" : "ON TIME");
     }
 
-    private void autoSize(Sheet sheet, int columns) {
-        for (int i = 0; i < columns; i++) sheet.autoSizeColumn(i);
+    private void autoSize(Sheet sheet, int cols) {
+        for (int i = 0; i < cols; i++) {
+            sheet.autoSizeColumn(i);
+        }
     }
 
     private String safe(String s) {
-        return s != null ? s : "";
+        return s == null ? "" : s;
     }
 }

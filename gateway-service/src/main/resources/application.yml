@@ -206,7 +206,7 @@ spring:
         - id: admin-service
           uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
           predicates:
-            - Path=/api/admin/**, /api/meetings/**
+            - Path=/api/admin/**
 
         # Admin LMS Portal — JWT + role-gated via JwtAuthenticationFilter
         # Routes /adminlms to the frontend dev server (Vite) or production static server.
@@ -231,7 +231,7 @@ spring:
         - id: attendance-service
           uri: ${ATTENDANCE_SERVICE_URL:http://127.0.0.1:8092}
           predicates:
-            - Path=/api/attendance/**,/ws/attendance/**
+            - Path=/api/attendance/**,/ws/attendance/**,/api/meetings/**,/api/v1/**
 
         # Lab Service — REST management API
         - id: lab-service

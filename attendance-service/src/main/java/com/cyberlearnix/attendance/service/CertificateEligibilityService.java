@@ -1,10 +1,10 @@
 package com.cyberlearnix.attendance.service;
 
 import com.cyberlearnix.attendance.entity.CertificateEligibility;
-import com.cyberlearnix.attendance.entity.FinalAttendance;
+import com.cyberlearnix.attendance.entity.MeetingAttendance;
 import com.cyberlearnix.attendance.entity.Meeting;
 import com.cyberlearnix.attendance.repository.CertificateEligibilityRepository;
-import com.cyberlearnix.attendance.repository.FinalAttendanceRepository;
+import com.cyberlearnix.attendance.repository.MeetingAttendanceRepository;
 import com.cyberlearnix.attendance.repository.MeetingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class CertificateEligibilityService {
 
     private final CertificateEligibilityRepository certRepo;
-    private final FinalAttendanceRepository finalAttRepo;
+    private final MeetingAttendanceRepository attendanceRepo;
     private final MeetingRepository meetingRepo;
 
     @Lazy
@@ -38,32 +38,32 @@ public class CertificateEligibilityService {
     public void recalculateForCourse(String courseId) {
         log.info("Recalculating certificate eligibility for course: {}", courseId);
 
-        List<Meeting> meetings = meetingRepo.findByCourseIdOrderByScheduledStartDesc(courseId);
-        long totalMandatory = meetings.stream().filter(m -> Boolean.TRUE.equals(m.getMandatory())).count();
+        Long cId = Long.parseLong(courseId);
+        List<Meeting> meetings = meetingRepo.findByCourseId(cId);
 
         // Group all attendance records by student
-        List<FinalAttendance> allAttendance = meetings.stream()
-            .flatMap(m -> finalAttRepo.findByMeetingIdOrderByStudentNameAsc(m.getId()).stream())
+        List<MeetingAttendance> allAttendance = meetings.stream()
+            .flatMap(m -> attendanceRepo.findByMeetingIdOrderByStudentIdAsc(m.getId()).stream())
             .toList();
 
-        Map<String, List<FinalAttendance>> byStudent = allAttendance.stream()
-            .collect(Collectors.groupingBy(FinalAttendance::getStudentId));
+        Map<String, List<MeetingAttendance>> byStudent = allAttendance.stream()
+            .collect(Collectors.groupingBy(MeetingAttendance::getStudentId));
 
         byStudent.forEach((studentId, records) ->
-            self.recalculateForStudentAndCourse(studentId, courseId, records, meetings.size(), (int) totalMandatory));
+            self.recalculateForStudentAndCourse(studentId, courseId, records, meetings.size(), meetings.size()));
     }
 
     @Transactional
     public CertificateEligibility recalculateForStudentAndCourse(
             String studentId, String courseId,
-            List<FinalAttendance> records, int totalMeetings, int mandatoryMeetings) {
+            List<MeetingAttendance> records, int totalMeetings, int mandatoryMeetings) {
 
         long attended = records.stream()
-            .filter(r -> r.getStatus() != FinalAttendance.AttendanceStatus.ABSENT)
+            .filter(r -> r.getAttendanceStatus() != MeetingAttendance.AttendanceStatus.ABSENT)
             .count();
 
         long mandatoryAttended = records.stream()
-            .filter(r -> r.getCountsForCertificate() != null && r.getCountsForCertificate())
+            .filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.PRESENT)
             .count();
 
         double overallPct = totalMeetings > 0 ? (double) attended / totalMeetings * 100.0 : 0.0;
@@ -80,11 +80,8 @@ public class CertificateEligibilityService {
                 CertificateEligibility newCe = new CertificateEligibility();
                 newCe.setStudentId(studentId);
                 newCe.setCourseId(courseId);
-                // populate name/email from first record
-                records.stream().findFirst().ifPresent(r -> {
-                    newCe.setStudentName(r.getStudentName());
-                    newCe.setStudentEmail(r.getStudentEmail());
-                });
+                newCe.setStudentName(studentId);
+                newCe.setStudentEmail(studentId);
                 return newCe;
             });
 
