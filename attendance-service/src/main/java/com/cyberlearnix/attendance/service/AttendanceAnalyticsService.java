@@ -6,6 +6,7 @@ import com.cyberlearnix.attendance.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -15,42 +16,42 @@ import java.util.stream.Collectors;
 public class AttendanceAnalyticsService {
 
     private final MeetingRepository meetingRepo;
-    private final FinalAttendanceRepository finalAttRepo;
-    private final MeetingSessionRepository sessionRepo;
+    private final MeetingAttendanceRepository attendanceRepo;
     private final CertificateEligibilityRepository certRepo;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    public AttendanceAnalyticsDto buildCourseAnalytics(String courseId) {
-        List<Meeting> meetings = meetingRepo.findByCourseIdOrderByScheduledStartDesc(courseId);
+    public AttendanceAnalyticsDto buildCourseAnalytics(String courseIdStr) {
+        Long courseId = Long.parseLong(courseIdStr);
+        List<Meeting> meetings = meetingRepo.findByCourseId(courseId);
 
-        List<FinalAttendance> allRecords = meetings.stream()
-            .flatMap(m -> finalAttRepo.findByMeetingIdOrderByStudentNameAsc(m.getId()).stream())
+        List<MeetingAttendance> allRecords = meetings.stream()
+            .flatMap(m -> attendanceRepo.findByMeetingIdOrderByStudentIdAsc(m.getId()).stream())
             .toList();
 
-        Set<String> students = allRecords.stream().map(FinalAttendance::getStudentId).collect(Collectors.toSet());
+        Set<String> students = allRecords.stream().map(MeetingAttendance::getStudentId).collect(Collectors.toSet());
 
         double avgPct = allRecords.stream()
-            .mapToDouble(FinalAttendance::getAttendancePercentage)
+            .mapToDouble(a -> a.getAttendancePercentage() != null ? a.getAttendancePercentage() : 0.0)
             .average().orElse(0.0);
 
         AttendanceAnalyticsDto dto = new AttendanceAnalyticsDto();
-        dto.setCourseId(courseId);
+        dto.setCourseId(courseIdStr);
         dto.setTotalMeetings(meetings.size());
         dto.setTotalStudents(students.size());
         dto.setAvgAttendancePercentage(avgPct);
 
-        dto.setPresentCount(allRecords.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.PRESENT).count());
-        dto.setPartialCount(allRecords.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.PARTIAL).count());
-        dto.setLateCount(allRecords.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.LATE).count());
-        dto.setAbsentCount(allRecords.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.ABSENT).count());
-        dto.setExcusedCount(allRecords.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.EXCUSED).count());
+        dto.setPresentCount(allRecords.stream().filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.PRESENT).count());
+        dto.setPartialCount(0L);
+        dto.setLateCount(allRecords.stream().filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.LATE).count());
+        dto.setAbsentCount(allRecords.stream().filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.ABSENT).count());
+        dto.setExcusedCount(0L);
 
         // Daily trend
-        Map<String, List<FinalAttendance>> byDate = meetings.stream()
+        Map<String, List<MeetingAttendance>> byDate = meetings.stream()
             .collect(Collectors.toMap(
-                m -> m.getScheduledStart().format(DATE_FMT),
-                m -> finalAttRepo.findByMeetingIdOrderByStudentNameAsc(m.getId()),
+                m -> m.getStartTime().format(DATE_FMT),
+                m -> attendanceRepo.findByMeetingId(m.getId()),
                 (a, b) -> { a.addAll(b); return a; }
             ));
 
@@ -59,30 +60,30 @@ public class AttendanceAnalyticsService {
             .map(e -> {
                 AttendanceAnalyticsDto.TrendPoint tp = new AttendanceAnalyticsDto.TrendPoint();
                 tp.setDate(e.getKey());
-                tp.setAvgPercentage(e.getValue().stream().mapToDouble(FinalAttendance::getAttendancePercentage).average().orElse(0.0));
+                tp.setAvgPercentage(e.getValue().stream().mapToDouble(a -> a.getAttendancePercentage() != null ? a.getAttendancePercentage() : 0.0).average().orElse(0.0));
                 tp.setTotalStudents(e.getValue().size());
-                tp.setPresentCount((int) e.getValue().stream().filter(r -> r.getStatus() != FinalAttendance.AttendanceStatus.ABSENT).count());
+                tp.setPresentCount((int) e.getValue().stream().filter(r -> r.getAttendanceStatus() != MeetingAttendance.AttendanceStatus.ABSENT).count());
                 return tp;
             })
             .toList();
         dto.setDailyTrend(daily);
 
         // Per-student ranking
-        Map<String, List<FinalAttendance>> byStudent = allRecords.stream()
-            .collect(Collectors.groupingBy(FinalAttendance::getStudentId));
+        Map<String, List<MeetingAttendance>> byStudent = allRecords.stream()
+            .collect(Collectors.groupingBy(MeetingAttendance::getStudentId));
 
         List<AttendanceAnalyticsDto.StudentRank> ranks = byStudent.entrySet().stream()
             .map(e -> {
                 AttendanceAnalyticsDto.StudentRank rank = new AttendanceAnalyticsDto.StudentRank();
                 rank.setStudentId(e.getKey());
-                rank.setStudentName(e.getValue().get(0).getStudentName());
-                rank.setStudentEmail(e.getValue().get(0).getStudentEmail());
+                rank.setStudentName(e.getKey());
+                rank.setStudentEmail(e.getKey());
                 rank.setTotalMeetings(e.getValue().size());
                 rank.setAttendedCount((int) e.getValue().stream()
-                    .filter(r -> r.getStatus() != FinalAttendance.AttendanceStatus.ABSENT).count());
+                    .filter(r -> r.getAttendanceStatus() != MeetingAttendance.AttendanceStatus.ABSENT).count());
                 rank.setAvgPercentage(e.getValue().stream()
-                    .mapToDouble(FinalAttendance::getAttendancePercentage).average().orElse(0.0));
-                certRepo.findByStudentIdAndCourseId(e.getKey(), courseId)
+                    .mapToDouble(a -> a.getAttendancePercentage() != null ? a.getAttendancePercentage() : 0.0).average().orElse(0.0));
+                certRepo.findByStudentIdAndCourseId(e.getKey(), courseIdStr)
                     .ifPresent(c -> rank.setEligibilityStatus(c.getEligible() ? "ELIGIBLE" : "INELIGIBLE"));
                 return rank;
             })
@@ -99,16 +100,16 @@ public class AttendanceAnalyticsService {
         // Meeting breakdown
         List<AttendanceAnalyticsDto.MeetingBreakdown> breakdowns = meetings.stream()
             .map(m -> {
-                List<FinalAttendance> mRecords = finalAttRepo.findByMeetingIdOrderByStudentNameAsc(m.getId());
+                List<MeetingAttendance> mRecords = attendanceRepo.findByMeetingId(m.getId());
                 AttendanceAnalyticsDto.MeetingBreakdown b = new AttendanceAnalyticsDto.MeetingBreakdown();
                 b.setMeetingId(m.getId());
                 b.setMeetingTitle(m.getTitle());
-                b.setScheduledStart(m.getScheduledStart() != null ? m.getScheduledStart().toString() : null);
+                b.setScheduledStart(m.getStartTime() != null ? m.getStartTime().toString() : null);
                 b.setTotalInvited(mRecords.size());
-                b.setTotalJoined((int) mRecords.stream().filter(r -> r.getStatus() != FinalAttendance.AttendanceStatus.ABSENT).count());
-                b.setAvgAttendancePercent(mRecords.stream().mapToDouble(FinalAttendance::getAttendancePercentage).average().orElse(0.0));
-                b.setPresentCount(mRecords.stream().filter(r -> r.getStatus() != FinalAttendance.AttendanceStatus.ABSENT).count());
-                b.setAbsentCount(mRecords.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.ABSENT).count());
+                b.setTotalJoined((int) mRecords.stream().filter(r -> r.getAttendanceStatus() != MeetingAttendance.AttendanceStatus.ABSENT).count());
+                b.setAvgAttendancePercent(mRecords.stream().mapToDouble(a -> a.getAttendancePercentage() != null ? a.getAttendancePercentage() : 0.0).average().orElse(0.0));
+                b.setPresentCount(mRecords.stream().filter(r -> r.getAttendanceStatus() != MeetingAttendance.AttendanceStatus.ABSENT).count());
+                b.setAbsentCount(mRecords.stream().filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.ABSENT).count());
                 return b;
             })
             .toList();
@@ -118,11 +119,14 @@ public class AttendanceAnalyticsService {
     }
 
     public StudentAttendanceReport buildStudentReport(String studentId, String courseId) {
-        List<FinalAttendance> records;
+        List<MeetingAttendance> records = attendanceRepo.findByStudentId(studentId, org.springframework.data.domain.Pageable.unpaged()).getContent();
         if (courseId != null && !courseId.isBlank()) {
-            records = finalAttRepo.findByCourseAndStudent(courseId, studentId);
-        } else {
-            records = finalAttRepo.findByStudentIdOrderByCreatedAtDesc(studentId);
+            records = records.stream()
+                .filter(r -> {
+                    Optional<Meeting> m = meetingRepo.findById(r.getMeetingId());
+                    return m.isPresent() && String.valueOf(m.get().getCourseId()).equals(courseId);
+                })
+                .toList();
         }
 
         StudentAttendanceReport report = new StudentAttendanceReport();
@@ -131,17 +135,17 @@ public class AttendanceAnalyticsService {
         report.setTotalMeetings(records.size());
 
         if (!records.isEmpty()) {
-            report.setStudentName(records.get(0).getStudentName());
-            report.setStudentEmail(records.get(0).getStudentEmail());
+            report.setStudentName(studentId);
+            report.setStudentEmail(studentId);
         }
 
-        report.setPresentCount((int) records.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.PRESENT).count());
-        report.setPartialCount((int) records.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.PARTIAL).count());
-        report.setLateCount((int) records.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.LATE).count());
-        report.setAbsentCount((int) records.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.ABSENT).count());
-        report.setExcusedCount((int) records.stream().filter(r -> r.getStatus() == FinalAttendance.AttendanceStatus.EXCUSED).count());
+        report.setPresentCount((int) records.stream().filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.PRESENT).count());
+        report.setPartialCount(0);
+        report.setLateCount((int) records.stream().filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.LATE).count());
+        report.setAbsentCount((int) records.stream().filter(r -> r.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.ABSENT).count());
+        report.setExcusedCount(0);
 
-        double overall = records.stream().mapToDouble(FinalAttendance::getAttendancePercentage).average().orElse(0.0);
+        double overall = records.stream().mapToDouble(a -> a.getAttendancePercentage() != null ? a.getAttendancePercentage() : 0.0).average().orElse(0.0);
         report.setOverallPercentage(overall);
 
         if (courseId != null) {
@@ -151,38 +155,36 @@ public class AttendanceAnalyticsService {
             });
         }
 
-        // Map to DTOs
         report.setSessions(records.stream().map(this::toDto).toList());
         return report;
     }
 
-    private AttendanceDto toDto(FinalAttendance fa) {
+    private AttendanceDto toDto(MeetingAttendance a) {
         AttendanceDto dto = new AttendanceDto();
-        dto.setId(fa.getId());
-        dto.setMeetingId(fa.getMeetingId());
-        dto.setStudentId(fa.getStudentId());
-        dto.setStudentName(fa.getStudentName());
-        dto.setStudentEmail(fa.getStudentEmail());
-        dto.setTotalActiveSeconds(fa.getTotalActiveSeconds());
-        dto.setMeetingDurationSeconds(fa.getMeetingDurationSeconds());
-        dto.setAttendancePercentage(fa.getAttendancePercentage());
-        dto.setStatus(fa.getStatus());
-        dto.setRejoinCount(fa.getRejoinCount());
-        dto.setLate(fa.getLate());
-        dto.setLateByMinutes(fa.getLateByMinutes());
-        dto.setOverridden(fa.getOverridden());
-        dto.setOverrideBy(fa.getOverrideBy());
-        dto.setOverrideAt(fa.getOverrideAt());
-        dto.setOverrideReason(fa.getOverrideReason());
-        dto.setLocked(fa.getLocked());
-        dto.setCountsForCertificate(fa.getCountsForCertificate());
-        dto.setAdminNotes(fa.getAdminNotes());
-        dto.setCreatedAt(fa.getCreatedAt());
-        dto.setUpdatedAt(fa.getUpdatedAt());
+        dto.setId(a.getId());
+        dto.setMeetingId(a.getMeetingId());
+        dto.setStudentId(a.getStudentId());
+        dto.setStudentName(a.getStudentId());
+        dto.setStudentEmail(a.getStudentId());
+        dto.setTotalActiveSeconds(a.getDurationMinutes() != null ? (long) a.getDurationMinutes() * 60 : 0L);
+        dto.setMeetingDurationSeconds(3600L);
+        dto.setAttendancePercentage(a.getAttendancePercentage());
+        dto.setStatus(a.getAttendanceStatus());
+        dto.setRejoinCount(0);
+        dto.setLate(a.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.LATE);
+        dto.setLateByMinutes(0);
+        dto.setOverridden(false);
+        dto.setLocked(false);
+        dto.setCountsForCertificate(a.getAttendanceStatus() != MeetingAttendance.AttendanceStatus.ABSENT);
+        dto.setAdminNotes("");
+        dto.setCreatedAt(a.getCreatedAt());
+        dto.setUpdatedAt(a.getCreatedAt());
 
-        meetingRepo.findById(fa.getMeetingId()).ifPresent(m -> {
+        meetingRepo.findById(a.getMeetingId()).ifPresent(m -> {
             dto.setMeetingTitle(m.getTitle());
-            dto.setMeetingScheduledStart(m.getScheduledStart());
+            dto.setMeetingScheduledStart(m.getStartTime());
+            long durSec = Duration.between(m.getStartTime(), m.getEndTime()).toSeconds();
+            dto.setMeetingDurationSeconds(durSec > 0 ? durSec : 3600L);
         });
         return dto;
     }

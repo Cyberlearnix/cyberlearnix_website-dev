@@ -8,23 +8,35 @@ import java.time.LocalDateTime;
 
 @Data
 public class CreateMeetingRequest {
-    @NotBlank
+
+    @NotBlank(message = "Title is required")
     private String title;
 
     private String description;
 
-    @NotNull
-    private LocalDateTime scheduledStart;
+    @NotNull(message = "Course ID is required")
+    private Long courseId;
 
-    @NotNull
-    private LocalDateTime scheduledEnd;
+    @NotBlank(message = "Faculty ID is required")
+    private String facultyId;
 
-    private String courseId;
-    private String batchId;
+    @NotNull(message = "Start time is required")
+    private LocalDateTime startTime;
 
-    private Boolean mandatory = true;
-    private String notes;
+    @NotNull(message = "End time is required")
+    private LocalDateTime endTime;
 
-    /** If true, also create the meeting in Zoho */
-    private Boolean createInZoho = false;
+    private String createdBy;
+
+    public void setSubject(String subject) {
+        this.title = subject;
+    }
+
+    public void setStartDateTime(LocalDateTime startDateTime) {
+        this.startTime = startDateTime;
+    }
+
+    public void setEndDateTime(LocalDateTime endDateTime) {
+        this.endTime = endDateTime;
+    }
 }

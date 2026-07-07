@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
 import java.util.TimeZone;
 
 @SpringBootApplication(scanBasePackages = "com.cyberlearnix.attendance")
@@ -14,6 +16,7 @@ import java.util.TimeZone;
 @EnableJpaRepositories("com.cyberlearnix.attendance.repository")
 @EnableJpaAuditing
 @EnableScheduling
+@EnableFeignClients
 public class AttendanceServiceApplication {
 
     public static void main(String[] args) {

@@ -1,6 +1,6 @@
 package com.cyberlearnix.attendance.dto;
 
-import com.cyberlearnix.attendance.entity.FinalAttendance;
+import com.cyberlearnix.attendance.entity.MeetingAttendance;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -17,7 +17,7 @@ public class AttendanceDto {
     private Long totalActiveSeconds;
     private Long meetingDurationSeconds;
     private Double attendancePercentage;
-    private FinalAttendance.AttendanceStatus status;
+    private MeetingAttendance.AttendanceStatus status;
     private Integer rejoinCount;
     private Boolean late;
     private Integer lateByMinutes;

@@ -13,24 +13,36 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/faculty/meetings")
+@RequestMapping("/api/v1/admin/meetings")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('FACULTY', 'TEACHER', 'ADMIN')")
-public class MeetingController {
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminMeetingController {
 
     private final MeetingService meetingService;
 
     @PostMapping
     public ResponseEntity<MeetingResponse> createMeeting(
             @Valid @RequestBody CreateMeetingRequest request,
-            @RequestHeader(value = "X-User-Id", defaultValue = "faculty") String facultyId) {
-        request.setFacultyId(facultyId);
-        MeetingResponse response = meetingService.createMeeting(request, facultyId);
+            @RequestHeader(value = "X-User-Id", defaultValue = "admin") String adminId) {
+        MeetingResponse response = meetingService.createMeeting(request, adminId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
     public ResponseEntity<List<MeetingResponse>> getMeetings() {
         return ResponseEntity.ok(meetingService.getAllMeetings());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<MeetingResponse> updateMeeting(
+            @PathVariable String id,
+            @Valid @RequestBody CreateMeetingRequest request) {
+        return ResponseEntity.ok(meetingService.updateMeeting(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMeeting(@PathVariable String id) {
+        meetingService.deleteMeeting(id);
+        return ResponseEntity.noContent().build();
     }
 }

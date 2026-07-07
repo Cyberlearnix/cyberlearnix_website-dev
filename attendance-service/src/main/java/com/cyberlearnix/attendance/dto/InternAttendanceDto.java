@@ -1,14 +1,10 @@
 package com.cyberlearnix.attendance.dto;
 
-import com.cyberlearnix.attendance.entity.FinalAttendance;
+import com.cyberlearnix.attendance.entity.MeetingAttendance;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- * Enriched attendance record for the intern attendance admin panel.
- * Combines FinalAttendance data with meeting info (title, courseId).
- */
 @Data
 public class InternAttendanceDto {
 
@@ -34,29 +30,26 @@ public class InternAttendanceDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static InternAttendanceDto from(FinalAttendance fa, String meetingTitle, String courseId) {
+    public static InternAttendanceDto from(MeetingAttendance fa, String meetingTitle, String courseId) {
         InternAttendanceDto dto = new InternAttendanceDto();
         dto.setId(fa.getId());
         dto.setMeetingId(fa.getMeetingId());
         dto.setMeetingTitle(meetingTitle);
         dto.setCourseId(courseId);
         dto.setStudentId(fa.getStudentId());
-        dto.setStudentName(fa.getStudentName());
-        dto.setStudentEmail(fa.getStudentEmail());
-        dto.setTotalActiveSeconds(fa.getTotalActiveSeconds());
-        dto.setMeetingDurationSeconds(fa.getMeetingDurationSeconds());
+        dto.setStudentName(fa.getStudentId());
+        dto.setStudentEmail(fa.getStudentId());
+        dto.setTotalActiveSeconds(fa.getDurationMinutes() != null ? (long) fa.getDurationMinutes() * 60 : 0L);
+        dto.setMeetingDurationSeconds(3600L);
         dto.setAttendancePercentage(fa.getAttendancePercentage());
-        dto.setStatus(fa.getStatus() != null ? fa.getStatus().name() : "ABSENT");
-        dto.setRejoinCount(fa.getRejoinCount());
-        dto.setLate(fa.getLate());
-        dto.setLateByMinutes(fa.getLateByMinutes());
-        dto.setOverridden(fa.getOverridden());
-        dto.setOverrideBy(fa.getOverrideBy());
-        dto.setOverrideAt(fa.getOverrideAt());
-        dto.setOverrideReason(fa.getOverrideReason());
-        dto.setLocked(fa.getLocked());
+        dto.setStatus(fa.getAttendanceStatus() != null ? fa.getAttendanceStatus().name() : "ABSENT");
+        dto.setRejoinCount(0);
+        dto.setLate(fa.getAttendanceStatus() == MeetingAttendance.AttendanceStatus.LATE);
+        dto.setLateByMinutes(0);
+        dto.setOverridden(false);
+        dto.setLocked(false);
         dto.setCreatedAt(fa.getCreatedAt());
-        dto.setUpdatedAt(fa.getUpdatedAt());
+        dto.setUpdatedAt(fa.getCreatedAt());
         return dto;
     }
 }

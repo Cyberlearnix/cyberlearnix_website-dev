@@ -1,137 +1,153 @@
 package com.cyberlearnix.attendance.service;
 
 import com.cyberlearnix.attendance.dto.CreateMeetingRequest;
-import com.cyberlearnix.attendance.dto.MeetingDto;
+import com.cyberlearnix.attendance.dto.MeetingResponse;
 import com.cyberlearnix.attendance.entity.Meeting;
 import com.cyberlearnix.attendance.repository.MeetingRepository;
-import com.cyberlearnix.attendance.repository.MeetingSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MeetingService {
 
-    private static final String MEETING_NOT_FOUND = "Meeting not found: ";
-
-    private final MeetingRepository meetingRepo;
-    private final MeetingSessionRepository sessionRepo;
-    private final ZohoMeetingApiClient zohoClient;
+    private final MeetingRepository meetingRepository;
+    private static final String ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyz0123456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     @Transactional
-    public MeetingDto createMeeting(CreateMeetingRequest req, String hostUserId, String hostName) {
+    public MeetingResponse createMeeting(CreateMeetingRequest request, String createdBy) {
         Meeting meeting = new Meeting();
-        meeting.setTitle(req.getTitle());
-        meeting.setDescription(req.getDescription());
-        meeting.setScheduledStart(req.getScheduledStart());
-        meeting.setScheduledEnd(req.getScheduledEnd());
-        meeting.setHostUserId(hostUserId);
-        meeting.setHostName(hostName);
-        meeting.setCourseId(req.getCourseId());
-        meeting.setBatchId(req.getBatchId());
-        meeting.setMandatory(req.getMandatory());
-        meeting.setNotes(req.getNotes());
+        meeting.setTitle(request.getTitle());
+        meeting.setDescription(request.getDescription());
+        meeting.setCourseId(request.getCourseId());
+        meeting.setFacultyId(request.getFacultyId());
+        meeting.setStartTime(request.getStartTime());
+        meeting.setEndTime(request.getEndTime());
+        meeting.setCreatedBy(createdBy);
+        meeting.setMeetingCode(generateMeetingCode());
         meeting.setStatus(Meeting.MeetingStatus.SCHEDULED);
 
-        // Create in Zoho if requested
-        if (Boolean.TRUE.equals(req.getCreateInZoho())) {
-            try {
-                ZohoMeetingApiClient.ZohoMeetingResponse zohoResp = zohoClient.createMeeting(meeting);
-                if (zohoResp != null) {
-                    meeting.setZohoMeetingId(zohoResp.getMeetingId());
-                    meeting.setZohoJoinUrl(zohoResp.getJoinUrl());
-                    meeting.setMeetingPassword(zohoResp.getPassword());
-                }
-            } catch (Exception e) {
-                log.error("Failed to create meeting in Zoho: {}", e.getMessage());
-            }
-        }
-
-        meeting = meetingRepo.save(meeting);
-        return toDto(meeting, null);
+        Meeting saved = meetingRepository.save(meeting);
+        log.info("Created meeting with code: {}", saved.getMeetingCode());
+        return mapToResponse(saved);
     }
 
-    public MeetingDto getMeeting(String id) {
-        Meeting meeting = meetingRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException(MEETING_NOT_FOUND + id));
-        long live = sessionRepo.findActiveLiveParticipants(id).size();
-        return toDto(meeting, live);
+    public List<MeetingResponse> getAllMeetings() {
+        return meetingRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
-    public Page<MeetingDto> getMeetingsByCourse(String courseId, Pageable pageable) {
-        return meetingRepo.findByCourseIdPaged(courseId, pageable)
-            .map(m -> toDto(m, null));
+    public MeetingResponse getMeetingById(String id) {
+        Meeting meeting = meetingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Meeting not found with ID: " + id));
+        return mapToResponse(meeting);
     }
 
-    public List<MeetingDto> getLiveMeetings() {
-        return meetingRepo.findLiveMeetings().stream()
-            .map(m -> {
-                long live = sessionRepo.findActiveLiveParticipants(m.getId()).size();
-                return toDto(m, live);
-            })
-            .toList();
+    public Optional<Meeting> getMeetingEntityById(String id) {
+        return meetingRepository.findById(id);
     }
 
-    public List<MeetingDto> getUpcomingMeetings(int hours) {
-        LocalDateTime from = LocalDateTime.now();
-        LocalDateTime to = from.plusHours(hours);
-        return meetingRepo.findUpcomingMeetings(from, to).stream()
-            .map(m -> toDto(m, null))
-            .toList();
+    public Optional<Meeting> getMeetingEntityByCode(String code) {
+        return meetingRepository.findByMeetingCode(code);
     }
 
     @Transactional
-    public MeetingDto updateMeeting(String id, CreateMeetingRequest req) {
-        Meeting meeting = meetingRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException(MEETING_NOT_FOUND + id));
-        if (req.getTitle() != null) meeting.setTitle(req.getTitle());
-        if (req.getDescription() != null) meeting.setDescription(req.getDescription());
-        if (req.getScheduledStart() != null) meeting.setScheduledStart(req.getScheduledStart());
-        if (req.getScheduledEnd() != null) meeting.setScheduledEnd(req.getScheduledEnd());
-        if (req.getMandatory() != null) meeting.setMandatory(req.getMandatory());
-        if (req.getNotes() != null) meeting.setNotes(req.getNotes());
-        return toDto(meetingRepo.save(meeting), null);
+    public MeetingResponse updateMeeting(String id, CreateMeetingRequest request) {
+        Meeting meeting = meetingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Meeting not found with ID: " + id));
+
+        meeting.setTitle(request.getTitle());
+        meeting.setDescription(request.getDescription());
+        meeting.setCourseId(request.getCourseId());
+        meeting.setFacultyId(request.getFacultyId());
+        meeting.setStartTime(request.getStartTime());
+        meeting.setEndTime(request.getEndTime());
+
+        Meeting updated = meetingRepository.save(meeting);
+        log.info("Updated meeting: {}", id);
+        return mapToResponse(updated);
+    }
+
+    @Transactional
+    public void deleteMeeting(String id) {
+        Meeting meeting = meetingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Meeting not found with ID: " + id));
+        meetingRepository.delete(meeting);
+        log.info("Deleted meeting: {}", id);
     }
 
     @Transactional
     public void cancelMeeting(String id) {
-        Meeting meeting = meetingRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException(MEETING_NOT_FOUND + id));
+        Meeting meeting = meetingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Meeting not found with ID: " + id));
         meeting.setStatus(Meeting.MeetingStatus.CANCELLED);
-        meetingRepo.save(meeting);
+        meetingRepository.save(meeting);
+        log.info("Cancelled meeting: {}", id);
     }
 
-    public MeetingDto toDto(Meeting m, Long liveCount) {
-        MeetingDto dto = new MeetingDto();
-        dto.setId(m.getId());
-        dto.setZohoMeetingId(m.getZohoMeetingId());
-        dto.setTitle(m.getTitle());
-        dto.setDescription(m.getDescription());
-        dto.setScheduledStart(m.getScheduledStart());
-        dto.setScheduledEnd(m.getScheduledEnd());
-        dto.setActualStart(m.getActualStart());
-        dto.setActualEnd(m.getActualEnd());
-        dto.setDurationMinutes(m.getDurationMinutes());
-        dto.setHostUserId(m.getHostUserId());
-        dto.setHostName(m.getHostName());
-        dto.setCourseId(m.getCourseId());
-        dto.setBatchId(m.getBatchId());
-        dto.setMeetingUrl(m.getMeetingUrl());
-        dto.setZohoJoinUrl(m.getZohoJoinUrl());
-        dto.setStatus(m.getStatus());
-        dto.setAttendanceFinalized(m.getAttendanceFinalized());
-        dto.setMandatory(m.getMandatory());
-        dto.setNotes(m.getNotes());
-        dto.setLiveParticipantCount(liveCount);
-        dto.setCreatedAt(m.getCreatedAt());
-        return dto;
+    public List<MeetingResponse> getMeetingsByCourse(Long courseId) {
+        return meetingRepository.findByCourseId(courseId).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<MeetingResponse> getMeetingsByCourses(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return List.of();
+        }
+        return meetingRepository.findByCourseIds(courseIds).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<MeetingResponse> getLiveMeetings() {
+        return meetingRepository.findLiveMeetings().stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<MeetingResponse> getUpcomingMeetings() {
+        LocalDateTime from = LocalDateTime.now();
+        LocalDateTime to = from.plusHours(24);
+        return meetingRepository.findUpcomingMeetings(from, to).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    private String generateMeetingCode() {
+        StringBuilder sb = new StringBuilder(6);
+        for (int i = 0; i < 6; i++) {
+            sb.append(ALPHANUMERIC.charAt(RANDOM.nextInt(ALPHANUMERIC.length())));
+        }
+        return String.format("cyberlearnix-%d-%s", Instant.now().getEpochSecond(), sb.toString());
+    }
+
+    public MeetingResponse mapToResponse(Meeting meeting) {
+        MeetingResponse response = new MeetingResponse();
+        response.setId(meeting.getId());
+        response.setTitle(meeting.getTitle());
+        response.setDescription(meeting.getDescription());
+        response.setMeetingCode(meeting.getMeetingCode());
+        response.setCourseId(meeting.getCourseId());
+        response.setFacultyId(meeting.getFacultyId());
+        response.setStartTime(meeting.getStartTime());
+        response.setEndTime(meeting.getEndTime());
+        response.setStatus(meeting.getStatus().name());
+        response.setCreatedBy(meeting.getCreatedBy());
+        response.setJoinUrl("https://meet.jit.si/" + meeting.getMeetingCode());
+        response.setCreatedAt(meeting.getCreatedAt());
+        response.setUpdatedAt(meeting.getUpdatedAt());
+        return response;
     }
 }
