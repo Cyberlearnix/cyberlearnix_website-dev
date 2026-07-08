@@ -1,6 +1,5 @@
 package com.cyberlearnix.attendance.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -26,20 +25,17 @@ public class MeetingResponse {
     // Empty list by default — populated by attendance report endpoints
     private List<Object> invitees = List.of();
 
-    /** Alias for title — used by the admin frontend */
-    @JsonProperty("subject")
+    /** Alias for title — Jackson serializes this as "subject" via getter naming convention */
     public String getSubject() {
         return title;
     }
 
-    /** Alias for startTime — used by the admin frontend */
-    @JsonProperty("startDateTime")
+    /** Alias for startTime — Jackson serializes this as "startDateTime" */
     public LocalDateTime getStartDateTime() {
         return startTime;
     }
 
-    /** Alias for endTime — used by the admin frontend */
-    @JsonProperty("endDateTime")
+    /** Alias for endTime — Jackson serializes this as "endDateTime" */
     public LocalDateTime getEndDateTime() {
         return endTime;
     }
