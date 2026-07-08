@@ -31,7 +31,7 @@ public class Meeting {
     @Column(name = "meeting_code", nullable = false, unique = true)
     private String meetingCode;
 
-    @Column(name = "course_id", nullable = false)
+    @Column(name = "course_id")
     private Long courseId;
 
     @Column(name = "faculty_id", nullable = false)

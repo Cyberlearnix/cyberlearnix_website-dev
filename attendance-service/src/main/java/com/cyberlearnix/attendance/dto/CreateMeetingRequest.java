@@ -14,10 +14,9 @@ public class CreateMeetingRequest {
 
     private String description;
 
-    @NotNull(message = "Course ID is required")
     private Long courseId;
 
-    @NotBlank(message = "Faculty ID is required")
+    // Set programmatically from X-User-Id header; never validated in request body
     private String facultyId;
 
     @NotNull(message = "Start time is required")

@@ -15,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin/meetings")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DUAL', 'INSTITUTE')")
 public class AdminMeetingController {
 
     private final MeetingService meetingService;
@@ -24,6 +24,7 @@ public class AdminMeetingController {
     public ResponseEntity<MeetingResponse> createMeeting(
             @Valid @RequestBody CreateMeetingRequest request,
             @RequestHeader(value = "X-User-Id", defaultValue = "admin") String adminId) {
+        request.setFacultyId(adminId);
         MeetingResponse response = meetingService.createMeeting(request, adminId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -33,10 +34,17 @@ public class AdminMeetingController {
         return ResponseEntity.ok(meetingService.getAllMeetings());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<MeetingResponse> getMeetingById(@PathVariable String id) {
+        return ResponseEntity.ok(meetingService.getMeetingById(id));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<MeetingResponse> updateMeeting(
             @PathVariable String id,
-            @Valid @RequestBody CreateMeetingRequest request) {
+            @Valid @RequestBody CreateMeetingRequest request,
+            @RequestHeader(value = "X-User-Id", defaultValue = "admin") String adminId) {
+        request.setFacultyId(adminId);
         return ResponseEntity.ok(meetingService.updateMeeting(id, request));
     }
 
