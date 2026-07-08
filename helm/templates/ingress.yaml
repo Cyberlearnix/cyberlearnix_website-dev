@@ -67,7 +67,7 @@ spec:
      lab-service validates JWT from the ?token= query param itself.
      Needs its own Ingress to get 3600s timeouts (shared ingress uses 120s).
      ──────────────────────────────────────────────────────────────────────────── */}}
-{{- if .Values.hosts.api }}
+{{- if $.Values.hosts.api }}
 ---
 # ── Dedicated SSE Ingress for build-log-stream ───────────────────────────────
 # SSE (Server-Sent Events) requires proxy buffering to be disabled.
@@ -89,15 +89,15 @@ metadata:
     nginx.ingress.kubernetes.io/use-regex: "true"
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
-  {{- if .Values.ingress.tls.enabled }}
+  ingressClassName: {{ $.Values.ingress.className }}
+  {{- if $.Values.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.hosts.api }}
-      secretName: {{ .Values.ingress.tls.secretName }}
+        - {{ $.Values.hosts.api }}
+      secretName: {{ $.Values.ingress.tls.secretName }}
   {{- end }}
   rules:
-    - host: {{ .Values.hosts.api }}
+    - host: {{ $.Values.hosts.api }}
       http:
         paths:
           - path: /api/labs/courses/[0-9]+/build-log-stream
@@ -121,15 +121,15 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
-  {{- if .Values.ingress.tls.enabled }}
+  ingressClassName: {{ $.Values.ingress.className }}
+  {{- if $.Values.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.hosts.api }}
-      secretName: {{ .Values.ingress.tls.secretName }}
+        - {{ $.Values.hosts.api }}
+      secretName: {{ $.Values.ingress.tls.secretName }}
   {{- end }}
   rules:
-    - host: {{ .Values.hosts.api }}
+    - host: {{ $.Values.hosts.api }}
       http:
         paths:
           - path: /labs/terminal
