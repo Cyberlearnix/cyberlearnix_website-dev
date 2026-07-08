@@ -78,9 +78,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: lab-service-sse
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "cyberlearnix.labels" (dict "serviceName" "lab-service" "root" .) | nindent 4 }}
+    {{- include "cyberlearnix.labels" (dict "serviceName" "lab-service" "root" $) | nindent 4 }}
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
@@ -112,9 +112,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: lab-service-terminal
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "cyberlearnix.labels" (dict "serviceName" "lab-service" "root" .) | nindent 4 }}
+    {{- include "cyberlearnix.labels" (dict "serviceName" "lab-service" "root" $) | nindent 4 }}
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
