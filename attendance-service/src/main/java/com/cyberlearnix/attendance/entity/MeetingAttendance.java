@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "meeting_attendance", indexes = {
-    @Index(name = "idx_attendance_meeting", columnList = "meetingId"),
-    @Index(name = "idx_attendance_student", columnList = "studentId")
+    @Index(name = "idx_attendance_meeting", columnList = "meeting_id"),
+    @Index(name = "idx_attendance_student", columnList = "student_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class MeetingAttendance {

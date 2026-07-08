@@ -11,9 +11,9 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "meetings", indexes = {
-    @Index(name = "idx_meeting_code", columnList = "meetingCode", unique = true),
-    @Index(name = "idx_meeting_course", columnList = "courseId"),
-    @Index(name = "idx_meeting_faculty", columnList = "facultyId")
+    @Index(name = "idx_meeting_code", columnList = "meeting_code", unique = true),
+    @Index(name = "idx_meeting_course", columnList = "course_id"),
+    @Index(name = "idx_meeting_faculty", columnList = "faculty_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class Meeting {
@@ -28,7 +28,8 @@ public class Meeting {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "meeting_code", nullable = false, unique = true)
+    // unique = true removed here — the named unique index above already enforces uniqueness
+    @Column(name = "meeting_code", nullable = false)
     private String meetingCode;
 
     @Column(name = "course_id")
