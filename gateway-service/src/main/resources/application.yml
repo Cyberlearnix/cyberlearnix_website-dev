@@ -227,6 +227,12 @@ spring:
           predicates:
             - Path=/api/instructor/**
 
+        # Admin Meetings — must be BEFORE the /api/v1/** attendance-service catch-all
+        - id: admin-meetings
+          uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
+          predicates:
+            - Path=/api/v1/admin/meetings,/api/v1/admin/meetings/**
+
         # Attendance Service
         - id: attendance-service
           uri: ${ATTENDANCE_SERVICE_URL:http://127.0.0.1:8092}
