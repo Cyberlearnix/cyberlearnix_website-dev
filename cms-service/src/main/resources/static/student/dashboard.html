@@ -13,9 +13,6 @@
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- Mobile sidebar backdrop -->
-<div class="cl-sidebar-backdrop" id="sidebarBackdrop"></div>
-
 <!-- App shell -->
 <div class="cl-app">
 
@@ -175,9 +172,9 @@
             </div>
             <div class="form-group">
               <label class="form-label">Profile Photo</label>
-              <div class="upload-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input type="url" class="form-control" id="pfPhoto" placeholder="https://..." style="flex:1;min-width:160px;" />
-                <input type="file" id="pfPhotoFile" accept="image/*" style="width:180px;max-width:100%;" />
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="url" class="form-control" id="pfPhoto" placeholder="https://..." style="flex:1;" />
+                <input type="file" id="pfPhotoFile" accept="image/*" style="width:180px;" />
                 <button type="button" class="btn btn-secondary" id="uploadPhotoBtn">Upload</button>
               </div>
               <small class="form-text text-muted">You can paste a URL or upload a photo file.</small>
@@ -506,26 +503,8 @@ async function loadActivity() {
 
 /* ── Mobile menu ── */
 const menuToggle = document.getElementById('menuToggle');
-const sidebar = document.getElementById('sidebar');
-const backdrop = document.getElementById('sidebarBackdrop');
-
-function openSidebar() {
-  sidebar.classList.add('open');
-  if (backdrop) backdrop.classList.add('visible');
-}
-function closeSidebar() {
-  sidebar.classList.remove('open');
-  if (backdrop) backdrop.classList.remove('visible');
-}
-
 if (window.innerWidth <= 768) menuToggle.style.display = 'flex';
-menuToggle.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
-if (backdrop) backdrop.addEventListener('click', closeSidebar);
-
-// Close sidebar when a nav item is tapped on mobile
-document.querySelectorAll('.cl-nav-item[data-section]').forEach(btn => {
-  btn.addEventListener('click', () => { if (window.innerWidth <= 768) closeSidebar(); });
-});
+menuToggle.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
 
 /* ── Labs ── */
 let labsLoaded = false;
@@ -673,17 +652,30 @@ function meetingCard(m) {
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;min-width:130px;align-items:flex-end;">
           ${m.joinUrl && !isPast && m.status !== 'CANCELLED'
-            ? `<a href="${m.joinUrl}" target="_blank" rel="noopener noreferrer"
-                 class="btn ${isLive ? 'btn-primary' : 'btn-outline'} btn-sm"
-                 style="${isLive ? 'background:#22c55e;border-color:#22c55e;' : ''}">
-                 ${isLive ? '🔴 Join Now' : '📹 Join Meeting'}
-               </a>`
+            ? (() => {
+                // Append student ID as Jitsi display name so admin can identify who attended
+                const displayName = encodeURIComponent(userId || 'Student');
+                const jitsiUrl = m.joinUrl.includes('#')
+                  ? m.joinUrl
+                  : m.joinUrl + '#userInfo.displayName=' + displayName + '&config.prejoinPageEnabled=true';
+                return `<a href="${jitsiUrl}" target="_blank" rel="noopener noreferrer"
+                   class="btn ${isLive ? 'btn-primary' : 'btn-outline'} btn-sm"
+                   style="${isLive ? 'background:#22c55e;border-color:#22c55e;' : ''}">
+                   ${isLive ? '🔴 Join Now' : '📹 Join Meeting'}
+                 </a>`;
+              })()
             : isPast
               ? `<span style="font-size:0.80rem;color:var(--cl-text-muted);text-align:right;">Meeting ended</span>`
               : ''
           }
         </div>
       </div>
+      ${m.meetingCode || m.meetingId
+        ? `<div style="font-size:0.78rem;color:var(--cl-text-muted);margin-top:6px;padding:6px 0 0;border-top:1px solid var(--cl-border);">
+             🔑 Meeting Room: <code style="background:var(--cl-border);padding:1px 6px;border-radius:3px;font-size:0.77rem;">${m.meetingCode || m.meetingId}</code>
+             &nbsp;|&nbsp; Enter with your Student ID <strong>(${userId || 'CLX-ID'})</strong> as your name
+           </div>`
+        : ''}
     </div>`;
 }
 

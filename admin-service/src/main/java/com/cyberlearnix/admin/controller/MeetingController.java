@@ -4,6 +4,7 @@ import com.cyberlearnix.admin.dto.CreateMeetingRequest;
 import com.cyberlearnix.admin.dto.MeetingResponse;
 import com.cyberlearnix.admin.entity.Meeting;
 import com.cyberlearnix.admin.repository.MeetingRepository;
+import com.cyberlearnix.admin.service.MeetingReminderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import java.util.NoSuchElementException;
 public class MeetingController {
 
     private final MeetingRepository meetingRepository;
+    private final MeetingReminderService reminderService;
 
     private static final String ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -50,6 +52,8 @@ public class MeetingController {
 
         Meeting saved = meetingRepository.save(m);
         log.info("[Meetings] Created meeting {} by {}", saved.getId(), userId);
+        // Notify enrolled students asynchronously
+        try { reminderService.sendCreationNotification(saved); } catch (Exception ignored) {}
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
     }
 
