@@ -233,6 +233,13 @@ spring:
           predicates:
             - Path=/api/v1/admin/meetings,/api/v1/admin/meetings/**
 
+        # Student-facing meeting endpoints (by-courses, upcoming, course/{id})
+        # Served by admin-service so students see admin-created meetings
+        - id: student-meetings
+          uri: ${ADMIN_SERVICE_URL:http://127.0.0.1:8090}
+          predicates:
+            - Path=/api/meetings/**
+
         # Attendance Service
         - id: attendance-service
           uri: ${ATTENDANCE_SERVICE_URL:http://127.0.0.1:8092}

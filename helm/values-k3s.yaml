@@ -32,15 +32,15 @@ imagePullSecrets:
 # Format: ghcr.io/cyberlearnix/cyberlearnix-{service}:{tag}
 # Tags are quoted strings so `sed -i "s|  ${svc}: \".*\"|  ${svc}: \"$SHA\"|g"` matches exactly
 images:
-  gateway-service: "1460c3950d2f22e4762e0e408e14392b9809e6c5"
+  gateway-service: "47e451468edb93b9bad36d1ea791ba19ee243791"
   user-service: "3762ac51e323a0ab05107776ad671cf016197425"
   course-service: "3762ac51e323a0ab05107776ad671cf016197425"
   enrollment-service: "3762ac51e323a0ab05107776ad671cf016197425"
   notification-service: "3762ac51e323a0ab05107776ad671cf016197425"
   shop-service: "3762ac51e323a0ab05107776ad671cf016197425"
   form-service: "3762ac51e323a0ab05107776ad671cf016197425"
-  admin-service: "1460c3950d2f22e4762e0e408e14392b9809e6c5"
-  cms-service: "c3499227e830d91ba0354acc02d8d32ab3c58ed0"
+  admin-service: "47e451468edb93b9bad36d1ea791ba19ee243791"
+  cms-service: "3c070d6569c031a30e56cdb3c79f74f42d9f5569"
   instructor-service: "3762ac51e323a0ab05107776ad671cf016197425"
   attendance-service: "144aee7bc6c876a40b2616eaa594fca740ccdbc0"
   lab-service: "3762ac51e323a0ab05107776ad671cf016197425"
