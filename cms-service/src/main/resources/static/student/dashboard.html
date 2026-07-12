@@ -609,6 +609,30 @@ async function resumeLab(assignmentId, btn) {
 /* ── Meetings ── */
 let meetingsLoaded = false;
 
+// Called when student clicks Join — records attendance first, then opens Jitsi
+async function joinMeeting(event, meetingId, baseJoinUrl) {
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳ Joining…';
+
+  const displayName = encodeURIComponent(userId || 'Student');
+  const jitsiUrl = baseJoinUrl.includes('#')
+    ? baseJoinUrl
+    : baseJoinUrl + '#userInfo.displayName=' + displayName + '&config.prejoinPageEnabled=false';
+
+  try {
+    // Record attendance (fire-and-forget — don't block the join on failure)
+    await apiFetch('/api/meetings/' + meetingId + '/attendance', { method: 'POST' });
+  } catch (e) {
+    console.warn('[Meetings] Could not record attendance:', e.message);
+  }
+
+  window.open(jitsiUrl, '_blank', 'noopener,noreferrer');
+  btn.disabled = false;
+  btn.innerHTML = orig;
+}
+
 function meetingStatusBadge(status, startDateTime, endDateTime) {
   const now = new Date();
   const start = startDateTime ? new Date(startDateTime) : null;
@@ -652,18 +676,12 @@ function meetingCard(m) {
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;min-width:130px;align-items:flex-end;">
           ${m.joinUrl && !isPast && m.status !== 'CANCELLED'
-            ? (() => {
-                // Pre-fill student ID as Jitsi display name and join instantly (no pre-join screen)
-                const displayName = encodeURIComponent(userId || 'Student');
-                const jitsiUrl = m.joinUrl.includes('#')
-                  ? m.joinUrl
-                  : m.joinUrl + '#userInfo.displayName=' + displayName + '&config.prejoinPageEnabled=false&config.startWithAudioMuted=false';
-                return `<a href="${jitsiUrl}" target="_blank" rel="noopener noreferrer"
-                   class="btn ${isLive ? 'btn-primary' : 'btn-outline'} btn-sm"
-                   style="${isLive ? 'background:#22c55e;border-color:#22c55e;' : ''}">
-                   ${isLive ? '🔴 Join Now' : '📹 Join Meeting'}
-                 </a>`;
-              })()
+            ? `<button
+                 onclick="joinMeeting(event, '${m.id}', '${m.joinUrl}')"
+                 class="btn ${isLive ? 'btn-primary' : 'btn-outline'} btn-sm"
+                 style="${isLive ? 'background:#22c55e;border-color:#22c55e;' : ''}">
+                 ${isLive ? '🔴 Join Now' : '📹 Join Meeting'}
+               </button>`
             : isPast
               ? `<span style="font-size:0.80rem;color:var(--cl-text-muted);text-align:right;">Meeting ended</span>`
               : ''

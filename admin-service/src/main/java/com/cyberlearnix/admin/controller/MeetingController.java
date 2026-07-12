@@ -3,6 +3,8 @@ package com.cyberlearnix.admin.controller;
 import com.cyberlearnix.admin.dto.CreateMeetingRequest;
 import com.cyberlearnix.admin.dto.MeetingResponse;
 import com.cyberlearnix.admin.entity.Meeting;
+import com.cyberlearnix.admin.entity.MeetingAttendance;
+import com.cyberlearnix.admin.repository.MeetingAttendanceRepository;
 import com.cyberlearnix.admin.repository.MeetingRepository;
 import com.cyberlearnix.admin.service.MeetingReminderService;
 import jakarta.validation.Valid;
@@ -15,7 +17,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Slf4j
@@ -27,6 +31,7 @@ public class MeetingController {
 
     private final MeetingRepository meetingRepository;
     private final MeetingReminderService reminderService;
+    private final MeetingAttendanceRepository attendanceRepository;
 
     private static final String ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -104,7 +109,31 @@ public class MeetingController {
         log.info("[Meetings] Deleted meeting {}", id);
         return ResponseEntity.noContent().build();
     }
+    // ── Attendance ─────────────────────────────────────────────────────────
 
+    /**
+     * GET /api/v1/admin/meetings/{id}/attendance
+     * Returns the list of students who joined this meeting.
+     */
+    @GetMapping("/{id}/attendance")
+    public ResponseEntity<Map<String, Object>> getAttendance(@PathVariable String id) {
+        List<MeetingAttendance> records = attendanceRepository.findByMeetingIdOrderByJoinTimeAsc(id);
+        List<Map<String, Object>> attendees = records.stream().map(a -> {
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("studentId", a.getStudentId());
+            entry.put("joinTime", a.getJoinTime());
+            entry.put("leaveTime", a.getLeaveTime());
+            entry.put("durationMinutes", a.getDurationMinutes());
+            entry.put("status", a.getStatus());
+            return entry;
+        }).toList();
+
+        return ResponseEntity.ok(Map.of(
+                "meetingId", id,
+                "totalAttended", records.size(),
+                "attendees", attendees
+        ));
+    }
     // ── Helpers ────────────────────────────────────────────────────────────────
     private String generateCode() {
         StringBuilder sb = new StringBuilder(6);
