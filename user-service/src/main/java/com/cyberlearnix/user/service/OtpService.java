@@ -1,6 +1,7 @@
 package com.cyberlearnix.user.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -25,6 +26,12 @@ public class OtpService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Autowired
+    private ResendService resendService;
+
+    @Value("${spring.mail.password:}")
+    private String mailPassword;
 
     public boolean isOtpRateLimited(String email) {
         // Rate limiting disabled
@@ -83,50 +90,56 @@ public class OtpService {
     }
 
     private void sendEmail(String to, String otp) throws Exception {
+        String htmlContent = buildOtpHtml(otp);
+        String subject = "Your OTP Verification Code - Cyberlearnix";
+
+        // 1. Try Resend API first (works without SMTP credentials)
+        boolean sent = resendService.sendEmail(to, subject, htmlContent);
+        if (sent) {
+            System.out.println("OTP sent via Resend to " + to);
+            return;
+        }
+
+        // 2. Fall back to SMTP — only if a mail password is actually configured
+        if (mailPassword == null || mailPassword.trim().isEmpty()) {
+            throw new org.springframework.mail.MailAuthenticationException(
+                    "No email provider configured. Set RESEND_API_KEY or MAIL_PASSWORD.");
+        }
+
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
         helper.setTo(to);
-        helper.setSubject("Your OTP Verification Code - Cyberlearnix");
+        helper.setSubject(subject);
         helper.setFrom("Cyberlearnix <cyberlearnixprivatelimited@gmail.com>");
-
-        String htmlContent = wrapInTemplate("OTP Verification",
-                "<h2 style='text-align: center; color: #0057FF; margin-bottom: 25px;'>Verification Code</h2>" +
-                        "<p>Hello,</p>" +
-                        "<p>To complete your sign-in or verification, please use the following One-Time Password (OTP):</p>"
-                        +
-                        "<div style='text-align: center; margin: 30px 0;'>" +
-                        "    <span style='background: #f1f5f9; color: #002B5B; font-size: 36px; font-weight: 800; padding: 15px 40px; border-radius: 12px; letter-spacing: 12px; border: 2px solid #e2e8f0; display: inline-block;'>"
-                        + otp + "</span>" +
-                        "</div>" +
-                        "<p style='text-align: center; color: #718096; font-size: 14px;'>This code is valid for <strong>"
-                        + OTP_EXPIRATION_MINUTES + " minutes</strong>. Please do not share this code with anyone.</p>" +
-                        "<hr style='border: none; border-top: 1px solid #edf2f7; margin: 30px 0;' />" +
-                        "<p style='font-size: 13px; color: #a0aec0;'>If you did not request this verification code, please ignore this email or contact support if you have concerns about your account security.</p>");
-
         helper.setText(htmlContent, true);
         mailSender.send(message);
+        System.out.println("OTP sent via SMTP to " + to);
     }
 
-    private String wrapInTemplate(String heading, String content) {
-        return "<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);\">"
-                +
-                "    <div style=\"background: linear-gradient(135deg, #002B5B 0%, #0057FF 100%); padding: 30px; text-align: center; color: white;\">"
-                +
-                "        <h1 style=\"margin: 0; font-size: 26px; letter-spacing: 1px; font-weight: 700;\">Cyberlearnix</h1>"
-                +
-                "        <p style=\"margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; text-transform: uppercase; letter-spacing: 2px;\">"
-                + heading + "</p>" +
-                "    </div>" +
-                "    <div style=\"padding: 40px; background: white; color: #2d3748; line-height: 1.6;\">" +
-                "        " + content + "" +
-                "    </div>" +
-                "    <div style=\"background: #f8fafc; padding: 25px; text-align: center; border-top: 1px solid #e2e8f0; color: #718096;\">"
-                +
-                "        <p style=\"margin: 0; font-size: 13px; font-weight: 600;\">&copy; 2026 Cyberlearnix Private Limited. All rights reserved.</p>"
-                +
-                "        <p style=\"margin: 8px 0 0 0; font-size: 12px;\">Hyderabad, Telangana, India | connect@cyberlearnix.com</p>"
-                +
-                "    </div>" +
-                "</div>";
+    private String buildOtpHtml(String otp) {
+        String body =
+                "<h2 style='text-align:center;color:#0057FF;margin-bottom:25px;'>Verification Code</h2>" +
+                "<p>Hello,</p>" +
+                "<p>Use the following One-Time Password to complete your sign-in:</p>" +
+                "<div style='text-align:center;margin:30px 0;'>" +
+                "  <span style='background:#f1f5f9;color:#002B5B;font-size:36px;font-weight:800;" +
+                "  padding:15px 40px;border-radius:12px;letter-spacing:12px;" +
+                "  border:2px solid #e2e8f0;display:inline-block;'>" + otp + "</span>" +
+                "</div>" +
+                "<p style='text-align:center;color:#718096;font-size:14px;'>Valid for <strong>" +
+                OTP_EXPIRATION_MINUTES + " minutes</strong>. Do not share this code.</p>" +
+                "<hr style='border:none;border-top:1px solid #edf2f7;margin:30px 0;'/>" +
+                "<p style='font-size:13px;color:#a0aec0;'>If you did not request this, please ignore this email.</p>";
+
+        return "<div style=\"font-family:'Segoe UI',sans-serif;max-width:600px;margin:0 auto;" +
+               "border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;\">" +
+               "<div style=\"background:linear-gradient(135deg,#002B5B 0%,#0057FF 100%);" +
+               "padding:30px;text-align:center;color:white;\">" +
+               "<h1 style=\"margin:0;font-size:26px;font-weight:700;\">Cyberlearnix</h1>" +
+               "<p style=\"margin:5px 0 0;opacity:0.9;font-size:14px;\">OTP VERIFICATION</p></div>" +
+               "<div style=\"padding:40px;background:white;color:#2d3748;line-height:1.6;\">" + body + "</div>" +
+               "<div style=\"background:#f8fafc;padding:25px;text-align:center;border-top:1px solid #e2e8f0;color:#718096;\">" +
+               "<p style=\"margin:0;font-size:13px;\">&copy; 2026 Cyberlearnix Private Limited</p>" +
+               "<p style=\"margin:8px 0 0;font-size:12px;\">connect@cyberlearnix.com</p></div></div>";
     }
 }
