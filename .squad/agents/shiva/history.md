@@ -11,6 +11,25 @@ Shared types are in `shared-lib/`. All services declare `implementation project(
 
 ## Learnings (prepended)
 
+### [2026-07-14] Lab Terminal — 4-Bug Fix (Session Closing + No Resume)
+
+**Root cause of terminal sessions getting closed:**
+`lastActiveAt` was never updated from WebSocket terminal activity. The `@Scheduled` idle-cleanup (`cleanupIdleLabs`) fires every 5 min and stops any assignment where `lastActiveAt` is older than 30 min. Since the WS handler never wrote to the DB, every active terminal session was killed 30 min after `assignLab()` / `resumeLab()` — even with constant user input.
+
+**4 bugs fixed:**
+
+1. **`lastActiveAt` not updated from WS activity** — `forwardToContainer()` and `afterConnectionEstablished()` now call a debounced `updateLastActiveAt(session)` that writes to the DB at most once per minute per session. `sessionLastHeartbeat` ConcurrentHashMap tracks last write time. Fixed in `LabTerminalWebSocketHandler.java`.
+
+2. **Resize JSON forwarded to container stdin** — `handleTextMessage` was sending all text messages (including `{"type":"resize","cols":N,"rows":N}`) as raw bytes to the shell, injecting garbage. Fixed: `handleTextMessage` now checks if payload starts with `{` and contains `"type":`, and intercepts resize messages to call `dockerClient.resizeExecCmd().withSize(rows,cols).exec()` instead of forwarding. Added `handleResizeMessage()` and `extractIntField()` helpers.
+
+3. **No "Resume Lab" in terminal.html** — Paused-lab errors showed a dead-end message. Fixed in `terminal.html`: error-box now has a `resumeBtn` (hidden by default). When `isLabError`, the Resume button is shown. `resumeAndReconnect()` calls `POST /api/labs/{id}/resume`, then auto-reconnects.
+
+4. **No reconnect on unexpected disconnect** — Fixed in `terminal.html`: auto-reconnect with 3s/6s/10s backoff (max 3 attempts). After 3 failures, shows Resume + Retry buttons. Heartbeat: `setInterval(() => sendResize(), 4*60*1000)` keeps `lastActiveAt` fresh for read-only sessions (no typing).
+
+**Files changed:**
+- `lab-service/src/main/java/com/cyberlearnix/lab/websocket/LabTerminalWebSocketHandler.java`
+- `cms-service/src/main/resources/static/student/terminal.html`
+
 ### [2026-06-12] Form Service — Lombok/Jackson Boolean Serialization Fix
 
 **Files:**

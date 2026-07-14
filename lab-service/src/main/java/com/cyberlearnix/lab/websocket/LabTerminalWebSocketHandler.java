@@ -25,6 +25,8 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -55,6 +57,11 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
     private final Map<String, ContainerStdin> sessionStdinStreams = new ConcurrentHashMap<>();
     /** Per-session exec ID for PTY resizing. */
     private final Map<String, String> sessionExecIds = new ConcurrentHashMap<>();
+    /**
+     * Per-session last heartbeat time. Used to throttle lastActiveAt DB writes:
+     * at most one write per minute per session, even if the student types quickly.
+     */
+    private final Map<String, Instant> sessionLastHeartbeat = new ConcurrentHashMap<>();
 
     /**
      * Thread-safe stdin InputStream backed by a LinkedBlockingQueue.
@@ -196,6 +203,8 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
 
         try {
             startDockerExec(session, assignment);
+            // Record the connection as activity so idle cleanup does not fire too early
+            updateLastActiveAt(session);
         } catch (Exception e) {
             log.error("Failed to start Docker exec for session {}: {}", session.getId(), e.getMessage(), e);
             sendErrorText(session, "[ERROR] Could not attach to container: " + e.getMessage());
@@ -205,7 +214,62 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-        forwardToContainer(session, message.getPayload().getBytes());
+        String payload = message.getPayload();
+        // Intercept JSON control messages from the browser; do NOT forward them to container stdin.
+        // The frontend sends {"type":"resize","cols":N,"rows":N} on terminal resize — forwarding
+        // this as raw bytes would inject garbage characters into the container shell.
+        if (payload.startsWith("{") && payload.contains("\"type\":")) {
+            if (payload.contains("\"resize\"")) {
+                handleResizeMessage(session, payload);
+                return;
+            }
+            // Unknown control message — ignore silently rather than corrupting stdin
+            log.debug("Ignoring unknown control message from session {}: {}", session.getId(),
+                    payload.length() > 80 ? payload.substring(0, 80) + "…" : payload);
+            return;
+        }
+        forwardToContainer(session, payload.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Handles a PTY resize request from the browser.
+     * Parses {"type":"resize","cols":N,"rows":N} and resizes the Docker exec PTY.
+     */
+    private void handleResizeMessage(WebSocketSession session, String payload) {
+        String execId = sessionExecIds.get(session.getId());
+        if (execId == null) return;
+        try {
+            int cols = extractIntField(payload, "cols");
+            int rows = extractIntField(payload, "rows");
+            if (cols > 0 && rows > 0) {
+                dockerClient.resizeExecCmd(execId).withSize(rows, cols).exec();
+                log.debug("PTY resized to {}x{} for session {}", cols, rows, session.getId());
+            }
+        } catch (Exception e) {
+            log.debug("Failed to resize PTY for session {}: {}", session.getId(), e.getMessage());
+        }
+        // Resize counts as activity — keep the lab alive
+        updateLastActiveAt(session);
+    }
+
+    /**
+     * Extracts a positive integer field value from a simple JSON string without a full parser.
+     * Returns -1 if the field is not found or cannot be parsed.
+     */
+    private int extractIntField(String json, String fieldName) {
+        String key = "\"" + fieldName + "\"";
+        int idx = json.indexOf(key);
+        if (idx < 0) return -1;
+        idx = json.indexOf(':', idx + key.length());
+        if (idx < 0) return -1;
+        StringBuilder sb = new StringBuilder();
+        for (int i = idx + 1; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (Character.isDigit(c)) sb.append(c);
+            else if (c != ' ' && c != '\t') break;
+        }
+        if (sb.length() == 0) return -1;
+        try { return Integer.parseInt(sb.toString()); } catch (NumberFormatException e) { return -1; }
     }
 
     @Override
@@ -219,6 +283,7 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         ContainerStdin stdin = sessionStdinStreams.remove(session.getId());
         sessionExecIds.remove(session.getId());
+        sessionLastHeartbeat.remove(session.getId());
         if (stdin != null) {
             stdin.signalEof();
         }
@@ -437,8 +502,37 @@ public class LabTerminalWebSocketHandler extends AbstractWebSocketHandler {
         if (stdin != null) {
             log.info("stdin → container: {} byte(s)", data.length);
             stdin.push(data);
+            // Keep lastActiveAt fresh so the idle-cleanup job does not stop an active session.
+            // Throttled internally to at most one DB write per minute.
+            updateLastActiveAt(session);
         } else {
             log.warn("forwardToContainer: no stdin stream for session {}", session.getId());
+        }
+    }
+
+    /**
+     * Updates {@code lastActiveAt} on the assignment in the database, throttled to at most
+     * once per minute per session. Called from terminal I/O paths to keep the idle-cleanup
+     * scheduler from treating an actively-used session as idle.
+     */
+    private void updateLastActiveAt(WebSocketSession session) {
+        Instant now = Instant.now();
+        Instant last = sessionLastHeartbeat.get(session.getId());
+        // Throttle: skip if a DB write already happened within the last 60 seconds
+        if (last != null && now.isBefore(last.plus(60, ChronoUnit.SECONDS))) {
+            return;
+        }
+        sessionLastHeartbeat.put(session.getId(), now);
+        String assignmentIdStr = extractAssignmentId(session);
+        if (assignmentIdStr == null) return;
+        try {
+            long assignmentId = Long.parseLong(assignmentIdStr);
+            assignmentRepository.findById(assignmentId).ifPresent(a -> {
+                a.setLastActiveAt(now);
+                assignmentRepository.save(a);
+            });
+        } catch (NumberFormatException ignored) {
+            // Non-numeric path segment — assignment not found by ID, skip heartbeat
         }
     }
 
