@@ -29,6 +29,17 @@
     }
     #error-box h3 { color: #ef4444; font-size: 1.1rem; }
     #error-box p  { color: #8b949e; font-size: 0.875rem; max-width: 400px; line-height: 1.5; }
+    .btn-resume {
+      padding: 8px 22px; border-radius: 8px; border: none;
+      background: #7c3aed; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    }
+    .btn-resume:hover:not(:disabled) { background: #6d28d9; }
+    .btn-resume:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-retry {
+      padding: 6px 18px; border-radius: 8px; border: 1px solid #30363d;
+      background: #21262d; color: #e6edf3; cursor: pointer; font-size: 0.85rem;
+    }
+    .btn-retry:hover { background: #30363d; }
   </style>
 </head>
 <body>
@@ -41,6 +52,8 @@
 <div id="error-box">
   <h3 id="errTitle">Connection Failed</h3>
   <p id="errMsg">Unable to connect to the lab terminal.</p>
+  <button id="resumeBtn" class="btn-resume" style="display:none;" onclick="resumeAndReconnect()">▶️ Resume Lab</button>
+  <button id="retryBtn"  class="btn-retry"  style="display:none;" onclick="reconnect()">🔄 Retry Connection</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
@@ -55,7 +68,7 @@
   const statusEl = document.getElementById('statusBadge');
 
   if (!assignmentId || !token) {
-    showError('Missing Parameters', 'assignmentId and token are required query parameters.');
+    showError('Missing Parameters', 'assignmentId and token are required query parameters.', false, false);
     return;
   }
 
@@ -72,15 +85,24 @@
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const wsUrl  = `${proto}://${location.host}/labs/terminal/${encodeURIComponent(assignmentId)}?token=${encodeURIComponent(token)}`;
   let   ws;
+  let   reconnectAttempts = 0;
+  const MAX_RECONNECT     = 3;
+  let   heartbeatTimer    = null;
 
   function connect() {
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
+      reconnectAttempts = 0; // reset on successful connect
       statusEl.textContent = 'Connected';
       statusEl.className   = 'tbar-status connected';
       term.write('\r\n\x1b[32m✓ Connected to lab terminal\x1b[0m\r\n\r\n');
       sendResize();
+      // Heartbeat: send a resize ping every 4 minutes.
+      // The backend intercepts resize JSON (does NOT forward to stdin) and refreshes
+      // lastActiveAt — preventing the 30-min idle cleanup from killing an open session.
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(() => sendResize(), 4 * 60 * 1000);
     };
 
     ws.onmessage = (evt) => {
@@ -100,15 +122,41 @@
     ws.onclose = (evt) => {
       statusEl.textContent = 'Disconnected';
       statusEl.className   = 'tbar-status error';
-      const reason = evt.reason || `Code ${evt.code}`;
-      const isAuthError = evt.code === 4001 || evt.reason?.includes('Unauthorized') || evt.reason?.includes('Forbidden');
-      const isLabError  = evt.code === 1002 || evt.reason?.includes('not running') || evt.reason?.includes('not currently running');
+      clearInterval(heartbeatTimer);
+      const reason      = evt.reason || `Code ${evt.code}`;
+      const isAuthError = evt.code === 4001
+          || (evt.reason && (evt.reason.includes('Unauthorized') || evt.reason.includes('Forbidden')));
+      const isLabError  = evt.code === 1002
+          || (evt.reason && (evt.reason.includes('not running') || evt.reason.includes('not currently running')
+                              || evt.reason.includes('PAUSED')));
+
       if (isAuthError) {
-        showError('Access Denied', `Your lab session could not be started (${reason}). Please log in again or contact your instructor.`);
+        showError(
+          'Access Denied',
+          `Your lab session could not be started (${reason}). Please log in again or contact your instructor.`,
+          false, false
+        );
       } else if (isLabError) {
-        showError('Lab Not Active', `Your lab session could not be started (${reason}). The lab may not be in RUNNING state. Please return to your course and check the lab status.`);
+        // Lab was paused by idle cleanup or manual stop — show Resume button
+        showError(
+          '⏸️ Lab Paused',
+          'Your lab environment was paused (idle timeout or manual stop). Click Resume to restart it and reconnect automatically.',
+          true, false
+        );
       } else if (evt.code !== 1000) {
-        term.write(`\r\n\x1b[31m✗ Connection closed: ${reason}\x1b[0m\r\n`);
+        // Unexpected disconnect — try to auto-reconnect
+        if (reconnectAttempts < MAX_RECONNECT) {
+          reconnectAttempts++;
+          const delay = Math.min(reconnectAttempts * 3000, 10000);
+          term.write(`\r\n\x1b[33m⟳ Connection lost. Reconnecting in ${delay / 1000}s… (attempt ${reconnectAttempts}/${MAX_RECONNECT})\x1b[0m\r\n`);
+          setTimeout(() => reconnect(), delay);
+        } else {
+          showError(
+            'Connection Lost',
+            `Terminal disconnected: ${reason}. If your lab was paused, use the Resume button below.`,
+            true, true
+          );
+        }
       }
     };
   }
@@ -124,12 +172,57 @@
   }
   term.onResize(() => sendResize());
 
-  function showError(title, msg) {
+  /** Re-show terminal div and open a new WebSocket (used for auto-reconnect). */
+  function reconnect() {
+    document.getElementById('error-box').style.display = 'none';
+    document.getElementById('terminal-container').style.display = '';
+    statusEl.textContent = 'Connecting…';
+    statusEl.className   = 'tbar-status connecting';
+    connect();
+  }
+
+  /**
+   * Resume a PAUSED lab via REST, then reconnect the terminal.
+   * Called when the student clicks the "Resume Lab" button on the error page.
+   */
+  async function resumeAndReconnect() {
+    const btn = document.getElementById('resumeBtn');
+    btn.disabled    = true;
+    btn.textContent = '⏳ Resuming…';
+    try {
+      const res = await fetch(`/api/labs/${encodeURIComponent(assignmentId)}/resume`, {
+        method:  'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        reconnectAttempts = 0;
+        reconnect();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        btn.disabled    = false;
+        btn.textContent = '▶️ Resume Lab';
+        document.getElementById('errMsg').textContent =
+          'Resume failed: ' + (body.message || `HTTP ${res.status}`) + '. Please return to your course page.';
+      }
+    } catch (e) {
+      btn.disabled    = false;
+      btn.textContent = '▶️ Resume Lab';
+      document.getElementById('errMsg').textContent = 'Network error while resuming. Check your connection.';
+    }
+  }
+
+  // Expose to onclick handlers
+  window.reconnect          = reconnect;
+  window.resumeAndReconnect = resumeAndReconnect;
+
+  function showError(title, msg, showResume, showRetry) {
     document.getElementById('terminal-container').style.display = 'none';
     const box = document.getElementById('error-box');
     box.style.display = 'flex';
     document.getElementById('errTitle').textContent = title;
     document.getElementById('errMsg').textContent   = msg;
+    document.getElementById('resumeBtn').style.display = showResume ? '' : 'none';
+    document.getElementById('retryBtn').style.display  = showRetry  ? '' : 'none';
     statusEl.textContent = 'Error';
     statusEl.className   = 'tbar-status error';
   }
