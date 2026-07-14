@@ -40,10 +40,10 @@ images:
   shop-service: "3762ac51e323a0ab05107776ad671cf016197425"
   form-service: "3762ac51e323a0ab05107776ad671cf016197425"
   admin-service: "cf1d7fd8e3faa35a7b3bfd86af4cf8c5ca812df7"
-  cms-service: "c3499227e830d91ba0354acc02d8d32ab3c58ed0"
+  cms-service: "def2ced75d31d16468e551269d7aba8a441b8ab6"
   instructor-service: "3762ac51e323a0ab05107776ad671cf016197425"
   attendance-service: "3762ac51e323a0ab05107776ad671cf016197425"
-  lab-service: "3762ac51e323a0ab05107776ad671cf016197425"
+  lab-service: "def2ced75d31d16468e551269d7aba8a441b8ab6"
 
 # Single-node: ScheduleAnyway so replicas don't stay Pending on one node
 topology:
