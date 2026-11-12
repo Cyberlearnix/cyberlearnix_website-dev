@@ -19,7 +19,7 @@ import java.util.Arrays;
 @EnableWebFluxSecurity
 public class GatewaySecurityConfig {
 
-    @Value("${cors.allowed-origins:https://cyberlearnix.com,http://localhost:3000,http://localhost:5173,http://localhost:5174}")
+    @Value("${cors.allowed-origins:https://cyberlearnix.com,https://www.cyberlearnix.com,http://localhost:3000,http://localhost:5173,http://localhost:5174}")
     private String allowedOrigins;
 
     @Bean
@@ -66,7 +66,8 @@ public class GatewaySecurityConfig {
         // Exposed headers
         corsConfig.setExposedHeaders(Arrays.asList(
             "Authorization",
-            "Content-Type"
+            "Content-Type",
+            "Content-Disposition"
         ));
 
         // Max age for preflight requests

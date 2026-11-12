@@ -29,6 +29,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     @Value("${security.rate-limit.max-attempts:5}")
     private int maxAttempts;
 
+    @Value("${enquiry.rate-limit.max-attempts:10}")
+    private int enquiryMaxAttempts;
+
     @Value("${security.rate-limit.window-minutes:15}")
     private int windowMinutes;
 
@@ -50,31 +53,39 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Only apply rate limiting to login endpoint
-        if (!request.getRequestURI().contains("/api/auth/login")) {
+        String uri = request.getRequestURI();
+        boolean isLogin = uri.contains("/api/auth/login");
+        boolean isEnquiryPost = "POST".equalsIgnoreCase(request.getMethod()) && uri.endsWith("/api/public/enquiries");
+
+        // Apply rate limiting to login and public business enquiry submission endpoints
+        if (!isLogin && !isEnquiryPost) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String clientIp = getClientIp(request);
+        String cacheKey = isEnquiryPost ? "enquiry:" + clientIp : clientIp;
+        int limit = isEnquiryPost ? enquiryMaxAttempts : maxAttempts;
 
         try {
-            int attempts = cache.get(clientIp).incrementAndGet();
+            int attempts = cache.get(cacheKey).incrementAndGet();
 
-            if (attempts > maxAttempts) {
-                log.warn("Rate limit exceeded for IP: {} - Attempts: {}", clientIp, attempts);
+            if (attempts > limit) {
+                log.warn("Rate limit exceeded for key {}: {} - Attempts: {}", cacheKey, uri, attempts);
 
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
-                response.getWriter().write("{\"error\": \"Too many login attempts. Please try again in " + 
-                        windowMinutes + " minutes.\", \"timestamp\": " + System.currentTimeMillis() + "}");
+                String msg = isEnquiryPost
+                        ? "Too many enquiry submissions. Please wait " + windowMinutes + " minutes before trying again."
+                        : "Too many login attempts. Please try again in " + windowMinutes + " minutes.";
+                response.getWriter().write("{\"error\": \"" + msg + "\", \"message\": \"" + msg + "\", \"timestamp\": " + System.currentTimeMillis() + "}");
                 return;
             }
 
             // Add headers to inform client about rate limit
-            response.addHeader("X-RateLimit-Limit", String.valueOf(maxAttempts));
-            response.addHeader("X-RateLimit-Remaining", String.valueOf(maxAttempts - attempts));
-            response.addHeader("X-RateLimit-Reset", String.valueOf(System.currentTimeMillis() + (windowMinutes * 60 * 1000)));
+            response.addHeader("X-RateLimit-Limit", String.valueOf(limit));
+            response.addHeader("X-RateLimit-Remaining", String.valueOf(Math.max(0, limit - attempts)));
+            response.addHeader("X-RateLimit-Reset", String.valueOf(System.currentTimeMillis() + (windowMinutes * 60 * 1000L)));
 
             filterChain.doFilter(request, response);
 

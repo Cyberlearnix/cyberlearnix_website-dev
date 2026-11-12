@@ -33,7 +33,7 @@ public class SecurityConfig {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-        @Value("${cors.allowed-origins:https://cyberlearnix.com,http://localhost:3000,http://localhost:5173,http://localhost:5174}")
+        @Value("${cors.allowed-origins:https://cyberlearnix.com,https://www.cyberlearnix.com,http://localhost:3000,http://localhost:5173,http://localhost:5174}")
     private String allowedOrigins;
 
     @Autowired
@@ -97,6 +97,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/site-settings", "/api/site-settings/**").permitAll()
                         .requestMatchers("/api/site-settings", "/api/site-settings/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/public/enquiries").permitAll()
+                        .requestMatchers("/api/admin/enquiries/**").hasAnyRole("ADMIN", "HR", "MANAGER", "SUPER_ADMIN", "DUAL")
                         .requestMatchers("/api/activity/logs", "/api/activity/logs/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/stats/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/profile").authenticated()
@@ -134,6 +136,7 @@ public class SecurityConfig {
         config.setExposedHeaders(List.of(
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
+                HttpHeaders.CONTENT_DISPOSITION,
                 "X-Total-Count",
                 "X-Page-Number"
         ));

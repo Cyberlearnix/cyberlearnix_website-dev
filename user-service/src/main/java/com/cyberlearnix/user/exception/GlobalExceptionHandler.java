@@ -1,5 +1,6 @@
 package com.cyberlearnix.user.exception;
 
+import com.cyberlearnix.user.service.BusinessEnquiryService;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +35,26 @@ public class GlobalExceptionHandler {
                         FieldError::getField,
                         fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Invalid value",
                         (a, b) -> a));
+        String firstMsg = fieldErrors.values().stream().findFirst()
+                .orElse("Please review the highlighted form fields and try again.");
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now().toString());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", HttpStatus.BAD_REQUEST.getReasonPhrase());
+        body.put("message", firstMsg);
         body.put("fieldErrors", fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(BusinessEnquiryService.DuplicateEnquiryException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateEnquiry(BusinessEnquiryService.DuplicateEnquiryException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", HttpStatus.CONFLICT.getReasonPhrase());
+        body.put("message", ex.getMessage());
+        body.put("enquiryReference", ex.getEnquiryReference());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler({EntityNotFoundException.class, NoSuchElementException.class})

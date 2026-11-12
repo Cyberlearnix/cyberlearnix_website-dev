@@ -121,6 +121,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublicPath(String path, String method) {
+        // Always allow CORS preflight requests.
+        // Browsers send OPTIONS before authenticated cross-origin POSTs (e.g. multipart uploads).
+        // Blocking this here surfaces in UI as a generic "Failed to fetch".
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+
         // Public POST endpoints (no auth required)
         if ("POST".equals(method)) {
             if (path.startsWith("/api/auth/")) return true;
@@ -134,6 +141,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             if (path.startsWith("/api/forms/payments/callback/")) return true;
             if (path.equals("/api/forms/payments/webhook")) return true;
             if (path.equals("/api/contact-submissions")) return true;  // Public contact form
+            if (path.equals("/api/public/enquiries")) return true;     // Public business & partnership enquiry form
             // Zoho Meeting webhook — Zoho calls this without a JWT
             if (path.startsWith("/api/attendance/webhooks/")) return true;
             return path.endsWith("/responses") || path.endsWith("/responses/check");

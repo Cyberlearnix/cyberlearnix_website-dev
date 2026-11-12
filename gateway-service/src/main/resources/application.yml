@@ -191,6 +191,12 @@ spring:
           predicates:
             - Path=/student/**
 
+        # Admin business enquiries (on user-service) — must be BEFORE the generic /api/admin/** catch-all
+        - id: admin-enquiries
+          uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}
+          predicates:
+            - Path=/api/admin/enquiries,/api/admin/enquiries/**
+
         # Admin stats endpoints — must be BEFORE the generic /api/admin/** catch-all
         - id: admin-stats-users
           uri: ${USER_SERVICE_URL:http://127.0.0.1:8081}

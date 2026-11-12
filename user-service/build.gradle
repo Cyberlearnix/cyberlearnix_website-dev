@@ -28,6 +28,9 @@ dependencies {
 
     // PDF generation for ID Cards
     implementation 'com.github.librepdf:openpdf:1.3.30'
+
+    // Excel export for Business Enquiries
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
 }
 
 springBoot {
